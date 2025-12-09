@@ -759,7 +759,9 @@ impl Filesystem for WormholeFS {
         }
 
         // Only support regular files via mknod
+        #[allow(clippy::unnecessary_cast)]
         let file_type = mode & libc::S_IFMT as u32;
+        #[allow(clippy::unnecessary_cast)]
         if file_type != libc::S_IFREG as u32 && file_type != 0 {
             warn!("mknod: unsupported file type {:o}", file_type);
             reply.error(libc::ENOTSUP);
