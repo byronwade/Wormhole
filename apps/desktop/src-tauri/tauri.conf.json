@@ -19,11 +19,9 @@
         "fullscreen": false,
         "decorations": true,
         "transparent": false,
-        "titleBarStyle": "overlay",
         "center": true,
         "minWidth": 900,
-        "minHeight": 600,
-        "hiddenTitle": true
+        "minHeight": 600
       }
     ],
     "trayIcon": {
