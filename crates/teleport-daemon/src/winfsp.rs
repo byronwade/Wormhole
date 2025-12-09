@@ -27,14 +27,16 @@
 //! └─────────────────────────────────┘
 //! ```
 
+use std::ffi::c_void;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use parking_lot::Mutex;
 use tracing::{debug, error, trace, warn};
 use winfsp::filesystem::{
-    DirBuffer, DirInfo, FileInfo, FileSecurity, FileSystemContext, OpenFileInfo, VolumeInfo,
+    DirBuffer, DirInfo, DirMarker, FileInfo, FileSecurity, FileSystemContext, OpenFileInfo,
+    VolumeInfo, WideNameInfo,
 };
 use winfsp::host::FileSystemHost;
 use winfsp::U16CStr;
@@ -45,6 +47,18 @@ use crate::bridge::{FuseAsyncBridge, FuseError};
 use crate::cache::HybridCacheManager;
 use crate::governor::{Governor, MAX_PREFETCH_CONCURRENT};
 use crate::sync_engine::SyncEngine;
+
+// Windows type aliases from winfsp-sys
+type FILE_ACCESS_RIGHTS = u32;
+type FILE_FLAGS_AND_ATTRIBUTES = u32;
+
+// NTSTATUS codes
+const STATUS_SUCCESS: i32 = 0;
+const STATUS_OBJECT_NAME_NOT_FOUND: i32 = 0xC0000034_u32 as i32;
+const STATUS_ACCESS_DENIED: i32 = 0xC0000022_u32 as i32;
+const STATUS_MEDIA_WRITE_PROTECTED: i32 = 0xC00000A2_u32 as i32;
+const STATUS_NOT_IMPLEMENTED: i32 = 0xC0000002_u32 as i32;
+const STATUS_INTERNAL_ERROR: i32 = 0xC00000E5_u32 as i32;
 
 /// File context for open file handles
 /// WinFSP requires this to track open files
@@ -119,9 +133,7 @@ impl WormholeWinFS {
     }
 
     /// Convert FileAttr to WinFSP FileInfo
-    fn to_file_info(attr: &FileAttr) -> FileInfo {
-        let mut info = FileInfo::default();
-
+    fn attr_to_file_info(attr: &FileAttr, info: &mut FileInfo) {
         // File attributes
         info.file_attributes = match attr.file_type {
             FileType::Directory => 0x10, // FILE_ATTRIBUTE_DIRECTORY
@@ -148,8 +160,6 @@ impl WormholeWinFS {
 
         // Index number (inode)
         info.index_number = attr.inode;
-
-        info
     }
 
     /// Fetch a single chunk with caching
@@ -255,37 +265,72 @@ impl WormholeWinFS {
             });
         }
     }
+
+    /// Resolve a path string to (parent_inode, filename)
+    fn resolve_path(&self, path: &str) -> Result<(Inode, String), winfsp::FspError> {
+        let path = path.trim_start_matches('\\').trim_start_matches('/');
+
+        if path.is_empty() {
+            // Root directory
+            return Ok((1, ".".to_string()));
+        }
+
+        let parts: Vec<&str> = path.split(|c| c == '\\' || c == '/').collect();
+
+        if parts.len() == 1 {
+            // File in root
+            return Ok((1, parts[0].to_string()));
+        }
+
+        // Walk the path to find the parent inode
+        let mut current_inode: Inode = 1; // Root
+
+        for i in 0..parts.len() - 1 {
+            let name = parts[i];
+            if name.is_empty() {
+                continue;
+            }
+
+            match self.bridge.lookup(current_inode, name.to_string()) {
+                Ok(attr) => {
+                    current_inode = attr.inode;
+                }
+                Err(FuseError::NotFound) => {
+                    return Err(FspError::NTSTATUS(STATUS_OBJECT_NAME_NOT_FOUND));
+                }
+                Err(e) => {
+                    return Err(FspError::NTSTATUS(e.to_ntstatus()));
+                }
+            }
+        }
+
+        Ok((current_inode, parts.last().unwrap().to_string()))
+    }
 }
+
+// Import FspError for creating errors
+use winfsp::FspError;
 
 impl FileSystemContext for WormholeWinFS {
     type FileContext = WormholeFileContext;
 
-    fn get_volume_info(&self) -> Result<VolumeInfo, winfsp::FspError> {
-        let mut info = VolumeInfo::default();
-
+    fn get_volume_info(&self, out_volume_info: &mut VolumeInfo) -> winfsp::Result<()> {
         // Total and free space (report large values since this is a network FS)
-        info.total_size = 1024 * 1024 * 1024 * 1024; // 1 TB
-        info.free_size = 512 * 1024 * 1024 * 1024; // 512 GB free
+        out_volume_info.total_size = 1024 * 1024 * 1024 * 1024; // 1 TB
+        out_volume_info.free_size = 512 * 1024 * 1024 * 1024; // 512 GB free
 
-        // Volume label
-        let label: Vec<u16> = self
-            .volume_label
-            .encode_utf16()
-            .chain(std::iter::once(0))
-            .collect();
-        let label_len = std::cmp::min(label.len() - 1, 32);
-        info.volume_label[..label_len].copy_from_slice(&label[..label_len]);
-        info.volume_label_length = (label_len * 2) as u16;
+        // Set volume label
+        out_volume_info.set_volume_label(&self.volume_label);
 
-        Ok(info)
+        Ok(())
     }
 
     fn get_security_by_name(
         &self,
         file_name: &U16CStr,
-        _security_descriptor: Option<&mut [u8]>,
-        _resolve_reparse_points: impl FnOnce() -> Option<FileSecurity>,
-    ) -> Result<FileSecurity, winfsp::FspError> {
+        _security_descriptor: Option<&mut [c_void]>,
+        _resolve_reparse_points: impl FnOnce(&U16CStr) -> Option<FileSecurity>,
+    ) -> winfsp::Result<FileSecurity> {
         let path = file_name.to_string_lossy();
         debug!("get_security_by_name: {}", path);
 
@@ -302,9 +347,9 @@ impl FileSystemContext for WormholeWinFS {
         &self,
         file_name: &U16CStr,
         _create_options: u32,
-        _granted_access: u32,
+        _granted_access: FILE_ACCESS_RIGHTS,
         file_info: &mut OpenFileInfo,
-    ) -> Result<Self::FileContext, winfsp::FspError> {
+    ) -> winfsp::Result<Self::FileContext> {
         let path = file_name.to_string_lossy();
         debug!("open: {}", path);
 
@@ -314,16 +359,18 @@ impl FileSystemContext for WormholeWinFS {
         // Lookup the file
         let attr = match self.bridge.lookup(parent_inode, name) {
             Ok(attr) => attr,
-            Err(FuseError::NotFound) => return Err(winfsp::FspError::from(0xC0000034_u32 as i32)), // STATUS_OBJECT_NAME_NOT_FOUND
+            Err(FuseError::NotFound) => {
+                return Err(FspError::NTSTATUS(STATUS_OBJECT_NAME_NOT_FOUND))
+            }
             Err(e) => {
                 error!("open error: {:?}", e);
-                return Err(winfsp::FspError::from(e.to_ntstatus()));
+                return Err(FspError::NTSTATUS(e.to_ntstatus()));
             }
         };
 
-        // Fill in file info
-        let info = Self::to_file_info(&attr);
-        file_info.set_file_info(info);
+        // Fill in file info using AsMut trait
+        let info: &mut FileInfo = file_info.as_mut();
+        Self::attr_to_file_info(&attr, info);
 
         let is_directory = matches!(attr.file_type, FileType::Directory);
         Ok(WormholeFileContext::new(attr.inode, is_directory))
@@ -340,7 +387,7 @@ impl FileSystemContext for WormholeWinFS {
         context: &Self::FileContext,
         buffer: &mut [u8],
         offset: u64,
-    ) -> Result<u32, winfsp::FspError> {
+    ) -> winfsp::Result<u32> {
         trace!(
             "read: inode={}, offset={}, size={}",
             context.inode,
@@ -368,7 +415,7 @@ impl FileSystemContext for WormholeWinFS {
             }
             Err(e) => {
                 error!("read error: {:?}", e);
-                Err(winfsp::FspError::from(e.to_ntstatus()))
+                Err(FspError::NTSTATUS(e.to_ntstatus()))
             }
         }
     }
@@ -380,7 +427,8 @@ impl FileSystemContext for WormholeWinFS {
         offset: u64,
         _write_to_end_of_file: bool,
         _constrained_io: bool,
-    ) -> Result<u32, winfsp::FspError> {
+        file_info: &mut FileInfo,
+    ) -> winfsp::Result<u32> {
         debug!(
             "write: inode={}, offset={}, size={}",
             context.inode,
@@ -390,7 +438,7 @@ impl FileSystemContext for WormholeWinFS {
 
         if !self.writable {
             warn!("write rejected: filesystem is read-only");
-            return Err(winfsp::FspError::from(0xC00000A2_u32 as i32)); // STATUS_MEDIA_WRITE_PROTECTED
+            return Err(FspError::NTSTATUS(STATUS_MEDIA_WRITE_PROTECTED));
         }
 
         // Write to cache and mark dirty
@@ -424,7 +472,7 @@ impl FileSystemContext for WormholeWinFS {
                 match self.fetch_chunk(chunk_id) {
                     Ok(d) => d,
                     Err(FuseError::NotFound) => Vec::new(),
-                    Err(e) => return Err(winfsp::FspError::from(e.to_ntstatus())),
+                    Err(e) => return Err(FspError::NTSTATUS(e.to_ntstatus())),
                 }
             };
 
@@ -446,8 +494,13 @@ impl FileSystemContext for WormholeWinFS {
             current_offset += to_write as u64;
         }
 
-        // Invalidate attr cache
+        // Invalidate attr cache and update file_info
         self.cache.attrs.invalidate(context.inode);
+
+        // Get updated file info
+        if let Ok(attr) = self.bridge.getattr(context.inode) {
+            Self::attr_to_file_info(&attr, file_info);
+        }
 
         Ok(written as u32)
     }
@@ -456,13 +509,13 @@ impl FileSystemContext for WormholeWinFS {
         &self,
         context: &Self::FileContext,
         _pattern: Option<&U16CStr>,
-        marker: winfsp::filesystem::DirMarker,
-        buffer: &mut DirBuffer,
-    ) -> Result<(), winfsp::FspError> {
+        marker: DirMarker<'_>,
+        buffer: &mut [u8],
+    ) -> winfsp::Result<u32> {
         debug!(
             "read_directory: inode={}, has_marker={}",
             context.inode,
-            marker.is_some()
+            !marker.is_none()
         );
 
         // Get directory entries
@@ -470,70 +523,79 @@ impl FileSystemContext for WormholeWinFS {
             Ok(e) => e,
             Err(e) => {
                 error!("readdir error: {:?}", e);
-                return Err(winfsp::FspError::from(e.to_ntstatus()));
+                return Err(FspError::NTSTATUS(e.to_ntstatus()));
             }
         };
 
-        // Lock the buffer for writing
-        let mut lock = match buffer.lock() {
-            Some(l) => l,
-            None => return Ok(()),
-        };
+        // Create a DirBuffer to hold entries
+        let dir_buffer = DirBuffer::new();
 
-        // Add "." entry
-        let mut dot_info = DirInfo::default();
-        dot_info.file_info.file_attributes = 0x10; // FILE_ATTRIBUTE_DIRECTORY
-        dot_info.set_file_name(".");
-        lock.write(&mut dot_info);
+        // Acquire the buffer for writing
+        if let Some(mut lock) = dir_buffer.acquire(marker.is_none(), None) {
+            // Add "." entry
+            let mut dot_info: DirInfo = DirInfo::new();
+            dot_info.file_info_mut().file_attributes = 0x10; // FILE_ATTRIBUTE_DIRECTORY
+            dot_info.set_name(".");
+            lock.write(&mut dot_info);
 
-        // Add ".." entry
-        let mut dotdot_info = DirInfo::default();
-        dotdot_info.file_info.file_attributes = 0x10;
-        dotdot_info.set_file_name("..");
-        lock.write(&mut dotdot_info);
+            // Add ".." entry
+            let mut dotdot_info: DirInfo = DirInfo::new();
+            dotdot_info.file_info_mut().file_attributes = 0x10;
+            dotdot_info.set_name("..");
+            lock.write(&mut dotdot_info);
 
-        // Add actual entries
-        for entry in entries {
-            let mut dir_info = DirInfo::default();
+            // Add actual entries
+            for entry in entries {
+                let mut dir_info: DirInfo = DirInfo::new();
 
-            // Get file info for this entry
-            match self.bridge.getattr(entry.inode) {
-                Ok(attr) => {
-                    dir_info.file_info = Self::to_file_info(&attr);
+                // Get file info for this entry
+                match self.bridge.getattr(entry.inode) {
+                    Ok(attr) => {
+                        Self::attr_to_file_info(&attr, dir_info.file_info_mut());
+                    }
+                    Err(_) => {
+                        // Use basic info from entry
+                        dir_info.file_info_mut().file_attributes = match entry.file_type {
+                            FileType::Directory => 0x10,
+                            FileType::File => 0x80,
+                            FileType::Symlink => 0x400,
+                        };
+                    }
                 }
-                Err(_) => {
-                    // Use basic info from entry
-                    dir_info.file_info.file_attributes = match entry.file_type {
-                        FileType::Directory => 0x10,
-                        FileType::File => 0x80,
-                        FileType::Symlink => 0x400,
-                    };
-                }
+
+                dir_info.set_name(&entry.name);
+                lock.write(&mut dir_info);
             }
-
-            dir_info.set_file_name(&entry.name);
-            lock.write(&mut dir_info);
         }
 
-        Ok(())
+        // Read from dir buffer into output buffer
+        let bytes_written = dir_buffer.read(marker, buffer);
+
+        Ok(bytes_written)
     }
 
-    fn get_file_info(&self, context: &Self::FileContext) -> Result<FileInfo, winfsp::FspError> {
+    fn get_file_info(
+        &self,
+        context: &Self::FileContext,
+        file_info: &mut FileInfo,
+    ) -> winfsp::Result<()> {
         trace!("get_file_info: inode={}", context.inode);
 
         // Check cache first
         if let Some(attr) = self.cache.attrs.get(context.inode) {
-            return Ok(Self::to_file_info(&attr));
+            Self::attr_to_file_info(&attr, file_info);
+            return Ok(());
         }
 
         match self.bridge.getattr(context.inode) {
             Ok(attr) => {
                 self.cache.attrs.insert(context.inode, attr.clone());
-                Ok(Self::to_file_info(&attr))
+                Self::attr_to_file_info(&attr, file_info);
+                Ok(())
             }
             Err(e) => {
                 error!("getattr error: {:?}", e);
-                Err(winfsp::FspError::from(e.to_ntstatus()))
+                Err(FspError::NTSTATUS(e.to_ntstatus()))
             }
         }
     }
@@ -543,14 +605,15 @@ impl FileSystemContext for WormholeWinFS {
         context: &Self::FileContext,
         new_size: u64,
         _set_allocation_size: bool,
-    ) -> Result<FileInfo, winfsp::FspError> {
+        file_info: &mut FileInfo,
+    ) -> winfsp::Result<()> {
         debug!(
             "set_file_size: inode={}, new_size={}",
             context.inode, new_size
         );
 
         if !self.writable {
-            return Err(winfsp::FspError::from(0xC00000A2_u32 as i32));
+            return Err(FspError::NTSTATUS(STATUS_MEDIA_WRITE_PROTECTED));
         }
 
         match self
@@ -559,21 +622,25 @@ impl FileSystemContext for WormholeWinFS {
         {
             Ok(attr) => {
                 self.cache.attrs.insert(context.inode, attr.clone());
-                Ok(Self::to_file_info(&attr))
+                Self::attr_to_file_info(&attr, file_info);
+                Ok(())
             }
-            Err(e) => Err(winfsp::FspError::from(e.to_ntstatus())),
+            Err(e) => Err(FspError::NTSTATUS(e.to_ntstatus())),
         }
     }
 
     fn flush(
         &self,
-        context: &Self::FileContext,
+        context: Option<&Self::FileContext>,
         _file_info: &mut FileInfo,
-    ) -> Result<(), winfsp::FspError> {
-        debug!("flush: inode={}", context.inode);
-
-        if self.sync_engine.has_dirty_chunks(context.inode) {
-            debug!("flush: has dirty chunks, sync pending");
+    ) -> winfsp::Result<()> {
+        if let Some(ctx) = context {
+            debug!("flush: inode={}", ctx.inode);
+            if self.sync_engine.has_dirty_chunks(ctx.inode) {
+                debug!("flush: has dirty chunks, sync pending");
+            }
+        } else {
+            debug!("flush: global flush");
         }
 
         Ok(())
@@ -588,19 +655,19 @@ impl FileSystemContext for WormholeWinFS {
         &self,
         file_name: &U16CStr,
         _create_options: u32,
-        _granted_access: u32,
-        _file_attributes: u32,
-        _security_descriptor: Option<&[u8]>,
+        _granted_access: FILE_ACCESS_RIGHTS,
+        _file_attributes: FILE_FLAGS_AND_ATTRIBUTES,
+        _security_descriptor: Option<&[c_void]>,
         _allocation_size: u64,
         _extra_buffer: Option<&[u8]>,
         _extra_buffer_is_reparse_point: bool,
         file_info: &mut OpenFileInfo,
-    ) -> Result<Self::FileContext, winfsp::FspError> {
+    ) -> winfsp::Result<Self::FileContext> {
         let path = file_name.to_string_lossy();
         debug!("create: {}", path);
 
         if !self.writable {
-            return Err(winfsp::FspError::from(0xC00000A2_u32 as i32));
+            return Err(FspError::NTSTATUS(STATUS_MEDIA_WRITE_PROTECTED));
         }
 
         let (parent_inode, name) = self.resolve_path(&path)?;
@@ -610,12 +677,12 @@ impl FileSystemContext for WormholeWinFS {
                 self.cache.attrs.insert(attr.inode, attr.clone());
                 self.cache.dirs.invalidate(parent_inode);
 
-                let info = Self::to_file_info(&attr);
-                file_info.set_file_info(info);
+                let info: &mut FileInfo = file_info.as_mut();
+                Self::attr_to_file_info(&attr, info);
 
                 Ok(WormholeFileContext::new(attr.inode, false))
             }
-            Err(e) => Err(winfsp::FspError::from(e.to_ntstatus())),
+            Err(e) => Err(FspError::NTSTATUS(e.to_ntstatus())),
         }
     }
 
@@ -625,31 +692,32 @@ impl FileSystemContext for WormholeWinFS {
         _file_name: &U16CStr,
         new_file_name: &U16CStr,
         _replace_if_exists: bool,
-    ) -> Result<(), winfsp::FspError> {
+    ) -> winfsp::Result<()> {
         let new_path = new_file_name.to_string_lossy();
         debug!("rename: inode={} -> {}", context.inode, new_path);
 
         if !self.writable {
-            return Err(winfsp::FspError::from(0xC00000A2_u32 as i32));
+            return Err(FspError::NTSTATUS(STATUS_MEDIA_WRITE_PROTECTED));
         }
 
         // TODO: Implement rename via bridge
         // For now, return not implemented
-        Err(winfsp::FspError::from(0xC0000002_u32 as i32)) // STATUS_NOT_IMPLEMENTED
+        Err(FspError::NTSTATUS(STATUS_NOT_IMPLEMENTED))
     }
 
     fn overwrite(
         &self,
         context: &Self::FileContext,
-        _file_attributes: u32,
+        _file_attributes: FILE_FLAGS_AND_ATTRIBUTES,
         _replace_file_attributes: bool,
         _allocation_size: u64,
+        _extra_buffer: Option<&[u8]>,
         file_info: &mut FileInfo,
-    ) -> Result<(), winfsp::FspError> {
+    ) -> winfsp::Result<()> {
         debug!("overwrite: inode={}", context.inode);
 
         if !self.writable {
-            return Err(winfsp::FspError::from(0xC00000A2_u32 as i32));
+            return Err(FspError::NTSTATUS(STATUS_MEDIA_WRITE_PROTECTED));
         }
 
         // Truncate to 0
@@ -659,54 +727,11 @@ impl FileSystemContext for WormholeWinFS {
         {
             Ok(attr) => {
                 self.cache.attrs.insert(context.inode, attr.clone());
-                *file_info = Self::to_file_info(&attr);
+                Self::attr_to_file_info(&attr, file_info);
                 Ok(())
             }
-            Err(e) => Err(winfsp::FspError::from(e.to_ntstatus())),
+            Err(e) => Err(FspError::NTSTATUS(e.to_ntstatus())),
         }
-    }
-}
-
-impl WormholeWinFS {
-    /// Resolve a path string to (parent_inode, filename)
-    fn resolve_path(&self, path: &str) -> Result<(Inode, String), winfsp::FspError> {
-        let path = path.trim_start_matches('\\').trim_start_matches('/');
-
-        if path.is_empty() {
-            // Root directory
-            return Ok((1, ".".to_string()));
-        }
-
-        let parts: Vec<&str> = path.split(|c| c == '\\' || c == '/').collect();
-
-        if parts.len() == 1 {
-            // File in root
-            return Ok((1, parts[0].to_string()));
-        }
-
-        // Walk the path to find the parent inode
-        let mut current_inode: Inode = 1; // Root
-
-        for i in 0..parts.len() - 1 {
-            let name = parts[i];
-            if name.is_empty() {
-                continue;
-            }
-
-            match self.bridge.lookup(current_inode, name.to_string()) {
-                Ok(attr) => {
-                    current_inode = attr.inode;
-                }
-                Err(FuseError::NotFound) => {
-                    return Err(winfsp::FspError::from(0xC0000034_u32 as i32));
-                }
-                Err(e) => {
-                    return Err(winfsp::FspError::from(e.to_ntstatus()));
-                }
-            }
-        }
-
-        Ok((current_inode, parts.last().unwrap().to_string()))
     }
 }
 
@@ -715,7 +740,7 @@ pub fn mount_winfsp(
     bridge: FuseAsyncBridge,
     mount_point: &str,
     writable: bool,
-) -> Result<FileSystemHost<WormholeWinFS>, winfsp::FspError> {
+) -> winfsp::Result<FileSystemHost<WormholeWinFS>> {
     let fs = if writable {
         WormholeWinFS::new_writable(bridge)
     } else {
@@ -733,9 +758,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_to_file_info() {
+    fn test_attr_to_file_info() {
         let attr = FileAttr::file(42, 1024);
-        let info = WormholeWinFS::to_file_info(&attr);
+        let mut info = FileInfo::default();
+        WormholeWinFS::attr_to_file_info(&attr, &mut info);
 
         assert_eq!(info.file_size, 1024);
         assert_eq!(info.index_number, 42);
@@ -743,9 +769,10 @@ mod tests {
     }
 
     #[test]
-    fn test_to_file_info_directory() {
+    fn test_attr_to_file_info_directory() {
         let attr = FileAttr::directory(1);
-        let info = WormholeWinFS::to_file_info(&attr);
+        let mut info = FileInfo::default();
+        WormholeWinFS::attr_to_file_info(&attr, &mut info);
 
         assert_eq!(info.index_number, 1);
         assert_eq!(info.file_attributes, 0x10); // FILE_ATTRIBUTE_DIRECTORY

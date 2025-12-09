@@ -1461,7 +1461,8 @@ fn handle_setattr(
     }
 }
 
-/// Convert std::fs::Metadata to FileAttr
+/// Convert std::fs::Metadata to FileAttr (Unix)
+#[cfg(unix)]
 fn metadata_to_attr(inode: Inode, meta: &fs::Metadata) -> FileAttr {
     use std::os::unix::fs::MetadataExt;
 
@@ -1489,6 +1490,57 @@ fn metadata_to_attr(inode: Inode, meta: &fs::Metadata) -> FileAttr {
         mtime_nsec: meta.mtime_nsec().clamp(0, 999_999_999) as u32,
         ctime: meta.ctime().max(0) as u64,
         ctime_nsec: meta.ctime_nsec().clamp(0, 999_999_999) as u32,
+    }
+}
+
+/// Convert std::fs::Metadata to FileAttr (Windows)
+#[cfg(windows)]
+fn metadata_to_attr(inode: Inode, meta: &fs::Metadata) -> FileAttr {
+    use std::os::windows::fs::MetadataExt;
+    use std::time::UNIX_EPOCH;
+
+    let file_type = if meta.is_dir() {
+        FileType::Directory
+    } else if meta.is_symlink() {
+        FileType::Symlink
+    } else {
+        FileType::File
+    };
+
+    // Windows timestamps are in FILETIME (100-ns intervals since 1601)
+    // Convert to Unix timestamps
+    fn filetime_to_unix(filetime: u64) -> (u64, u32) {
+        const EPOCH_DIFF: u64 = 116444736000000000; // 100-ns intervals from 1601 to 1970
+        if filetime < EPOCH_DIFF {
+            return (0, 0);
+        }
+        let unix_100ns = filetime - EPOCH_DIFF;
+        let secs = unix_100ns / 10_000_000;
+        let nsecs = ((unix_100ns % 10_000_000) * 100) as u32;
+        (secs, nsecs)
+    }
+
+    let (atime, atime_nsec) = filetime_to_unix(meta.last_access_time());
+    let (mtime, mtime_nsec) = filetime_to_unix(meta.last_write_time());
+    let (ctime, ctime_nsec) = filetime_to_unix(meta.creation_time());
+
+    // Windows doesn't have Unix permissions, use sensible defaults
+    let mode = if meta.is_dir() { 0o755 } else { 0o644 };
+
+    FileAttr {
+        inode,
+        file_type,
+        size: meta.len(),
+        mode,
+        nlink: 1, // Windows doesn't expose hard link count easily
+        uid: 0,   // No Unix UID/GID on Windows
+        gid: 0,
+        atime,
+        atime_nsec,
+        mtime,
+        mtime_nsec,
+        ctime,
+        ctime_nsec,
     }
 }
 

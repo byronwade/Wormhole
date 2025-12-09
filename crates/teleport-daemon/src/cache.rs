@@ -159,7 +159,7 @@ impl DirCache {
 /// Uses proper LRU eviction to keep hot chunks in memory.
 /// Optimized for streaming workloads.
 pub struct ChunkCache {
-    /// LRU cache: ChunkId → Arc<Vec<u8>>
+    /// LRU cache: `ChunkId` → `Arc<Vec<u8>>`
     cache: RwLock<LruCache<ChunkId, Arc<Vec<u8>>>>,
     /// Current size in bytes
     current_bytes: RwLock<usize>,
