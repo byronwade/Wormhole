@@ -45,6 +45,7 @@ winfsp = { workspace = true }
 # macOS-specific dependencies for window customization
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
+objc = "0.2"
 
 [features]
 default = ["custom-protocol"]

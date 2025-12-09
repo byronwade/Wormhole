@@ -9,9 +9,6 @@ use std::sync::Arc;
 use tauri::{Emitter, Listener, Manager};
 use tracing::info;
 
-#[cfg(target_os = "macos")]
-use tauri::WebviewWindowExt;
-
 pub use commands::{AppState, ServiceEvent};
 
 /// Deep link event payload for join links
@@ -108,25 +105,61 @@ pub fn run() {
         .setup(|app| {
             info!("Wormhole app setup complete");
 
-            // Set window background color on macOS to eliminate white border
+            // Set window and webview background color on macOS to eliminate white border
             #[cfg(target_os = "macos")]
             {
-                use cocoa::appkit::{NSColor, NSWindow};
+                #[allow(deprecated)]
                 use cocoa::base::id;
+                use objc::{class, msg_send, sel, sel_impl};
 
                 if let Some(window) = app.get_webview_window("main") {
-                    let ns_window = window.ns_window().unwrap() as id;
-                    unsafe {
-                        // Set background to match our app color (#0a0a0a)
-                        let bg_color = NSColor::colorWithRed_green_blue_alpha_(
-                            std::ptr::null_mut(),
-                            10.0 / 255.0,  // R
-                            10.0 / 255.0,  // G
-                            10.0 / 255.0,  // B
-                            1.0,           // A
-                        );
-                        ns_window.setBackgroundColor_(bg_color);
+                    // Set NSWindow background color
+                    if let Ok(ns_win) = window.ns_window() {
+                        #[allow(deprecated)]
+                        let ns_window = ns_win as id;
+                        unsafe {
+                            // Set background to match our app color (#0a0a0a)
+                            #[allow(deprecated)]
+                            let color: id = msg_send![class!(NSColor), colorWithRed:10.0/255.0_f64 green:10.0/255.0_f64 blue:10.0/255.0_f64 alpha:1.0_f64];
+                            let _: () = msg_send![ns_window, setBackgroundColor: color];
+
+                            // Make titlebar transparent and blend with content
+                            let _: () = msg_send![ns_window, setTitlebarAppearsTransparent: true];
+
+                            // Remove the toolbar separator line
+                            let _: () = msg_send![ns_window, setToolbarStyle: 3_i64]; // NSWindowToolbarStyleUnified = 3
+
+                            // Remove titlebar separator (the thin line below the title bar)
+                            let _: () = msg_send![ns_window, setTitlebarSeparatorStyle: 0_i64]; // NSTitlebarSeparatorStyleNone = 0
+
+                            // Disable the window shadow to see if that's the issue
+                            let _: () = msg_send![ns_window, setHasShadow: false];
+                            // Re-enable it - we just want to reset any weird state
+                            let _: () = msg_send![ns_window, setHasShadow: true];
+
+                            // Get the content view and set its background
+                            #[allow(deprecated)]
+                            let content_view: id = msg_send![ns_window, contentView];
+                            if !content_view.is_null() {
+                                let _: () = msg_send![content_view, setWantsLayer: true];
+                                #[allow(deprecated)]
+                                let layer: id = msg_send![content_view, layer];
+                                if !layer.is_null() {
+                                    let cg_color: *mut std::ffi::c_void = msg_send![color, CGColor];
+                                    let _: () = msg_send![layer, setBackgroundColor: cg_color];
+                                }
+                            }
+                        }
                     }
+
+                    // Set WKWebView to not draw its own background
+                    let _ = window.with_webview(|webview| {
+                        #[allow(deprecated)]
+                        let wv = webview.inner() as id;
+                        unsafe {
+                            let _: () = msg_send![wv, _setDrawsBackground: false];
+                        }
+                    });
                 }
             }
 
