@@ -320,6 +320,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_safe_real_path_rejects_escaped_symlink() {
         use std::os::unix::fs::symlink;
         use tempfile::tempdir;
@@ -340,6 +341,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_safe_real_path_accepts_internal_symlink() {
         use std::fs;
         use std::os::unix::fs::symlink;
