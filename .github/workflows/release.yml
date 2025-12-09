@@ -471,7 +471,7 @@ jobs:
         if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'linux'
         run: |
           VERSION="${{ needs.create-release.outputs.version }}"
-          for f in apps/desktop/src-tauri/target/release/bundle/deb/*.deb; do
+          for f in target/release/bundle/deb/*.deb; do
             if [ -f "$f" ]; then
               # Rename to consistent format
               newname="Wormhole_${VERSION}_amd64.deb"
@@ -495,7 +495,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+          files: target/release/bundle/appimage/*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -504,7 +504,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+          files: target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -513,7 +513,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: apps/desktop/src-tauri/target/release/bundle/msi/*.msi
+          files: target/release/bundle/msi/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -522,7 +522,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          files: target/release/bundle/nsis/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
