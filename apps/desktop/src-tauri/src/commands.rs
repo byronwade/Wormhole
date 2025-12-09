@@ -526,7 +526,7 @@ pub async fn connect_to_peer(
         // Create volume parameters
         let mut params = VolumeParams::new();
         params.filesystem_name("Wormhole");
-        params.volume_name("Wormhole Share");
+        params.prefix(&mount_path_str);
 
         match FileSystemHost::new(params, fs) {
             Ok(mut host) => {
@@ -1244,7 +1244,7 @@ pub async fn connect_with_code_and_id(
         // Create volume parameters
         let mut params = VolumeParams::new();
         params.filesystem_name("Wormhole");
-        params.volume_name("Wormhole Share");
+        params.prefix(&mount_path_str);
 
         match FileSystemHost::new(params, fs) {
             Ok(mut host) => {
