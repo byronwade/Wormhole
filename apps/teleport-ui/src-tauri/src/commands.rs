@@ -21,6 +21,7 @@ use teleport_daemon::bridge::FuseAsyncBridge;
 use teleport_daemon::client::{ClientConfig, WormholeClient};
 use teleport_daemon::fuse::WormholeFS;
 use teleport_daemon::host::{HostConfig, WormholeHost};
+use teleport_daemon::global::{GlobalHostConfig, GlobalMountConfig, GlobalEvent, start_host_global, connect_global};
 
 /// Events emitted to the frontend
 #[derive(Clone, Serialize, Deserialize)]
@@ -39,6 +40,18 @@ pub enum ServiceEvent {
     },
     Error {
         message: String,
+    },
+    /// Global hosting events
+    GlobalWaitingForPeer {
+        join_code: String,
+    },
+    GlobalPeerConnected {
+        peer_addr: String,
+        is_local: bool,
+    },
+    GlobalConnecting,
+    GlobalHolePunching {
+        peer_addr: String,
     },
 }
 
@@ -390,13 +403,459 @@ pub async fn get_status(state: State<'_, Arc<AppState>>) -> Result<serde_json::V
     }))
 }
 
+/// Start global hosting via signal server
+///
+/// This allows peers from anywhere on the internet to connect using a join code.
+#[tauri::command]
+pub async fn start_global_hosting(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    path: String,
+    join_code: Option<String>,
+) -> Result<String, String> {
+    info!("Starting global host for path: {}", path);
+
+    // Check if already hosting
+    {
+        let handle = state.host_handle.lock().await;
+        if handle.is_some() {
+            return Err("Already hosting. Stop current session first.".to_string());
+        }
+    }
+
+    // Validate and canonicalize path
+    let share_path = PathBuf::from(&path);
+    let share_path = share_path
+        .canonicalize()
+        .map_err(|e| format!("Invalid path: {}", e))?;
+
+    if !share_path.is_dir() {
+        return Err(format!("Path is not a directory: {}", path));
+    }
+
+    let config = GlobalHostConfig {
+        shared_path: share_path.clone(),
+        signal_server: None, // Use default
+        join_code,
+        quic_port: 4433,
+        max_connections: 10,
+    };
+
+    let app_clone = app.clone();
+    let path_clone = share_path.clone();
+
+    // Use a channel to get the join code back from the async task
+    let (code_tx, code_rx) = tokio::sync::oneshot::channel::<Result<String, String>>();
+
+    // Spawn the host task
+    let host_task = state.runtime.spawn(async move {
+        let mut final_code = String::new();
+
+        // Event callback to emit events to frontend
+        let event_callback = |event: GlobalEvent| {
+            match &event {
+                GlobalEvent::WaitingForPeer { join_code } => {
+                    final_code = join_code.clone();
+                    let _ = app_clone.emit(
+                        "global-event",
+                        ServiceEvent::GlobalWaitingForPeer {
+                            join_code: join_code.clone(),
+                        },
+                    );
+                }
+                GlobalEvent::PeerConnected { peer_addr, is_local } => {
+                    let _ = app_clone.emit(
+                        "global-event",
+                        ServiceEvent::GlobalPeerConnected {
+                            peer_addr: peer_addr.to_string(),
+                            is_local: *is_local,
+                        },
+                    );
+                }
+                GlobalEvent::HolePunching { peer_addr } => {
+                    let _ = app_clone.emit(
+                        "global-event",
+                        ServiceEvent::GlobalHolePunching {
+                            peer_addr: peer_addr.to_string(),
+                        },
+                    );
+                }
+                GlobalEvent::HostReady { join_code, bind_addr } => {
+                    let _ = app_clone.emit(
+                        "host-event",
+                        ServiceEvent::HostStarted {
+                            port: bind_addr.port(),
+                            share_path: path_clone.to_string_lossy().to_string(),
+                            join_code: join_code.clone(),
+                        },
+                    );
+                }
+                GlobalEvent::Error { message } => {
+                    let _ = app_clone.emit(
+                        "global-event",
+                        ServiceEvent::Error {
+                            message: message.clone(),
+                        },
+                    );
+                }
+                _ => {}
+            }
+        };
+
+        match start_host_global(config, event_callback).await {
+            Ok(_result) => {
+                let _ = code_tx.send(Ok(final_code));
+            }
+            Err(e) => {
+                error!("Global host error: {:?}", e);
+                let _ = code_tx.send(Err(format!("Global host error: {}", e)));
+            }
+        }
+    });
+
+    // Store the handle
+    {
+        let mut host_handle = state.host_handle.lock().await;
+        *host_handle = Some(HostHandle {
+            abort_handle: host_task.abort_handle(),
+        });
+    }
+
+    // Wait for the join code
+    match code_rx.await {
+        Ok(Ok(code)) => {
+            info!("Global host started with join code: {}", code);
+            Ok(code)
+        }
+        Ok(Err(e)) => Err(e),
+        Err(_) => Err("Failed to get join code".to_string()),
+    }
+}
+
+/// Connect to a global host using a join code
+#[tauri::command]
+pub async fn connect_with_code(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    join_code: String,
+    mount_path: String,
+) -> Result<(), String> {
+    info!("Connecting with code {} to mount at {}", join_code, mount_path);
+
+    // Check if already connected
+    {
+        let handle = state.client_handle.lock().await;
+        if handle.is_some() {
+            return Err("Already connected. Disconnect first.".to_string());
+        }
+    }
+
+    // Validate/create mount point
+    let mount_point = PathBuf::from(&mount_path);
+    if !mount_point.exists() {
+        std::fs::create_dir_all(&mount_point)
+            .map_err(|e| format!("Failed to create mount point: {}", e))?;
+    }
+
+    let mount_point_clone = mount_point.clone();
+    let app_clone = app.clone();
+
+    let config = GlobalMountConfig {
+        join_code: join_code.clone(),
+        mount_point: mount_point_clone.clone(),
+        signal_server: None, // Use default
+        request_timeout: Duration::from_secs(30),
+    };
+
+    // Use a channel to signal when connection is established
+    let (connect_tx, connect_rx) = tokio::sync::oneshot::channel::<Result<SocketAddr, String>>();
+
+    // Spawn connection task
+    let connect_task = state.runtime.spawn(async move {
+        // Event callback
+        let event_callback = |event: GlobalEvent| {
+            match &event {
+                GlobalEvent::Connecting { .. } => {
+                    let _ = app_clone.emit("global-event", ServiceEvent::GlobalConnecting);
+                }
+                GlobalEvent::PeerConnected { peer_addr, is_local } => {
+                    let _ = app_clone.emit(
+                        "global-event",
+                        ServiceEvent::GlobalPeerConnected {
+                            peer_addr: peer_addr.to_string(),
+                            is_local: *is_local,
+                        },
+                    );
+                }
+                GlobalEvent::HolePunching { peer_addr } => {
+                    let _ = app_clone.emit(
+                        "global-event",
+                        ServiceEvent::GlobalHolePunching {
+                            peer_addr: peer_addr.to_string(),
+                        },
+                    );
+                }
+                GlobalEvent::Error { message } => {
+                    let _ = app_clone.emit(
+                        "global-event",
+                        ServiceEvent::Error {
+                            message: message.clone(),
+                        },
+                    );
+                }
+                _ => {}
+            }
+        };
+
+        match connect_global(config, event_callback).await {
+            Ok(result) => {
+                let _ = connect_tx.send(Ok(result.peer_addr));
+            }
+            Err(e) => {
+                error!("Global connect error: {:?}", e);
+                let _ = connect_tx.send(Err(format!("Connection error: {}", e)));
+            }
+        }
+    });
+
+    // Wait for connection to be established
+    let server_addr = match connect_rx.await {
+        Ok(Ok(addr)) => addr,
+        Ok(Err(e)) => return Err(e),
+        Err(_) => return Err("Connection task failed".to_string()),
+    };
+
+    // Abort the connection task (we got what we needed)
+    connect_task.abort();
+
+    // Now proceed with mounting using the discovered peer address
+    // (Reuse the existing connect_to_peer logic with the discovered address)
+    let mount_path_str = mount_path.clone();
+    let app_for_mount = app.clone();
+    let mount_point_for_client = mount_point.clone();
+
+    let mount_thread = thread::spawn(move || {
+        let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
+
+        let config = ClientConfig {
+            server_addr,
+            mount_point: mount_point_for_client.clone(),
+            request_timeout: Duration::from_secs(30),
+        };
+
+        let rt = match Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                error!("Failed to create runtime: {}", e);
+                let _ = app_for_mount.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!("Failed to create runtime: {}", e),
+                    },
+                );
+                return;
+            }
+        };
+
+        let app_for_client = app_for_mount.clone();
+        let mount_path_for_event = mount_path_str.clone();
+
+        rt.spawn(async move {
+            let mut client = WormholeClient::new(config);
+
+            if let Err(e) = client.connect().await {
+                error!("Failed to connect: {:?}", e);
+                let _ = app_for_client.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!("Failed to connect: {:?}", e),
+                    },
+                );
+                return;
+            }
+
+            info!("Connected to host via join code!");
+
+            let _ = app_for_client.emit(
+                "mount-event",
+                ServiceEvent::MountReady {
+                    mountpoint: mount_path_for_event,
+                },
+            );
+
+            if let Err(e) = client.handle_fuse_requests(request_rx).await {
+                error!("Client error: {:?}", e);
+            }
+        });
+
+        info!("Mounting filesystem at {:?}", mount_point_for_client);
+
+        let fs = WormholeFS::new(bridge);
+
+        let mut mount_options = vec![
+            MountOption::FSName("wormhole".to_string()),
+            MountOption::AutoUnmount,
+            MountOption::DefaultPermissions,
+        ];
+
+        #[cfg(target_os = "macos")]
+        {
+            mount_options.push(MountOption::AllowOther);
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            mount_options.push(MountOption::AllowOther);
+        }
+
+        if let Err(e) = fuser::mount2(fs, &mount_point_for_client, &mount_options) {
+            error!("Mount failed: {}", e);
+            let _ = app_for_mount.emit(
+                "mount-event",
+                ServiceEvent::Error {
+                    message: format!("Mount failed: {}", e),
+                },
+            );
+        }
+
+        info!("Filesystem unmounted");
+    });
+
+    // Store the handle
+    {
+        let mut client_handle = state.client_handle.lock().await;
+        *client_handle = Some(ClientHandle {
+            mount_thread: Some(mount_thread),
+            mount_point,
+        });
+    }
+
+    Ok(())
+}
+
+/// Generate a new join code for sharing
+#[tauri::command]
+pub fn generate_code() -> String {
+    generate_join_code()
+}
+
+/// File entry for directory listing
+#[derive(Clone, Serialize, Deserialize)]
+pub struct FileEntry {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub modified: Option<u64>,
+}
+
+/// List files in a directory
+#[tauri::command]
+pub fn list_directory(path: String) -> Result<Vec<FileEntry>, String> {
+    let path = PathBuf::from(&path);
+
+    if !path.exists() {
+        return Err(format!("Path does not exist: {}", path.display()));
+    }
+
+    if !path.is_dir() {
+        return Err(format!("Path is not a directory: {}", path.display()));
+    }
+
+    let mut entries = Vec::new();
+
+    match std::fs::read_dir(&path) {
+        Ok(dir) => {
+            for entry in dir.flatten() {
+                let file_path = entry.path();
+                let metadata = entry.metadata().ok();
+
+                let name = entry.file_name().to_string_lossy().to_string();
+
+                // Skip hidden files (starting with .)
+                if name.starts_with('.') {
+                    continue;
+                }
+
+                let is_dir = file_path.is_dir();
+                let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
+                let modified = metadata
+                    .and_then(|m| m.modified().ok())
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|d| d.as_secs());
+
+                entries.push(FileEntry {
+                    name,
+                    path: file_path.to_string_lossy().to_string(),
+                    is_dir,
+                    size,
+                    modified,
+                });
+            }
+        }
+        Err(e) => {
+            return Err(format!("Failed to read directory: {}", e));
+        }
+    }
+
+    // Sort: directories first, then by name
+    entries.sort_by(|a, b| {
+        match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        }
+    });
+
+    Ok(entries)
+}
+
+/// Get current hosting info
+#[tauri::command]
+pub async fn get_host_info(state: State<'_, Arc<AppState>>) -> Result<Option<HostInfo>, String> {
+    let handle = state.host_handle.lock().await;
+    if handle.is_some() {
+        // Return stored host info - we'd need to track this
+        Ok(None) // Placeholder - actual implementation would return stored info
+    } else {
+        Ok(None)
+    }
+}
+
+/// Get current mount info
+#[tauri::command]
+pub async fn get_mount_info(state: State<'_, Arc<AppState>>) -> Result<Option<MountInfo>, String> {
+    let handle = state.client_handle.lock().await;
+    if let Some(client) = handle.as_ref() {
+        Ok(Some(MountInfo {
+            mount_point: client.mount_point.to_string_lossy().to_string(),
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Host info structure
+#[derive(Clone, Serialize, Deserialize)]
+pub struct HostInfo {
+    pub share_path: String,
+    pub port: u16,
+    pub join_code: String,
+}
+
+/// Mount info structure
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MountInfo {
+    pub mount_point: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_app_state_default() {
-        let state = AppState::default();
+        let _state = AppState::default();
         // Verify runtime was created
         assert!(std::mem::size_of::<AppState>() > 0);
     }

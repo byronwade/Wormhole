@@ -36,9 +36,11 @@ pub mod client;
 pub mod disk_cache;
 pub mod fuse;
 pub mod gc;
+pub mod global;
 pub mod governor;
 pub mod host;
 pub mod net;
+pub mod rendezvous;
 
 pub use bridge::FuseAsyncBridge;
 pub use cache::{CacheManager, ChunkCache, HybridCacheManager, HybridChunkCache};
@@ -48,6 +50,12 @@ pub use fuse::WormholeFS;
 pub use gc::GarbageCollector;
 pub use governor::Governor;
 pub use host::WormholeHost;
+pub use rendezvous::{RendezvousClient, RendezvousResult, RendezvousError};
+pub use global::{
+    GlobalEvent, GlobalHostConfig, GlobalMountConfig,
+    GlobalHostError, GlobalMountError,
+    start_host_global, connect_global,
+};
 
 /// Default mount options
 pub const DEFAULT_MOUNT_OPTIONS: &[&str] = &[

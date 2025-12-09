@@ -4,10 +4,20 @@
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
-use quinn::{ClientConfig, Connection, Endpoint, RecvStream, SendStream, ServerConfig};
+use quinn::{ClientConfig, Connection, Endpoint, RecvStream, SendStream, ServerConfig, TransportConfig, VarInt};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use tracing::info;
+
+/// NAT-friendly keepalive interval (25 seconds is typically safe for most NATs)
+pub const NAT_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(25);
+
+/// Idle timeout - longer than keepalive to allow connection recovery
+pub const IDLE_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// Maximum UDP payload size for NAT traversal compatibility
+pub const MAX_UDP_PAYLOAD_SIZE: u16 = 1350;
 
 use teleport_core::{
     deserialize_message, serialize_message, NetMessage, ProtocolError, MAX_MESSAGE_SIZE,
@@ -130,9 +140,43 @@ pub fn generate_self_signed_cert() -> (Vec<CertificateDer<'static>>, PrivateKeyD
     (vec![cert], key)
 }
 
+/// Create NAT-friendly transport configuration
+///
+/// This configuration is optimized for traversing NATs:
+/// - Keepalive packets every 25 seconds to maintain NAT mappings
+/// - Reasonable idle timeout to handle network hiccups
+/// - Conservative MTU for compatibility
+pub fn create_nat_transport_config() -> TransportConfig {
+    let mut transport = TransportConfig::default();
+
+    // Send keepalive packets to maintain NAT mappings
+    // Most NATs have 60-300 second timeouts, 25s is safe
+    transport.keep_alive_interval(Some(NAT_KEEPALIVE_INTERVAL));
+
+    // Idle timeout - close connection after no activity
+    transport.max_idle_timeout(Some(
+        IDLE_TIMEOUT.try_into().expect("idle timeout valid")
+    ));
+
+    // Conservative initial RTT estimate for internet connections
+    transport.initial_rtt(Duration::from_millis(100));
+
+    // Allow more concurrent streams for parallel operations
+    transport.max_concurrent_bidi_streams(VarInt::from_u32(128));
+    transport.max_concurrent_uni_streams(VarInt::from_u32(128));
+
+    transport
+}
+
 /// Create a QUIC client endpoint
 pub fn create_client_endpoint() -> Result<Endpoint, ConnectionError> {
-    let mut endpoint = Endpoint::client("0.0.0.0:0".parse().unwrap())
+    create_client_endpoint_with_port(0)
+}
+
+/// Create a QUIC client endpoint bound to a specific port (for NAT hole punching)
+pub fn create_client_endpoint_with_port(port: u16) -> Result<Endpoint, ConnectionError> {
+    let bind_addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
+    let mut endpoint = Endpoint::client(bind_addr)
         .map_err(|e| ConnectionError::Connect(e.to_string()))?;
 
     // Configure for self-signed certs (development only)
@@ -141,9 +185,12 @@ pub fn create_client_endpoint() -> Result<Endpoint, ConnectionError> {
         .with_custom_certificate_verifier(Arc::new(SkipServerVerification))
         .with_no_client_auth();
 
-    let config = ClientConfig::new(Arc::new(
+    let mut config = ClientConfig::new(Arc::new(
         quinn::crypto::rustls::QuicClientConfig::try_from(crypto).unwrap(),
     ));
+
+    // Apply NAT-friendly transport configuration
+    config.transport_config(Arc::new(create_nat_transport_config()));
 
     endpoint.set_default_client_config(config);
     Ok(endpoint)
@@ -160,9 +207,12 @@ pub fn create_server_endpoint(
         .with_single_cert(certs, key)
         .map_err(|e| ConnectionError::Connect(e.to_string()))?;
 
-    let config = ServerConfig::with_crypto(Arc::new(
+    let mut config = ServerConfig::with_crypto(Arc::new(
         quinn::crypto::rustls::QuicServerConfig::try_from(crypto).unwrap(),
     ));
+
+    // Apply NAT-friendly transport configuration
+    config.transport_config(Arc::new(create_nat_transport_config()));
 
     let endpoint = Endpoint::server(config, bind_addr)
         .map_err(|e| ConnectionError::Connect(e.to_string()))?;

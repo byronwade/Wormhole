@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 use tracing::{debug, info};
@@ -49,9 +50,11 @@ impl SignalServer {
             let (stream, peer_addr) = listener.accept().await?;
             let rooms = self.rooms.clone();
             let peer_rooms = self.peer_rooms.clone();
+            let room_count = self.rooms.len();
+            let peer_count = self.peer_rooms.len();
 
             tokio::spawn(async move {
-                if let Err(e) = handle_connection(stream, peer_addr, rooms, peer_rooms).await {
+                if let Err(e) = handle_connection(stream, peer_addr, rooms, peer_rooms, room_count, peer_count).await {
                     debug!("Connection error from {}: {:?}", peer_addr, e);
                 }
             });
@@ -75,13 +78,24 @@ impl Default for SignalServer {
     }
 }
 
-/// Handle a single WebSocket connection
+/// Handle a single connection (HTTP or WebSocket)
 async fn handle_connection(
-    stream: TcpStream,
+    mut stream: TcpStream,
     peer_addr: SocketAddr,
     rooms: Arc<DashMap<String, Room>>,
     peer_rooms: Arc<DashMap<String, String>>,
+    room_count: usize,
+    peer_count: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Peek at the first bytes to detect HTTP vs WebSocket
+    let mut peek_buf = [0u8; 4];
+    stream.peek(&mut peek_buf).await?;
+
+    // Check for HTTP requests (GET /health or similar)
+    if &peek_buf == b"GET " {
+        return handle_http_request(&mut stream, room_count, peer_count).await;
+    }
+
     let ws_stream = accept_async(stream).await?;
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 
@@ -110,7 +124,7 @@ async fn handle_connection(
             Ok(r) => r,
             Err(e) => {
                 let error = SignalMessage::error(ErrorCode::InternalError, format!("Invalid JSON: {}", e));
-                let _ = ws_sender.send(Message::Text(error.to_json().unwrap().into())).await;
+                let _ = ws_sender.send(Message::Text(error.to_json().unwrap())).await;
                 continue;
             }
         };
@@ -126,7 +140,7 @@ async fn handle_connection(
 
         if let Some(response) = response {
             let json = response.to_json().unwrap();
-            if ws_sender.send(Message::Text(json.into())).await.is_err() {
+            if ws_sender.send(Message::Text(json)).await.is_err() {
                 break;
             }
         }
@@ -138,6 +152,53 @@ async fn handle_connection(
     }
 
     debug!("Connection closed: {}", peer_id);
+    Ok(())
+}
+
+/// Handle an HTTP request (for health checks)
+async fn handle_http_request(
+    stream: &mut TcpStream,
+    room_count: usize,
+    peer_count: usize,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Read the HTTP request
+    let mut buf = vec![0u8; 1024];
+    let n = stream.read(&mut buf).await?;
+    let request = String::from_utf8_lossy(&buf[..n]);
+
+    // Parse the request path
+    let path = request
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .unwrap_or("/");
+
+    let (status, body) = match path {
+        "/health" => (
+            "200 OK",
+            format!(
+                r#"{{"status":"healthy","rooms":{},"peers":{}}}"#,
+                room_count, peer_count
+            ),
+        ),
+        "/stats" => (
+            "200 OK",
+            format!(
+                r#"{{"rooms":{},"peers":{}}}"#,
+                room_count, peer_count
+            ),
+        ),
+        _ => ("404 Not Found", r#"{"error":"not found"}"#.to_string()),
+    };
+
+    let response = format!(
+        "HTTP/1.1 {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        status,
+        body.len(),
+        body
+    );
+
+    stream.write_all(response.as_bytes()).await?;
     Ok(())
 }
 

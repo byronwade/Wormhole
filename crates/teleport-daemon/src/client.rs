@@ -117,7 +117,7 @@ impl WormholeClient {
         let _conn = self
             .connection
             .as_ref()
-            .ok_or_else(|| ClientError::NotConnected)?;
+            .ok_or(ClientError::NotConnected)?;
 
         let handler = BridgeHandler::new(request_rx);
 

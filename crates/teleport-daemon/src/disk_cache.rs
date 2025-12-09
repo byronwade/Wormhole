@@ -104,7 +104,7 @@ impl DiskCache {
     /// Scan cache directory and rebuild index
     fn scan_cache_dir(
         cache_dir: &PathBuf,
-        index: &mut HashMap<ChunkId, DiskCacheEntry>,
+        _index: &mut HashMap<ChunkId, DiskCacheEntry>,
         total_bytes: &mut u64,
     ) -> Result<(), DiskCacheError> {
         // Walk the two-level directory structure
@@ -289,7 +289,7 @@ impl DiskCache {
     /// Get all entries sorted by last access time (oldest first) for GC
     pub fn entries_by_access_time(&self) -> Vec<(ChunkId, DiskCacheEntry)> {
         let index = self.index.read().unwrap();
-        let mut entries: Vec<_> = index.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        let mut entries: Vec<_> = index.iter().map(|(k, v)| (*k, v.clone())).collect();
         entries.sort_by_key(|(_, entry)| entry.last_accessed);
         entries
     }

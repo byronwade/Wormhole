@@ -83,7 +83,7 @@ impl WormholeFS {
         FuserAttr {
             ino: attr.inode,
             size: attr.size,
-            blocks: (attr.size + 511) / 512,
+            blocks: attr.size.div_ceil(512),
             atime: UNIX_EPOCH + Duration::new(attr.atime, attr.atime_nsec),
             mtime: UNIX_EPOCH + Duration::new(attr.mtime, attr.mtime_nsec),
             ctime: UNIX_EPOCH + Duration::new(attr.ctime, attr.ctime_nsec),

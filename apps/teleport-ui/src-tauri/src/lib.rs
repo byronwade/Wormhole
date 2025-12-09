@@ -34,6 +34,14 @@ pub fn run() {
             commands::connect_to_peer,
             commands::disconnect,
             commands::get_status,
+            // Phase 6: Global code-based connections
+            commands::start_global_hosting,
+            commands::connect_with_code,
+            commands::generate_code,
+            // File browser
+            commands::list_directory,
+            commands::get_host_info,
+            commands::get_mount_info,
         ])
         .setup(|app| {
             info!("Wormhole app setup complete");

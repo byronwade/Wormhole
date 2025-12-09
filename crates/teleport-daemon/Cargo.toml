@@ -53,6 +53,12 @@ directories = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 
+# Phase 6: NAT traversal
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }
+serde_json = { workspace = true }
+url = "2.5"
+
 [dev-dependencies]
 tempfile = { workspace = true }
 tokio-test = "0.4"

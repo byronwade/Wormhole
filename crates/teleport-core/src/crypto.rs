@@ -3,9 +3,11 @@
 //! Provides:
 //! - Join code generation and parsing
 //! - BLAKE3 checksums for data integrity
-//! - SPAKE2 password-authenticated key exchange
+//! - SPAKE2 password-authenticated key exchange (PAKE)
 
 use blake3::Hasher;
+use spake2::{Ed25519Group, Identity, Password, Spake2};
+use tracing::debug;
 
 /// Length of a join code in characters (without dashes)
 pub const JOIN_CODE_LENGTH: usize = 6;
@@ -81,6 +83,125 @@ impl Default for StreamingHasher {
     }
 }
 
+/// Size of PAKE output message
+pub const PAKE_MESSAGE_SIZE: usize = 33;
+
+/// Size of shared key derived from PAKE
+pub const SHARED_KEY_SIZE: usize = 32;
+
+/// PAKE identity for wormhole protocol
+const PAKE_IDENTITY: &[u8] = b"wormhole-pake-v1";
+
+/// Role in PAKE handshake
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PakeRole {
+    /// Host (initiator) - the one sharing files
+    Host,
+    /// Client (responder) - the one mounting files
+    Client,
+}
+
+/// PAKE handshake state machine
+///
+/// Implements SPAKE2 password-authenticated key exchange using Ed25519.
+/// This allows two parties to derive a shared key from a password (join code)
+/// without revealing the password to an eavesdropper.
+pub struct PakeHandshake {
+    state: Option<Spake2<Ed25519Group>>,
+    outbound_msg: Vec<u8>,
+    role: PakeRole,
+}
+
+impl PakeHandshake {
+    /// Start a PAKE handshake as host (initiator)
+    ///
+    /// The host generates the first message to send to the client.
+    pub fn start_host(join_code: &str) -> Self {
+        let normalized = normalize_join_code(join_code);
+        let password = Password::new(normalized.as_bytes());
+        let identity = Identity::new(PAKE_IDENTITY);
+
+        let (state, outbound_msg) =
+            Spake2::<Ed25519Group>::start_a(&password, &identity, &identity);
+
+        debug!("Started PAKE handshake as host");
+
+        Self {
+            state: Some(state),
+            outbound_msg: outbound_msg.to_vec(),
+            role: PakeRole::Host,
+        }
+    }
+
+    /// Start a PAKE handshake as client (responder)
+    ///
+    /// The client generates a message to send to the host.
+    pub fn start_client(join_code: &str) -> Self {
+        let normalized = normalize_join_code(join_code);
+        let password = Password::new(normalized.as_bytes());
+        let identity = Identity::new(PAKE_IDENTITY);
+
+        let (state, outbound_msg) =
+            Spake2::<Ed25519Group>::start_b(&password, &identity, &identity);
+
+        debug!("Started PAKE handshake as client");
+
+        Self {
+            state: Some(state),
+            outbound_msg: outbound_msg.to_vec(),
+            role: PakeRole::Client,
+        }
+    }
+
+    /// Get the outbound PAKE message to send to the peer
+    pub fn outbound_message(&self) -> &[u8] {
+        &self.outbound_msg
+    }
+
+    /// Get the role of this handshake
+    pub fn role(&self) -> PakeRole {
+        self.role
+    }
+
+    /// Complete the handshake with the peer's message
+    ///
+    /// Returns the 32-byte shared key if successful.
+    pub fn finish(mut self, peer_message: &[u8]) -> Result<[u8; SHARED_KEY_SIZE], PakeError> {
+        let state = self.state.take().ok_or(PakeError::AlreadyFinished)?;
+
+        let shared_key = state
+            .finish(peer_message)
+            .map_err(|_| PakeError::HandshakeFailed)?;
+
+        // The shared key from SPAKE2 is 32 bytes
+        let mut key = [0u8; SHARED_KEY_SIZE];
+        key.copy_from_slice(&shared_key);
+
+        debug!("PAKE handshake completed successfully");
+        Ok(key)
+    }
+}
+
+/// PAKE errors
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PakeError {
+    /// Handshake already completed
+    AlreadyFinished,
+    /// Handshake failed (wrong password or corrupted message)
+    HandshakeFailed,
+}
+
+impl std::fmt::Display for PakeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PakeError::AlreadyFinished => write!(f, "PAKE handshake already finished"),
+            PakeError::HandshakeFailed => write!(f, "PAKE handshake failed"),
+        }
+    }
+}
+
+impl std::error::Error for PakeError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +260,54 @@ mod tests {
         let actual = hasher.finalize();
 
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_pake_handshake_success() {
+        let join_code = "ABC-123";
+
+        // Simulate host starting handshake
+        let host = PakeHandshake::start_host(join_code);
+        assert_eq!(host.role(), PakeRole::Host);
+
+        // Simulate client starting handshake
+        let client = PakeHandshake::start_client(join_code);
+        assert_eq!(client.role(), PakeRole::Client);
+
+        // Exchange messages
+        let host_msg = host.outbound_message().to_vec();
+        let client_msg = client.outbound_message().to_vec();
+
+        // Complete handshakes
+        let host_key = host.finish(&client_msg).unwrap();
+        let client_key = client.finish(&host_msg).unwrap();
+
+        // Both should derive the same shared key
+        assert_eq!(host_key, client_key);
+        assert_eq!(host_key.len(), SHARED_KEY_SIZE);
+    }
+
+    #[test]
+    fn test_pake_handshake_wrong_code() {
+        // Host and client use different codes
+        let host = PakeHandshake::start_host("ABC-123");
+        let client = PakeHandshake::start_client("XYZ-789");
+
+        let host_msg = host.outbound_message().to_vec();
+        let client_msg = client.outbound_message().to_vec();
+
+        // The handshakes will complete but derive different keys
+        let host_key = host.finish(&client_msg).unwrap();
+        let client_key = client.finish(&host_msg).unwrap();
+
+        // Keys should be different
+        assert_ne!(host_key, client_key);
+    }
+
+    #[test]
+    fn test_pake_message_size() {
+        let host = PakeHandshake::start_host("TEST-CD");
+        // SPAKE2 messages are 33 bytes (compressed Ed25519 point)
+        assert_eq!(host.outbound_message().len(), PAKE_MESSAGE_SIZE);
     }
 }
