@@ -1,0 +1,4 @@
+- Host flow: select folder, start hosting; verify daemon runs and logs.
+- Client flow: connect to peer IP, mount point; confirm mount exists and files list/play.
+- UI responsiveness: ensure no freezes while mounting/hosting; commands return promptly.
+- Packaging smoke: build installers; launch app from bundle; confirm tray/icon/identifier.

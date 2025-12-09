@@ -1,0 +1,5 @@
+- Disk growth: enforce 10GB cap via GC; make limit configurable later.
+- Partially written files: atomic tmp+rename writes.
+- Path hashing collisions: SHA-256 hex names; negligible risk.
+- Disk IO blocking: perform disk writes in background thread; keep FUSE fast path.
+- Metadata persistence gap: Phase 4 still fetches metadata from host; offline metadata handling deferred.

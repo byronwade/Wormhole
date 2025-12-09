@@ -1,0 +1,4 @@
+- Concurrent edits: locking reduces collisions; note last-writer-wins risk without OT/CRDT; plan Phase 8 for CRDT/OT if needed.
+- Partial writes: ensure path traversal checks and atomic chunk updates; retries on failed uploads.
+- Dirty backlog growth: monitor queue; add retry/backoff; surface status in UI.
+- Cache divergence: on failed uploads keep dirty flagged; consider periodic resync.

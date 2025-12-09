@@ -1,0 +1,5 @@
+- Expand protocol for write ops: lock, write, create, delete, ack.
+- Host enforces locks and applies ranged writes securely.
+- Client writes hit local cache instantly; async sync uploads dirty chunks.
+- FUSE write/read-modify-write flow across 128KB chunks with stitching.
+- UI surfaces sync/lock status to users.

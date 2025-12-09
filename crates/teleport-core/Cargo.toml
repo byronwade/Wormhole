@@ -1,0 +1,19 @@
+[package]
+name = "teleport-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core types, protocol, and crypto for Wormhole"
+
+[dependencies]
+serde = { workspace = true }
+bincode = { workspace = true }
+thiserror = { workspace = true }
+blake3 = { workspace = true }
+spake2 = { workspace = true }
+getrandom = { workspace = true }
+tracing = { workspace = true }
+libc = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

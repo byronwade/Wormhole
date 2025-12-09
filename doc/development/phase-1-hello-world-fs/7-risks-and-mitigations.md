@@ -1,0 +1,4 @@
+- Self-signed TLS trust: acceptable for Phase 1 only; document and gate to localhost/LAN.
+- Large trees can bloat RAM: consider depth/entry limits and future chunking.
+- FUSE timeouts if metadata fetch stalls: add timeouts and clear errors.
+- Path traversal/symlinks: ensure scanner resolves safely; Phase 1 keep test data simple.

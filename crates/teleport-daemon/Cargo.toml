@@ -1,0 +1,58 @@
+[package]
+name = "teleport-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Wormhole daemon - FUSE filesystem client and host server"
+
+[[bin]]
+name = "wormhole"
+path = "src/bin/wormhole.rs"
+
+[[bin]]
+name = "wormhole-mount"
+path = "src/bin/wormhole-mount.rs"
+
+[dependencies]
+teleport-core = { path = "../teleport-core" }
+teleport-signal = { path = "../teleport-signal" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# FUSE filesystem
+fuser = { workspace = true }
+
+# QUIC transport
+quinn = { workspace = true }
+rustls = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+bincode = { workspace = true }
+
+# Concurrency
+dashmap = { workspace = true }
+parking_lot = { workspace = true }
+crossbeam-channel = { workspace = true }
+lru = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+bytes = { workspace = true }
+thiserror = { workspace = true }
+libc = { workspace = true }
+getrandom = { workspace = true }
+hostname = { workspace = true }
+rcgen = { workspace = true }
+clap = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Phase 4: Disk cache
+directories = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio-test = "0.4"

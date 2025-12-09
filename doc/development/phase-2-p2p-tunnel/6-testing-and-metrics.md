@@ -1,0 +1,4 @@
+- Host: prepare sample files (text, 10MB bin, small video); run host.
+- Client: mount via `cargo run -p teleport-daemon -- mount ./mnt 127.0.0.1:5000`.
+- Verify: cat text matches; md5sum host vs mount for binary; video opens/plays.
+- Metrics: read latency p50/p99, response size caps, error rate; clustering benefit (fewer RTTs).

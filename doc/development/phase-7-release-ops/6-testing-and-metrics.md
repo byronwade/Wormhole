@@ -1,0 +1,6 @@
+- Write test: edit/save text via mount; confirm host file updates; observe SyncEngine logs and dirty count drops.
+- Create test: new folder/file and copy asset; confirm host sees new entries.
+- Hash/consistency: md5sum host vs mounted copy after sync.
+- Locking: acquire lock from client A; ensure client B receives denied/RO; verify host respects tokens and TTL/renewal behavior.
+- Concurrency: attempt simultaneous writes to same file to confirm lock enforcement; truncate tests and partial-chunk RMW correctness.
+- Metrics: time-to-ack (local), time-to-sync, dirty backlog size, lock grant/deny counts.

@@ -1,0 +1,270 @@
+---
+alwaysApply: true
+---
+
+# Rust Best Practices for Wormhole
+
+## Error Handling
+
+### Production Code (STRICT)
+```rust
+// ❌ NEVER
+value.unwrap();
+value.expect("message");
+
+// ✅ ALWAYS
+value?;
+value.ok_or(WormholeError::Missing)?;
+value.map_err(|e| WormholeError::Io(e))?;
+```
+
+### Error Types
+```rust
+// Library errors (teleport-core)
+#[derive(thiserror::Error, Debug)]
+pub enum ProtocolError {
+    #[error("invalid message type: {0}")]
+    InvalidMessage(u8),
+    #[error("path traversal attempt")]
+    PathTraversal,
+}
+
+// Application errors (teleport-daemon)
+use anyhow::{Context, Result};
+let data = fs::read(&path).context("failed to read file")?;
+```
+
+### FUSE Error Mapping
+```rust
+fn handle_error(e: WormholeError) -> i32 {
+    match e {
+        WormholeError::NotFound => libc::ENOENT,
+        WormholeError::Permission => libc::EACCES,
+        WormholeError::Io(_) => libc::EIO,
+        _ => libc::EIO, // Default to I/O error
+    }
+}
+```
+
+## Ownership & Borrowing
+
+### Avoid Unnecessary Clones
+```rust
+// ❌ Cloning large buffers
+let data = buffer.clone();
+send_data(data);
+
+// ✅ Use references or Arc
+send_data(&buffer);
+// or
+let data = Arc::new(buffer);
+send_data(Arc::clone(&data));
+```
+
+### Lifetime Simplification
+```rust
+// ❌ Complex lifetimes at async boundaries
+async fn process<'a>(data: &'a [u8]) -> Result<&'a [u8]>
+
+// ✅ Owned data at task boundaries
+async fn process(data: Vec<u8>) -> Result<Vec<u8>>
+```
+
+## Concurrency
+
+### Lock Selection
+```rust
+// Read-heavy shared state (e.g., InodeMap)
+use std::sync::RwLock;
+let map = RwLock::new(HashMap::new());
+let value = map.read().unwrap().get(&key).cloned();
+
+// Async actors
+use tokio::sync::Mutex;
+let state = tokio::sync::Mutex::new(ActorState::new());
+let guard = state.lock().await;
+```
+
+### Lock Hygiene
+```rust
+// ❌ Holding lock across await
+let guard = cache.lock().await;
+let result = fetch_remote().await; // BAD!
+guard.insert(key, result);
+
+// ✅ Drop lock before await
+let needs_fetch = {
+    let guard = cache.lock().await;
+    !guard.contains_key(&key)
+}; // Lock dropped here
+if needs_fetch {
+    let result = fetch_remote().await;
+    cache.lock().await.insert(key, result);
+}
+```
+
+### Channel Patterns
+```rust
+// FUSE → Tokio bridging
+let (tx, rx) = tokio::sync::oneshot::channel();
+actor_tx.blocking_send(Request { reply: tx, data })?;
+let response = rx.blocking_recv()?;
+
+// Async actor communication
+let (tx, rx) = tokio::sync::mpsc::channel(100);
+tokio::spawn(async move { actor_loop(rx).await });
+```
+
+## Async Patterns
+
+### Never Block the Runtime
+```rust
+// ❌ Blocking in async context
+async fn bad() {
+    std::thread::sleep(Duration::from_secs(1));
+    std::fs::read("file.txt").unwrap();
+}
+
+// ✅ Use async variants or spawn_blocking
+async fn good() {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    tokio::fs::read("file.txt").await?;
+}
+
+// For CPU-bound work
+tokio::task::spawn_blocking(|| expensive_computation()).await?;
+```
+
+### Runtime Management
+```rust
+// ❌ Creating new runtime
+fn fuse_read() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async { ... });
+}
+
+// ✅ Use global runtime handle
+static RUNTIME: OnceLock<Runtime> = OnceLock::new();
+
+fn fuse_read() {
+    let handle = RUNTIME.get().unwrap().handle();
+    handle.block_on(async { ... });
+}
+```
+
+## Performance
+
+### Buffer Management
+```rust
+// ❌ Allocating in hot path
+fn process_chunk(data: &[u8]) -> Vec<u8> {
+    let mut result = Vec::new();
+    // ...
+}
+
+// ✅ Reuse buffers
+fn process_chunk(data: &[u8], buf: &mut Vec<u8>) {
+    buf.clear();
+    // ...
+}
+```
+
+### Chunk Size
+```rust
+// Always use the defined constant
+pub const CHUNK_SIZE: usize = 128 * 1024; // 128KB
+
+fn read_chunks(data: &[u8]) -> impl Iterator<Item = &[u8]> {
+    data.chunks(CHUNK_SIZE)
+}
+```
+
+### Tracing for Profiling
+```rust
+use tracing::{instrument, debug_span};
+
+#[instrument(skip(data), fields(size = data.len()))]
+async fn process_request(data: &[u8]) -> Result<Response> {
+    let _span = debug_span!("parse").entered();
+    // ...
+}
+```
+
+## API Design
+
+### Protocol Compatibility
+```rust
+#[derive(Serialize, Deserialize)]
+pub struct FileRequest {
+    pub path: String,
+    pub offset: u64,
+    pub length: u32,
+    // New fields must be Option for backward compat
+    pub compression: Option<Compression>,
+}
+```
+
+### Type Safety
+```rust
+// ❌ Stringly typed
+fn share(mode: &str) -> Result<()>
+
+// ✅ Type safe
+#[derive(Clone, Copy)]
+pub enum ShareMode { ReadOnly, ReadWrite }
+
+fn share(mode: ShareMode) -> Result<()>
+```
+
+## Security
+
+### Input Validation
+```rust
+pub fn safe_path(root: &Path, relative: &str) -> Option<PathBuf> {
+    // Reject obvious attacks
+    if relative.contains("..") || relative.starts_with('/') {
+        return None;
+    }
+
+    let full = root.join(relative);
+    let canonical = full.canonicalize().ok()?;
+    let root_canonical = root.canonicalize().ok()?;
+
+    // Verify containment
+    canonical.starts_with(&root_canonical).then_some(canonical)
+}
+```
+
+### Secret Handling
+```rust
+// ❌ Logging secrets
+tracing::debug!("key: {:?}", encryption_key);
+
+// ✅ Redact secrets
+#[derive(Debug)]
+struct SecretKey(#[debug(skip)] Vec<u8>);
+
+// Or use secrecy crate
+use secrecy::Secret;
+let key: Secret<Vec<u8>> = Secret::new(key_bytes);
+```
+
+## Tooling
+
+### Required Checks
+```bash
+# Before commit
+cargo fmt
+cargo clippy -D warnings
+cargo test
+```
+
+### Logging
+```rust
+use tracing::{info, warn, error, debug, trace};
+
+// Include context
+info!(path = %file_path, size = bytes.len(), "file read complete");
+warn!(peer = ?peer_addr, "connection timeout");
+error!(error = ?e, "failed to process request");
+```

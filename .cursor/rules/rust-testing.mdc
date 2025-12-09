@@ -1,0 +1,409 @@
+---
+alwaysApply: true
+---
+
+# Rust Testing Practices for Wormhole
+
+## Test Organization
+
+### Unit Tests (In-File)
+```rust
+// At bottom of each .rs file
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_path_sanitization() {
+        assert!(safe_path(Path::new("/root"), "file.txt").is_some());
+        assert!(safe_path(Path::new("/root"), "../etc/passwd").is_none());
+        assert!(safe_path(Path::new("/root"), "/etc/passwd").is_none());
+    }
+}
+```
+
+### Integration Tests
+```
+tests/
+├── fuse_mount.rs      # Real mount tests (run via script)
+├── network_e2e.rs     # Client-host communication
+└── protocol_compat.rs # Wire format compatibility
+```
+
+### Test Categories
+
+| Type | Location | Run With |
+|------|----------|----------|
+| Unit | `mod tests` in files | `cargo test` |
+| Integration | `tests/` | `cargo test --test <name>` |
+| E2E Mount | `tests/fuse_*.rs` | `./scripts/test-mount.sh` |
+| Benchmarks | `benches/` | `cargo bench` |
+
+## Async Testing
+
+### Basic Async Test
+```rust
+#[tokio::test]
+async fn test_fetch_metadata() {
+    let result = fetch_metadata("path").await;
+    assert!(result.is_ok());
+}
+```
+
+### Multi-Threaded Async
+```rust
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_concurrent_requests() {
+    let handles: Vec<_> = (0..10)
+        .map(|i| tokio::spawn(async move { process(i).await }))
+        .collect();
+
+    for handle in handles {
+        assert!(handle.await.unwrap().is_ok());
+    }
+}
+```
+
+### Testing with Timeout
+```rust
+#[tokio::test]
+async fn test_with_timeout() {
+    let result = tokio::time::timeout(
+        Duration::from_secs(5),
+        slow_operation()
+    ).await;
+
+    assert!(result.is_ok(), "operation timed out");
+}
+```
+
+## FUSE Testing
+
+### Mock VFS (DON'T Mount Real Drives)
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MockVfs {
+        files: HashMap<String, Vec<u8>>,
+    }
+
+    impl MockVfs {
+        fn new() -> Self {
+            let mut files = HashMap::new();
+            files.insert("test.txt".into(), b"hello".to_vec());
+            Self { files }
+        }
+
+        fn read(&self, path: &str) -> Option<&[u8]> {
+            self.files.get(path).map(|v| v.as_slice())
+        }
+    }
+
+    #[test]
+    fn test_read_existing_file() {
+        let vfs = MockVfs::new();
+        let data = vfs.read("test.txt");
+        assert_eq!(data, Some(b"hello".as_slice()));
+    }
+
+    #[test]
+    fn test_read_nonexistent_file() {
+        let vfs = MockVfs::new();
+        let data = vfs.read("missing.txt");
+        assert!(data.is_none());
+    }
+}
+```
+
+### Error Code Mapping
+```rust
+#[test]
+fn test_error_to_errno() {
+    assert_eq!(error_to_errno(WormholeError::NotFound), libc::ENOENT);
+    assert_eq!(error_to_errno(WormholeError::Permission), libc::EACCES);
+    assert_eq!(error_to_errno(WormholeError::Io(io_err)), libc::EIO);
+}
+```
+
+### Attribute Tests
+```rust
+#[test]
+fn test_getattr_file() {
+    let attrs = mock_getattr("test.txt");
+    assert!(attrs.is_some());
+    let attrs = attrs.unwrap();
+    assert_eq!(attrs.kind, FileType::RegularFile);
+    assert!(attrs.size > 0);
+}
+
+#[test]
+fn test_getattr_directory() {
+    let attrs = mock_getattr("subdir");
+    assert!(attrs.is_some());
+    let attrs = attrs.unwrap();
+    assert_eq!(attrs.kind, FileType::Directory);
+}
+```
+
+## Protocol Testing
+
+### Round-Trip Encoding
+```rust
+#[test]
+fn test_message_roundtrip() {
+    let original = NetMessage::ReadRequest {
+        path: "file.txt".into(),
+        offset: 0,
+        length: 1024,
+    };
+
+    let encoded = bincode::serialize(&original).unwrap();
+    let decoded: NetMessage = bincode::deserialize(&encoded).unwrap();
+
+    assert_eq!(original, decoded);
+}
+```
+
+### Backward Compatibility
+```rust
+#[test]
+fn test_old_message_decodes() {
+    // Simulate old message without new optional field
+    let old_bytes = include_bytes!("fixtures/old_request_v1.bin");
+    let msg: Result<NetMessage, _> = bincode::deserialize(old_bytes);
+    assert!(msg.is_ok());
+}
+
+#[test]
+fn test_new_field_defaults_to_none() {
+    let msg = NetMessage::ReadRequest {
+        path: "test".into(),
+        offset: 0,
+        length: 100,
+        compression: None, // New optional field
+    };
+
+    let encoded = bincode::serialize(&msg).unwrap();
+    let decoded: NetMessage = bincode::deserialize(&encoded).unwrap();
+
+    match decoded {
+        NetMessage::ReadRequest { compression, .. } => {
+            assert!(compression.is_none());
+        }
+        _ => panic!("wrong message type"),
+    }
+}
+```
+
+## Cache Testing
+
+### RAM Cache
+```rust
+#[test]
+fn test_cache_hit() {
+    let cache = RamCache::new(1024 * 1024); // 1MB
+    cache.insert(ChunkId(1, 0), vec![0u8; 128 * 1024]);
+
+    let result = cache.get(&ChunkId(1, 0));
+    assert!(result.is_some());
+}
+
+#[test]
+fn test_cache_eviction() {
+    let cache = RamCache::new(256 * 1024); // 256KB = 2 chunks max
+    cache.insert(ChunkId(1, 0), vec![0u8; 128 * 1024]);
+    cache.insert(ChunkId(1, 1), vec![0u8; 128 * 1024]);
+    cache.insert(ChunkId(1, 2), vec![0u8; 128 * 1024]); // Should evict oldest
+
+    assert!(cache.get(&ChunkId(1, 0)).is_none()); // Evicted
+    assert!(cache.get(&ChunkId(1, 2)).is_some()); // Present
+}
+```
+
+### Disk Cache
+```rust
+#[tokio::test]
+async fn test_disk_cache_persistence() {
+    let dir = tempfile::tempdir().unwrap();
+    let cache = DiskCache::new(dir.path()).await.unwrap();
+
+    // Write
+    cache.write(ChunkId(1, 0), &[1, 2, 3, 4]).await.unwrap();
+
+    // Read back
+    let data = cache.read(&ChunkId(1, 0)).await.unwrap();
+    assert_eq!(data, Some(vec![1, 2, 3, 4]));
+}
+
+#[tokio::test]
+async fn test_disk_cache_integrity() {
+    let dir = tempfile::tempdir().unwrap();
+    let cache = DiskCache::new(dir.path()).await.unwrap();
+
+    cache.write(ChunkId(1, 0), &[1, 2, 3, 4]).await.unwrap();
+
+    // Corrupt the file
+    let chunk_path = dir.path().join("1_0.chunk");
+    std::fs::write(&chunk_path, b"corrupted").unwrap();
+
+    // Should detect corruption and return None
+    let data = cache.read(&ChunkId(1, 0)).await.unwrap();
+    assert!(data.is_none());
+}
+```
+
+## Edge Cases to Cover
+
+### File Operations
+```rust
+#[test]
+fn test_empty_file() {
+    let result = read_file("empty.txt");
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap().len(), 0);
+}
+
+#[test]
+fn test_large_file() {
+    let data = vec![0u8; 10 * 1024 * 1024]; // 10MB
+    let chunks: Vec<_> = data.chunks(CHUNK_SIZE).collect();
+    assert_eq!(chunks.len(), 80); // 10MB / 128KB
+}
+
+#[test]
+fn test_partial_chunk() {
+    let data = vec![0u8; 100]; // Less than CHUNK_SIZE
+    let chunks: Vec<_> = data.chunks(CHUNK_SIZE).collect();
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0].len(), 100);
+}
+```
+
+### Path Edge Cases
+```rust
+#[test]
+fn test_path_edge_cases() {
+    let root = Path::new("/share");
+
+    // Valid paths
+    assert!(safe_path(root, "file.txt").is_some());
+    assert!(safe_path(root, "sub/file.txt").is_some());
+    assert!(safe_path(root, "sub/deep/file.txt").is_some());
+
+    // Invalid paths
+    assert!(safe_path(root, "..").is_none());
+    assert!(safe_path(root, "../secret").is_none());
+    assert!(safe_path(root, "sub/../../../etc/passwd").is_none());
+    assert!(safe_path(root, "/etc/passwd").is_none());
+    assert!(safe_path(root, "").is_none());
+}
+```
+
+### Concurrent Access
+```rust
+#[tokio::test(flavor = "multi_thread")]
+async fn test_concurrent_cache_access() {
+    let cache = Arc::new(RamCache::new(10 * 1024 * 1024));
+
+    let handles: Vec<_> = (0..100).map(|i| {
+        let cache = Arc::clone(&cache);
+        tokio::spawn(async move {
+            let chunk_id = ChunkId(1, i % 10);
+            if i % 2 == 0 {
+                cache.insert(chunk_id, vec![i as u8; 128]);
+            } else {
+                let _ = cache.get(&chunk_id);
+            }
+        })
+    }).collect();
+
+    for handle in handles {
+        handle.await.unwrap();
+    }
+}
+```
+
+## Test Fixtures
+
+### Temporary Directories
+```rust
+use tempfile::TempDir;
+
+#[test]
+fn test_with_temp_dir() {
+    let dir = TempDir::new().unwrap();
+    let file_path = dir.path().join("test.txt");
+    std::fs::write(&file_path, "content").unwrap();
+
+    // Test code here
+
+    // TempDir is automatically cleaned up when dropped
+}
+```
+
+### Test Data
+```rust
+// In tests/fixtures/
+// - old_request_v1.bin
+// - sample_directory.tar
+
+#[test]
+fn test_with_fixture() {
+    let data = include_bytes!("fixtures/sample_file.bin");
+    let result = parse_file(data);
+    assert!(result.is_ok());
+}
+```
+
+## CI Configuration
+
+```yaml
+# .github/workflows/test.yml
+name: Test
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo fmt --check
+      - run: cargo clippy -D warnings
+      - run: cargo test
+```
+
+## Test Debugging Tips
+
+### Logging in Tests
+```rust
+#[test]
+fn test_with_logging() {
+    // Initialize test logging (only logs on failure)
+    let _ = tracing_subscriber::fmt()
+        .with_test_writer()
+        .try_init();
+
+    tracing::debug!("starting test");
+    // ... test code
+}
+```
+
+### Assertion Messages
+```rust
+#[test]
+fn test_with_context() {
+    let result = process(input);
+    assert!(
+        result.is_ok(),
+        "process failed for input {:?}: {:?}",
+        input,
+        result.err()
+    );
+}
+```

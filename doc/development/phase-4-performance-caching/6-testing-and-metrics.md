@@ -1,0 +1,4 @@
+- Clean cache: rm -rf ~/.cache/teleport-fs/ (or printed path).
+- Host/client as before; read video.bin to populate cache; observe disk files appear.
+- Kill client/host; remount (metadata handshake as needed), then read same file with host down to confirm disk hit.
+- Metrics: cache hit rate RAM vs disk, GC runs/evictions, total cache bytes, read latency p50/p99 with/without cache.

@@ -1,0 +1,5 @@
+- Expand NetMessage with ReadRequest/ReadResponse/ErrorResponse.
+- Host reads exact byte ranges safely from disk and streams back over QUIC.
+- Client bridges sync FUSE read to async QUIC via actor/channel.
+- FUSE read implemented (RO) with basic page clustering (e.g., 64KB min).
+- End-to-end: cat text file, verify hashes on binary file; small video plays.

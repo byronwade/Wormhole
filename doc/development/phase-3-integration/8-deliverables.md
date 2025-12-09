@@ -1,0 +1,5 @@
+- Chunk abstraction (storage_defs) and RAM LRU cache.
+- Governor heuristics for sequential detection and prefetch target list.
+- Actor updated for priority/background fetch with caching.
+- FUSE read with chunk stitching and cache usage.
+- Test plan and observed prefetch logs for cp/video scenarios.

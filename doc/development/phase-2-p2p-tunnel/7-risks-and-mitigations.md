@@ -1,0 +1,4 @@
+- Path traversal: enforce root prefix checks in disk_io.
+- Blocking FUSE thread starvation: keep actor channel buffered; handle send failures.
+- Large responses: cap read_to_end and len; return ErrorResponse on over-request.
+- Self-signed TLS trust: Phase 2 only; document LAN-only usage.

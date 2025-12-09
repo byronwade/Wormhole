@@ -1,0 +1,5 @@
+- Protocol extensions for writes/locks/create/delete.
+- Host write/lock manager integrated into message loop.
+- Client dirty-tracking HybridCache + SyncEngine background uploader.
+- FUSE write/create/truncate handling with chunk RMW.
+- UI sync/lock status surfaced.

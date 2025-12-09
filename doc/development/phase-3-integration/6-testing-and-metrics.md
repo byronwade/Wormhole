@@ -1,0 +1,5 @@
+- Host data: 5MB video.bin via dd; include smaller text/binary for sanity.
+- Run host/client; cp ./mnt/video.bin ./local_copy.bin; expect log prefetches [1..n].
+- dd skip into mid-chunk (e.g., skip=20 bs=128k count=1) to see priority + next chunk prefetch.
+- Verify md5sum host vs mounted copy.
+- Metrics: cache hit rate, prefetch hit rate, fetch latency p50/p99, wasted bytes (prefetch not used).

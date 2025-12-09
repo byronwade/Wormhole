@@ -1,0 +1,166 @@
+---
+alwaysApply: true
+---
+
+# Marketing & Brand Context
+
+## Brand Identity
+
+### Colors
+| Name | Hex | Usage |
+|------|-----|-------|
+| **Wormhole Purple** | `#7C3AED` | Primary brand, CTAs, links |
+| **Nebula Pink** | `#EC4899` | Accents, gradients |
+| **Quantum Blue** | `#3B82F6` | Information, secondary |
+| **Portal Teal** | `#14B8A6` | Success states |
+| **Void Black** | `#0F0F0F` | Backgrounds, text |
+| **Signal White** | `#FAFAFA` | Light backgrounds |
+
+### Typography
+- **Primary:** Inter (400, 500, 600, 700)
+- **Monospace:** JetBrains Mono (join codes, technical)
+- **Hero:** 72px Bold
+- **H1:** 48px Bold
+- **Body:** 16px Regular
+
+### Voice & Tone
+- **Technical but accessible** - Explain without dumbing down
+- **Direct** - Short sentences, no corporate speak
+- **Slightly irreverent** - Question the status quo
+- **Confident but not arrogant** - "It just works" not "We're the best"
+
+## Messaging Framework
+
+### Primary Tagline
+> **"Mount Any Folder. Any Computer. No Setup."**
+
+### Alternative Taglines
+| Context | Tagline |
+|---------|---------|
+| Technical | "P2P file sharing that actually mounts as a drive" |
+| Anti-Cloud | "Your files. Your network. No middleman." |
+| Simplicity | "Share a code. That's it." |
+| Cost | "Stop paying rent on your own files" |
+| Speed | "Why upload when you can connect?" |
+
+### Value Props by Audience
+
+**Video Editors:**
+> "Stop waiting 30 minutes for your 50GB render to upload. Mount your render farm's output folder and start editing while files are still rendering."
+
+**Game Developers:**
+> "Mount your build server's output folder - test instantly on all platforms. Replace Perforce for asset-only shares (free!)."
+
+**Privacy-Conscious:**
+> "Your files never touch a third-party server. End-to-end encrypted. Open source."
+
+**Cost-Conscious:**
+> "Save $500-2,000/year vs. cloud storage. Free forever."
+
+### Elevator Pitches
+
+**10 seconds:**
+> "Wormhole lets you mount any folder from any computer as if it were local. Share a code, connect, done. No cloud, no accounts, no fees."
+
+**30 seconds:**
+> "Imagine if you could take any folder on your computer and make it appear on someone else's machine - not as a sync, but as a live mount. That's Wormhole. A video editor can mount their render farm's output folder and edit files as they finish rendering. No cloud uploads, no waiting, no monthly bills."
+
+## Target Audience
+
+### Primary: Creative Professionals
+
+**Demographics:**
+- Age: 25-50
+- macOS + Windows
+- Adobe/DaVinci/Blender/Unreal ecosystem
+- Freelance or small studio (2-10 people)
+- Tech-comfortable but prefer GUI over CLI
+
+**Pain Points:**
+- 4K video = 20-22GB/hour, 30+ min upload
+- Frame.io + Dropbox = $50+/month
+- Syncthing requires 15+ config steps
+- Constant version control conflicts
+
+**User Personas:**
+1. **Alex** (32, Freelance Video Editor, LA) - "If this actually mounts the folder live, I'll never use WeTransfer again."
+2. **Sam** (28, Indie Game Dev, Berlin) - "Syncthing would be perfect if it didn't take 2 hours to set up."
+3. **Jordan** (45, VFX Studio Lead, Toronto) - "If it's free and actually works, we'll switch tomorrow."
+
+## Competitive Positioning
+
+### Feature Matrix
+| Feature | Wormhole | Dropbox | Syncthing | AirDrop |
+|---------|----------|---------|-----------|---------|
+| Mount as drive | ✅ | ❌ | ❌ | ❌ |
+| Cross-platform | ✅ | ✅ | ✅ | ❌ |
+| No cloud | ✅ | ❌ | ✅ | ✅ |
+| Join codes | ✅ | ❌ | ❌ | ❌ |
+| Free | ✅ | ❌ | ✅ | ✅ |
+| Easy setup | ✅ | ✅ | ❌ | ✅ |
+| E2E Encrypted | ✅ | ❌ | ✅ | ✅ |
+
+### Key Differentiator
+> **"Wormhole is the only tool that combines mount-as-drive + join codes + free + cross-platform."**
+
+## Pricing Strategy
+
+| Tier | Price | Features | Target |
+|------|-------|----------|--------|
+| **Free** | $0/forever | All core features | Viral growth |
+| **Pro** | $8/user/mo | Analytics, priority support | Power users |
+| **Team** | $15/user/mo | Admin console, policies | Studios |
+| **Enterprise** | Custom | SSO, audit logs, SLA | Large orgs |
+
+**Why These Prices:**
+- 40-60% below Dropbox ($15), Box ($20), Frame.io ($25)
+- P2P = 95% lower infrastructure cost = sustainable margins
+- Free tier drives viral adoption (every share = potential new user)
+
+## Messaging Don'ts
+
+| Don't Say | Why | Say Instead |
+|-----------|-----|-------------|
+| "Disrupting the cloud" | Cliché | "Direct peer-to-peer" |
+| "Revolutionary" | Overused | "Simple" or "Fast" |
+| "Seamless" | Meaningless | Be specific: "One-click" |
+| "Leverage" | Corporate speak | "Use" |
+| "Best-in-class" | Unverifiable | Cite specific metric |
+
+## Content Examples
+
+### Social Media Post
+```
+Stop paying rent on your own files.
+
+Wormhole lets you mount any folder from any computer with a code.
+
+✅ No upload/download wait
+✅ No monthly fees
+✅ E2E encrypted
+
+Free & open source.
+```
+
+### GitHub README Header
+```markdown
+# Wormhole
+
+**Mount any folder from any computer. No setup.**
+
+\`\`\`bash
+# On your machine
+wormhole share ./my-renders
+# Share code: 7KJM-XBCD-QRST-VWYZ
+
+# On any other machine
+wormhole mount 7KJM-XBCD-QRST-VWYZ ./renders
+\`\`\`
+```
+
+## Documentation References
+
+- `doc/marketing/01-target-audience-strategy.md` - Full personas
+- `doc/marketing/02-brand-identity.md` - Complete design system
+- `doc/marketing/03-customer-acquisition.md` - Channel strategy
+- `doc/marketing/08-monetization-strategy.md` - Pricing math

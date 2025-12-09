@@ -1,0 +1,4 @@
+- QUIC channel with mTLS using self-signed certs for Phase 1.
+- Shared wire protocol (Handshake, ListRequest, ListResponse) via bincode.
+- Bulk metadata scan on Host and in-memory VFS on Client exposed through FUSE.
+- One-command host, one-command mount; `ls -R` shows full tree quickly.

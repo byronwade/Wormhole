@@ -1,0 +1,5 @@
+- Align reads to fixed 128KB chunks and address by ChunkId.
+- Add RAM LRU cache for hot chunks; serve cache hits without network.
+- Prefetch sequential chunks (governor heuristics) to stay ahead of reads.
+- Stitch multi-chunk reads in FUSE; keep RO semantics.
+- Observe sequential workloads (cp/video) showing ahead-of-need fetches.

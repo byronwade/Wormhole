@@ -1,0 +1,4 @@
+- HybridCache (RAM + disk) with hashed chunk storage under system cache dir.
+- GC loop enforcing size cap.
+- Actor/FS wired to hybrid cache; unchanged chunked data plane.
+- Verification steps for reboot/offline read path.

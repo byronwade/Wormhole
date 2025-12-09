@@ -1,0 +1,4 @@
+- Starbucks vs Home test: different networks; host shows code; client connects via code; expect peer addr log and mounted drive.
+- Verify data path is P2P: signal server bandwidth near zero during transfers; test TURN/relay fallback if added.
+- Measure connect success rate, time to first byte after code entry, hole-punch success on varied NATs.
+- Security: ensure PAKE-derived key exists and is not visible to signal; reject invalid codes gracefully.

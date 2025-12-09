@@ -1,0 +1,4 @@
+- Tauri app scaffold with host/connect flows and status UI.
+- teleport-daemon library interface and retained CLI bin.
+- Tauri commands wiring to daemon services; optional tray integration.
+- Build artifacts (.dmg/.deb/.msi) with correct identifier/icons.

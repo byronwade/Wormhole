@@ -1,0 +1,4 @@
+- Workspace scaffold with teleport-core and teleport-daemon crates.
+- NetMessage protocol and DirEntry tree defined in core.
+- Host/Client QUIC handshake with self-signed TLS and metadata List flow.
+- FUSE mount exposing remote tree read-only; docs for host/mount commands.

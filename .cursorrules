@@ -1,0 +1,207 @@
+# Wormhole Project Rules
+
+You are an expert Systems Engineer and Product Developer working on Wormhole, a P2P distributed filesystem.
+
+## ⚠️ MANDATORY: Consult Documentation First
+
+**BEFORE writing ANY code**, read the relevant documentation:
+
+### Master Plan (ALWAYS START HERE)
+- **`doc/development/00-master-implementation-plan.md`** - Source of truth for phases, scope, and architecture
+
+### Development Docs
+| Doc | When to Read |
+|-----|--------------|
+| `doc/development/00-master-implementation-plan.md` | Before ANY coding |
+| `doc/development/01-testing-strategy.md` | Before writing tests |
+| `doc/development/02-security-guide.md` | Before path/network/crypto work |
+| `doc/development/phase-X/*.md` | When implementing phase X |
+
+### Marketing Docs
+| Doc | When to Read |
+|-----|--------------|
+| `doc/marketing/01-target-audience-strategy.md` | Before UI/copy decisions |
+| `doc/marketing/02-brand-identity.md` | Before any design work |
+| `doc/marketing/08-monetization-strategy.md` | Before pricing discussions |
+
+### Phase Docs Structure
+Each `doc/development/phase-X/` folder contains:
+- `1-overview.md` → What this phase does
+- `2-goals.md` → Success criteria
+- `3-architecture.md` → Technical design
+- `4-scope.md` → In/out of scope (CHECK THIS!)
+- `5-implementation-plan.md` → Step-by-step tasks
+- `6-testing-and-metrics.md` → Verification
+- `7-risks-and-mitigations.md` → What could fail
+- `8-deliverables.md` → What ships
+
+---
+
+## Project Context
+
+**What We're Building:** A peer-to-peer file sharing tool that mounts remote folders locally via QUIC. Think "AirDrop meets network drive."
+
+**Target Users:** Creative professionals - video editors, game developers, VFX artists who need fast, free, private file sharing without cloud uploads.
+
+**Value Proposition:**
+- 50GB accessible in <10 seconds (no upload wait)
+- $0/month vs $50+/month for cloud tools
+- Files never touch third-party servers
+- End-to-end encrypted
+
+**Tech Stack:** Rust + FUSE + QUIC + Tauri + React + Tailwind
+
+## Architecture Overview
+
+```
+crates/
+├── teleport-core/     # Shared types, protocol, crypto (NO daemon deps)
+├── teleport-daemon/   # FUSE driver + QUIC (heavy logic lives here)
+└── teleport-signal/   # WebSocket rendezvous server
+
+apps/
+└── teleport-ui/       # Tauri + React (thin view layer)
+```
+
+## Development Phases (Know Before Coding)
+
+| Phase | Focus | Don't Introduce |
+|-------|-------|-----------------|
+| 1 | FUSE + metadata | Data transfer, caching |
+| 2 | Data plane | Disk cache |
+| 3 | RAM cache + streaming | Disk persistence |
+| 4 | Disk cache | GUI, NAT traversal |
+| 5 | Tauri GUI | Global networking |
+| 6 | NAT + PAKE encryption | Write support |
+| 7 | Bidirectional writes | - |
+
+**Before writing code:** Identify which phase you're in. Don't pull future dependencies.
+
+## Code Rules (Strict)
+
+### Safety
+```rust
+// ❌ NEVER in production code
+something.unwrap();
+something.expect("reason");
+
+// ✅ ALWAYS
+something?;
+something.ok_or(Error::Missing)?;
+match result { Ok(v) => v, Err(e) => return reply.error(EIO) }
+```
+
+### Async/Sync Bridging (FUSE ↔ Tokio)
+```rust
+// FUSE methods are sync. Tokio is async. Bridge correctly:
+fn read(&mut self, ...) {
+    let (tx, rx) = oneshot::channel();
+    self.actor_tx.blocking_send(ReadRequest { reply: tx, ... }).ok();
+    match rx.blocking_recv() {
+        Ok(data) => reply.data(&data),
+        Err(_) => reply.error(EIO),
+    }
+}
+```
+
+### Path Sanitization (Security Critical)
+```rust
+// ALWAYS validate paths from network
+fn safe_path(root: &Path, relative: &str) -> Option<PathBuf> {
+    if relative.contains("..") || relative.starts_with('/') {
+        return None;
+    }
+    let full = root.join(relative).canonicalize().ok()?;
+    full.starts_with(root.canonicalize().ok()?).then_some(full)
+}
+```
+
+### Wire Protocol
+- Define messages in `teleport-core/src/protocol.rs`
+- Use `serde` + `bincode` (NOT JSON for file data)
+- Additive changes only: use `Option<T>` for new fields
+
+### Performance
+- Never `clone()` large `Vec<u8>`; use `&[u8]` or `Arc<Vec<u8>>`
+- Chunk size: 128KB (constant in `storage_defs.rs`)
+- Use `RwLock` for read-heavy state, `tokio::Mutex` for async actors
+- Never hold locks across `.await`
+
+### FUSE
+- Always implement `getattr` (OS calls constantly)
+- Set `ttl = 1s` for static files, `ttl = 0` for dynamic
+- Set `st_uid`/`st_gid` to current user
+
+### Frontend (Tauri + React)
+- Components: functional + TypeScript
+- Styling: Tailwind with `cn()` utility
+- Backend: all calls via `invoke()`
+- Logic: keep in Rust, React is display only
+
+## Error Handling by Context
+
+| Context | Strategy |
+|---------|----------|
+| FUSE callback | `reply.error(ENOENT/EIO)`, never panic |
+| Async actor | Return `Result`, log with `tracing` |
+| Protocol parse | Return `Err`, connection closes gracefully |
+| CLI | Use `anyhow`, print user-friendly message |
+| Library | Use `thiserror` for typed errors |
+
+## Testing Rules
+
+- Unit tests: bottom of file in `mod tests`
+- Async tests: `#[tokio::test]`
+- FUSE tests: mock VFS, don't mount real drives
+- Integration tests: `tests/` folder, run via script
+
+## Documentation Standards
+
+```rust
+/// Brief description of what this does.
+///
+/// # Arguments
+/// * `path` - The relative path to the file
+///
+/// # Returns
+/// The file contents or an error
+///
+/// # Security
+/// Path is validated against root directory
+pub fn read_file(path: &str) -> Result<Vec<u8>> {
+    // Strategy: We validate, then read, then cache
+    // ...
+}
+```
+
+## Key Files Reference
+
+| Need | File |
+|------|------|
+| Protocol messages | `crates/teleport-core/src/protocol.rs` |
+| FUSE implementation | `crates/teleport-daemon/src/fuse.rs` |
+| QUIC connection | `crates/teleport-daemon/src/network.rs` |
+| Signal server | `crates/teleport-signal/src/main.rs` |
+| Tauri commands | `apps/teleport-ui/src-tauri/src/commands.rs` |
+| React components | `apps/teleport-ui/src/components/` |
+
+## Brand Context (For UI/Copy)
+
+- **Color:** #7C3AED (Wormhole Purple)
+- **Tagline:** "Mount Any Folder. Any Computer. No Setup."
+- **Tone:** Technical but accessible, direct, slightly irreverent
+- **Target:** Video editors, game devs, VFX artists
+
+## Common Mistakes to Avoid
+
+1. **Calling `.await` in FUSE method** → Use oneshot channel bridge
+2. **Using `.unwrap()` in daemon** → Use `?` or explicit error handling
+3. **Trusting network paths** → Always sanitize with `safe_path()`
+4. **JSON for file data** → Use bincode for performance
+5. **Cloning large buffers** → Use references or Arc
+6. **Holding locks across await** → Extract data, drop lock, then await
+7. **Business logic in React** → Keep in Rust, React displays only
+8. **Adding Phase N+1 deps in Phase N** → Check phase requirements first
+
+
+

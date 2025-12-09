@@ -1,0 +1,315 @@
+---
+alwaysApply: true
+---
+
+# Frontend Development Rules (Tauri + React)
+
+## Technology Stack
+
+- **Tauri v2** - Desktop app framework
+- **React 18** - UI framework
+- **Vite** - Build tool (NOT Next.js - incompatible with Tauri)
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **Zustand** - State management
+
+## Project Structure
+
+```
+apps/teleport-ui/
+├── src/
+│   ├── components/
+│   │   ├── ui/           # Reusable primitives
+│   │   │   ├── Button.tsx
+│   │   │   ├── Input.tsx
+│   │   │   └── StatusIndicator.tsx
+│   │   ├── HostPanel.tsx
+│   │   ├── ConnectPanel.tsx
+│   │   └── SystemTray.tsx
+│   ├── hooks/
+│   │   ├── useWormhole.ts
+│   │   └── usePeers.ts
+│   ├── store/
+│   │   └── wormholeStore.ts
+│   ├── App.tsx
+│   └── main.tsx
+├── src-tauri/
+│   ├── src/
+│   │   ├── main.rs
+│   │   └── commands.rs
+│   └── tauri.conf.json
+└── package.json
+```
+
+## Component Rules
+
+### Functional + TypeScript
+```tsx
+// ✅ Always functional with types
+interface HostPanelProps {
+  onShare: (path: string) => void;
+  isSharing: boolean;
+}
+
+export function HostPanel({ onShare, isSharing }: HostPanelProps) {
+  return (/* ... */);
+}
+
+// ❌ Never class components
+class HostPanel extends React.Component { }
+```
+
+### Styling with cn()
+```tsx
+import { cn } from '@/lib/utils';
+
+// tailwind-merge utility
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// Usage
+<button className={cn(
+  "px-4 py-2 rounded-lg",
+  isActive && "bg-purple-600 text-white",
+  isDisabled && "opacity-50 cursor-not-allowed"
+)}>
+```
+
+### State Management (Zustand)
+```tsx
+// store/wormholeStore.ts
+import { create } from 'zustand';
+
+interface WormholeState {
+  isSharing: boolean;
+  joinCode: string | null;
+  peers: Peer[];
+  startSharing: (path: string) => Promise<void>;
+  stopSharing: () => Promise<void>;
+}
+
+export const useWormholeStore = create<WormholeState>((set) => ({
+  isSharing: false,
+  joinCode: null,
+  peers: [],
+
+  startSharing: async (path) => {
+    const code = await invoke('start_hosting', { path });
+    set({ isSharing: true, joinCode: code });
+  },
+
+  stopSharing: async () => {
+    await invoke('stop_hosting');
+    set({ isSharing: false, joinCode: null });
+  },
+}));
+```
+
+## Tauri Communication
+
+### All Backend Calls via invoke()
+```tsx
+import { invoke } from '@tauri-apps/api/core';
+
+// ✅ Correct - all logic in Rust
+async function handleShare(path: string) {
+  const code = await invoke<string>('start_hosting', { path });
+  setJoinCode(code);
+}
+
+// ❌ Wrong - business logic in React
+async function handleShare(path: string) {
+  // Don't do file validation, encryption, etc. in React
+  if (!path.startsWith('/valid')) return;
+  // ...
+}
+```
+
+### Type-Safe Commands
+```tsx
+// Define types matching Rust
+interface ShareResult {
+  code: string;
+  port: number;
+}
+
+interface Peer {
+  id: string;
+  name: string;
+  status: 'connected' | 'syncing' | 'idle';
+  progress?: number;
+}
+
+// Use in invoke
+const result = await invoke<ShareResult>('start_hosting', { path });
+const peers = await invoke<Peer[]>('get_peers');
+```
+
+### Event Listening
+```tsx
+import { listen } from '@tauri-apps/api/event';
+
+useEffect(() => {
+  const unlisten = listen<Peer>('peer-connected', (event) => {
+    addPeer(event.payload);
+  });
+
+  return () => {
+    unlisten.then(fn => fn());
+  };
+}, []);
+```
+
+## UI Components (Brand-Aligned)
+
+### Join Code Display (CRITICAL)
+```tsx
+// Join codes must be HUGE and easy to copy
+<div className="font-mono text-5xl font-medium tracking-wider text-purple-600">
+  {formatCode(joinCode)} {/* 7KJM-XBCD-QRST-VWYZ */}
+</div>
+
+function formatCode(code: string): string {
+  return code.match(/.{1,4}/g)?.join('-') ?? code;
+}
+```
+
+### Status Indicator
+```tsx
+interface StatusIndicatorProps {
+  status: 'connected' | 'syncing' | 'disconnected' | 'idle';
+}
+
+export function StatusIndicator({ status }: StatusIndicatorProps) {
+  const colors = {
+    connected: 'bg-green-500',
+    syncing: 'bg-amber-500 animate-pulse',
+    disconnected: 'bg-red-500',
+    idle: 'bg-gray-400',
+  };
+
+  return (
+    <span className={cn('w-2 h-2 rounded-full', colors[status])} />
+  );
+}
+```
+
+### Progress Bar
+```tsx
+interface ProgressBarProps {
+  progress: number; // 0-100
+  speed?: string;   // "45 MB/s"
+}
+
+export function ProgressBar({ progress, speed }: ProgressBarProps) {
+  return (
+    <div className="space-y-1">
+      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-purple-600 transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      {speed && (
+        <p className="text-sm text-gray-500">{speed}</p>
+      )}
+    </div>
+  );
+}
+```
+
+## Brand Colors (Use These)
+
+```tsx
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        wormhole: {
+          purple: '#7C3AED',
+          pink: '#EC4899',
+          blue: '#3B82F6',
+          teal: '#14B8A6',
+        },
+        void: '#0F0F0F',
+        signal: '#FAFAFA',
+      },
+    },
+  },
+};
+```
+
+## Key UX Requirements (From Marketing)
+
+1. **Drag-drop folder selection** - Expected behavior for creatives
+2. **Join code displayed HUGE** - 48px+ font, monospace
+3. **One-click copy** - Code and shareable link
+4. **Progress bar with speed** - Creatives need to know ETA
+5. **"Open in Finder/Explorer" button** - Instant gratification
+6. **Human-readable peer names** - "Sarah's MacBook" not IP
+
+## Error Handling
+
+```tsx
+// User-friendly error messages
+const ERROR_MESSAGES: Record<string, string> = {
+  'ENOENT': 'Folder not found',
+  'EACCES': 'Permission denied',
+  'ECONNREFUSED': 'Could not connect to peer',
+  'INVALID_CODE': 'Invalid join code',
+};
+
+function handleError(error: unknown) {
+  const message = error instanceof Error
+    ? ERROR_MESSAGES[error.message] ?? error.message
+    : 'Something went wrong';
+
+  toast.error(message);
+}
+```
+
+## Performance
+
+### Lazy Loading
+```tsx
+import { lazy, Suspense } from 'react';
+
+const Settings = lazy(() => import('./Settings'));
+
+function App() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <Settings />
+    </Suspense>
+  );
+}
+```
+
+### Memoization
+```tsx
+// Expensive renders
+const PeerList = memo(function PeerList({ peers }: { peers: Peer[] }) {
+  return (
+    <ul>
+      {peers.map(peer => (
+        <PeerItem key={peer.id} peer={peer} />
+      ))}
+    </ul>
+  );
+});
+```
+
+## Testing
+
+```tsx
+// Component tests with Vitest
+import { render, screen } from '@testing-library/react';
+import { HostPanel } from './HostPanel';
+
+test('displays join code when sharing', () => {
+  render(<HostPanel joinCode="ABCD1234" isSharing={true} />);
+  expect(screen.getByText('ABCD-1234')).toBeInTheDocument();
+});
+```

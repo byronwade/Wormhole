@@ -1,0 +1,5 @@
+- Updated protocol with data-plane messages.
+- Host ranged-read path with error responses.
+- Client actor bridge and fetch_data_segment.
+- FUSE read (RO) with clustering heuristic and inode->path mapping.
+- Verification steps/doc for text, hash, and video checks.

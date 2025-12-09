@@ -1,0 +1,147 @@
+---
+alwaysApply: true
+---
+
+# Documentation Reference (ALWAYS CONSULT)
+
+## Critical Rule
+
+**BEFORE writing any code or making decisions**, consult the relevant documentation. This project has extensive planning docs that MUST guide implementation.
+
+## Master Plan (READ FIRST)
+
+**`doc/development/00-master-implementation-plan.md`** - The source of truth for:
+- Development phases and their order
+- What features belong in which phase
+- Dependencies between components
+- Success criteria for each phase
+
+## Documentation Structure
+
+```
+doc/
+├── CONTRIBUTING.md                       # How to contribute
+├── USER-GUIDE.md                         # End-user documentation
+├── development/                          # Technical implementation
+│   ├── 00-master-implementation-plan.md  ⭐ START HERE
+│   ├── 01-testing-strategy.md            # Test pyramid, coverage goals
+│   ├── 02-security-guide.md              # Threat model, security patterns
+│   ├── 03-architecture-decisions.md      # ADRs - why we chose X over Y
+│   ├── 04-protocol-specification.md      # Wire protocol, message formats
+│   ├── 05-api-reference.md               # Public API documentation
+│   ├── 06-troubleshooting.md             # Common issues and solutions
+│   ├── 07-performance-benchmarks.md      # Targets, methodology, metrics
+│   ├── 08-deployment-guide.md            # Production deployment
+│   ├── phase-1-hello-world-fs/           # FUSE skeleton, metadata
+│   ├── phase-2-p2p-tunnel/               # QUIC data plane
+│   ├── phase-3-integration/              # RAM cache, streaming
+│   ├── phase-4-performance-caching/      # Disk cache, LRU
+│   ├── phase-5-product-wrapper/          # Tauri GUI
+│   ├── phase-6-security-compliance/      # NAT, PAKE encryption
+│   └── phase-7-release-ops/              # Bidirectional writes
+│
+└── marketing/                            # Business & brand
+    ├── 00-marketing-overview.md          # Summary of all marketing
+    ├── 01-target-audience-strategy.md    # Personas, pain points
+    ├── 02-brand-identity.md              # Colors, typography, voice
+    ├── 03-customer-acquisition.md        # Channel strategy
+    ├── 04-investor-pitch.md              # Funding narrative
+    ├── 05-advertising-channels.md        # Paid media strategy
+    ├── 06-guerrilla-marketing.md         # Creative tactics
+    ├── 07-outreach-targets.md            # Companies, influencers
+    └── 08-monetization-strategy.md       # Pricing, tiers, math
+
+CHANGELOG.md                              # Version history (root)
+```
+
+## When to Consult Which Doc
+
+| Task | Read First |
+|------|------------|
+| **Starting any coding** | `00-master-implementation-plan.md` |
+| **Implementing a phase** | `phase-X/1-overview.md` through `10-notes.md` |
+| **Writing tests** | `01-testing-strategy.md` |
+| **Security decisions** | `02-security-guide.md` |
+| **Why we chose X** | `03-architecture-decisions.md` |
+| **Wire protocol work** | `04-protocol-specification.md` |
+| **API design** | `05-api-reference.md` |
+| **Debugging issues** | `06-troubleshooting.md` |
+| **Performance work** | `07-performance-benchmarks.md` |
+| **Deploying to prod** | `08-deployment-guide.md` |
+| **UI/UX design** | `02-brand-identity.md` |
+| **Writing copy** | `01-target-audience-strategy.md` + `02-brand-identity.md` |
+| **Pricing questions** | `08-monetization-strategy.md` |
+| **Who to reach** | `07-outreach-targets.md` |
+| **User-facing docs** | `USER-GUIDE.md` |
+| **Contribution process** | `CONTRIBUTING.md` |
+
+## Phase Documentation Structure
+
+Each phase folder contains:
+
+| File | Purpose |
+|------|---------|
+| `1-overview.md` | What this phase accomplishes |
+| `2-goals.md` | Success criteria |
+| `3-architecture.md` | Technical design |
+| `4-scope.md` | What's in/out of scope |
+| `5-implementation-plan.md` | Step-by-step tasks |
+| `6-testing-and-metrics.md` | How to verify |
+| `7-risks-and-mitigations.md` | What could go wrong |
+| `8-deliverables.md` | What gets shipped |
+| `9-open-questions.md` | Unresolved decisions |
+| `10-notes.md` | Additional context |
+
+## Mandatory Checks
+
+### Before Coding
+1. ✅ Check `00-master-implementation-plan.md` for current phase
+2. ✅ Read the phase's `4-scope.md` to verify feature belongs here
+3. ✅ Check `5-implementation-plan.md` for how it should be built
+4. ✅ Review `02-security-guide.md` if handling paths/network/crypto
+
+### Before UI Work
+1. ✅ Read `02-brand-identity.md` for colors, typography, voice
+2. ✅ Check `01-target-audience-strategy.md` for user context
+3. ✅ Review `phase-5-product-wrapper/4-frontend-architecture.md`
+
+### Before Marketing/Copy
+1. ✅ Read `02-brand-identity.md` for tone and messaging
+2. ✅ Check `01-target-audience-strategy.md` for personas
+3. ✅ Review `08-monetization-strategy.md` for pricing claims
+
+## Quick Reference
+
+### Current Phase Checklist
+```markdown
+Phase X: [Name]
+├── Overview: doc/development/phase-X/1-overview.md
+├── Goals: doc/development/phase-X/2-goals.md
+├── Architecture: doc/development/phase-X/3-architecture.md
+├── Scope: doc/development/phase-X/4-scope.md
+├── Implementation: doc/development/phase-X/5-implementation-plan.md
+├── Testing: doc/development/phase-X/6-testing-and-metrics.md
+├── Risks: doc/development/phase-X/7-risks-and-mitigations.md
+├── Deliverables: doc/development/phase-X/8-deliverables.md
+├── Questions: doc/development/phase-X/9-open-questions.md
+└── Notes: doc/development/phase-X/10-notes.md
+```
+
+### Key Decisions Already Made
+
+| Decision | Location | Summary |
+|----------|----------|---------|
+| Chunk size | Master plan | 128KB |
+| Protocol format | Master plan | bincode (not JSON) |
+| Error handling | Security guide | thiserror for libs, anyhow for apps |
+| Primary color | Brand identity | #7C3AED |
+| Pricing tiers | Monetization | Free, $8 Pro, $15 Team |
+| Target audience | Audience strategy | Creative professionals |
+
+## Never Forget
+
+- **Don't reinvent** - The docs have answers
+- **Don't skip phases** - Each builds on the last
+- **Don't guess pricing** - It's calculated in `08-monetization-strategy.md`
+- **Don't guess voice** - It's defined in `02-brand-identity.md`
+- **Don't guess architecture** - It's in the phase docs

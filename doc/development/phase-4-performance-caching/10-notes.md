@@ -1,0 +1,1 @@
+Phase 4 keeps read-only semantics; focus on persistence and GC. Metadata still fetched live; add a follow-up to persist directory trees for true offline remounts. Integrity hashing (BLAKE3) can be layered onto disk chunks before serving from cache.

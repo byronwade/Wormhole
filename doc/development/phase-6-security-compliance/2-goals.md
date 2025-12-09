@@ -1,0 +1,4 @@
+- Add signaling server for rendezvous via magic codes (no IP typing).
+- Implement NAT traversal (UDP hole punching) and QUIC config for aggressive keepalive.
+- Use PAKE (spake2) to derive shared keys so signal server stays blind.
+- Expose host/mount “global” flows using codes (e.g., wormhole-832).

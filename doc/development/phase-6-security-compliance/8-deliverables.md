@@ -1,0 +1,4 @@
+- teleport-signal crate with WS code rendezvous; Dockerfile for deploy.
+- PAKE helpers in teleport-core; hole-punching rendezvous client.
+- Global host/mount entrypoints and QUIC config tweaks.
+- UI updates for join codes; verification steps documented.

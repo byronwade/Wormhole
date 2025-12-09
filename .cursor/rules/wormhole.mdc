@@ -1,0 +1,100 @@
+---
+alwaysApply: true
+---
+
+# Wormhole Project Context
+
+## What We're Building
+
+**Wormhole** is a P2P distributed filesystem that mounts remote folders locally via QUIC.
+
+**One-liner:** "AirDrop meets network drive - share a folder with a code, others mount it as a local drive."
+
+## Target Audience
+
+**Primary:** Creative Professionals (Video Editors, Game Developers, VFX Artists)
+
+**Why They Need This:**
+- 50GB render = 30+ min cloud upload → Wormhole: <10 seconds
+- $50+/month for Dropbox + Frame.io → Wormhole: $0
+- Privacy concerns with cloud → Wormhole: Files never leave your network
+
+**Personas:**
+1. **Freelance Video Editor** - Wants to mount render farm output while editing
+2. **Indie Game Developer** - Wants to share builds without Perforce costs
+3. **VFX Studio Lead** - Wants to replace expensive sync tools
+
+## Architecture Summary
+
+```
+wormhole/
+├── crates/
+│   ├── teleport-core/     # Protocol, types, crypto (standalone)
+│   ├── teleport-daemon/   # FUSE + QUIC (main logic)
+│   └── teleport-signal/   # WebSocket rendezvous server
+├── apps/
+│   └── teleport-ui/       # Tauri + React frontend
+└── doc/
+    ├── development/       # 7 phase implementation guides
+    └── marketing/         # 8 strategy documents
+```
+
+## Development Phases
+
+| Phase | Goal | Key Work |
+|-------|------|----------|
+| 1 | `ls -R` remote files | FUSE skeleton, metadata sync |
+| 2 | Read remote files | Data plane, byte requests |
+| 3 | Streaming + cache | Governor prefetch, RAM cache |
+| 4 | Offline access | Disk cache, LRU eviction |
+| 5 | Desktop app | Tauri GUI, installers |
+| 6 | Global access | NAT traversal, PAKE encryption |
+| 7 | Full sync | Bidirectional writes, locks |
+
+## Key Technologies
+
+- **Rust** - Core implementation
+- **FUSE (fuser crate)** - Filesystem in userspace
+- **QUIC (quinn + rustls)** - Encrypted multiplexed transport
+- **PAKE (spake2)** - Join code → encryption key
+- **Tauri v2** - Desktop app wrapper
+- **React + Vite + Tailwind** - Frontend
+
+## Competitive Positioning
+
+| Feature | Wormhole | Dropbox | Syncthing | AirDrop |
+|---------|----------|---------|-----------|---------|
+| Mount as drive | ✅ | ❌ | ❌ | ❌ |
+| Cross-platform | ✅ | ✅ | ✅ | ❌ |
+| No cloud | ✅ | ❌ | ✅ | ✅ |
+| Join codes | ✅ | ❌ | ❌ | ❌ |
+| Free | ✅ | ❌ | ✅ | ✅ |
+| Easy setup | ✅ | ✅ | ❌ | ✅ |
+
+## Pricing Strategy
+
+| Tier | Price | Features |
+|------|-------|----------|
+| Free | $0/forever | Unlimited shares, all core features |
+| Pro | $8/user/mo | Analytics, priority support, API |
+| Team | $15/user/mo | Admin console, policies, roles |
+| Enterprise | Custom | SSO, audit logs, SLA |
+
+## Brand Identity
+
+- **Primary Color:** #7C3AED (Wormhole Purple)
+- **Tagline:** "Mount Any Folder. Any Computer. No Setup."
+- **Voice:** Technical but accessible, direct, slightly irreverent
+- **Font:** Inter (UI), JetBrains Mono (code/join codes)
+
+## Key Documents
+
+**Development:**
+- `doc/development/00-master-implementation-plan.md` - Full build guide
+- `doc/development/01-testing-strategy.md` - Test pyramid
+- `doc/development/02-security-guide.md` - Threat model
+
+**Marketing:**
+- `doc/marketing/01-target-audience-strategy.md` - Personas
+- `doc/marketing/02-brand-identity.md` - Design system
+- `doc/marketing/08-monetization-strategy.md` - Pricing math

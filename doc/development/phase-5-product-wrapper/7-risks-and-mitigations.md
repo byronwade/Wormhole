@@ -1,0 +1,4 @@
+- UI thread blocking: keep networking/FUSE in async tasks; avoid blocking invokes.
+- Driver prerequisites (macFUSE/WinFSP): detect and surface clear errors; do not bundle kernel drivers; add guided prompts/links when missing.
+- Mount lifecycle: ensure unmount on quit; tray to keep service alive when window closed.
+- Path validation: reject missing folders/IP parse errors; surface user-friendly messages.

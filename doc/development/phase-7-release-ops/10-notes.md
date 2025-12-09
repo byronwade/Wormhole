@@ -1,0 +1,1 @@
+Phase 7 lifts RO: writes hit local cache immediately and sync asynchronously; locks are required to prevent corruption. Future work: conflict resolution (CRDT/OT), stronger retries/backoff, and production-grade trust/onboarding.

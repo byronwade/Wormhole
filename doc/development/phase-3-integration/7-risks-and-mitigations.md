@@ -1,0 +1,4 @@
+- Prefetch blocking priority path: move prefetch to background tasks; cap concurrent prefetches.
+- RAM pressure: tune cache capacity; expose config; monitor eviction churn.
+- Non-sequential workloads: governor should reset streak quickly; avoid over-prefetch.
+- Large files over slow links: consider gating prefetch count by bandwidth/RTT.

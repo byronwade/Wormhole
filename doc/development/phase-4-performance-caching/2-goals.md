@@ -1,0 +1,4 @@
+- Add disk-tier cache with standard OS cache path and hashed filenames.
+- Multi-level lookup: RAM -> Disk -> Network.
+- Cap cache size (e.g., 10GB) with periodic GC/eviction.
+- Maintain RO semantics; preserve chunked data plane from Phase 3.

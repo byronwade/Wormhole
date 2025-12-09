@@ -1,0 +1,5 @@
+- Tauri GUI (React/TS) for host/share selection and mounting peers.
+- Bridge Rust daemon as a library callable from Tauri commands.
+- Keep FUSE/network loops off the UI thread; tray keeps app alive when window closes.
+- Bundle installable artifacts (.dmg/.msi/.deb) with correct identifiers/icons.
+- Basic OS integration: drag/drop folder, status updates, minimal error surfaces.

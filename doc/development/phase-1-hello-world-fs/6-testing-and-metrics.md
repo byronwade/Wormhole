@@ -1,0 +1,4 @@
+- Host: `cargo run -p teleport-daemon -- host ./test_share` after creating sample files.
+- Client: `cargo run -p teleport-daemon -- mount ./mnt 127.0.0.1:5000`.
+- Verify: `ls -R ./mnt` shows full tree with correct sizes/mtimes; `cat` may be empty (read not implemented yet).
+- Metrics to note: metadata payload size, scan duration, mount latency (<200ms on LAN for ~10k entries), memory use of VFS.

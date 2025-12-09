@@ -1,0 +1,4 @@
+- NAT types that resist punching: consider fallback relay/TURN; surface clear errors and timeouts.
+- Signal server abuse/rate limits: add caps per code and TTLs.
+- PAKE misuse: ensure both sides use same code; handle mismatch with explicit errors.
+- Public IP discovery placeholder: integrate proper STUN in future to avoid wrong addr assumptions; ensure TLS termination on signal host is locked down.
