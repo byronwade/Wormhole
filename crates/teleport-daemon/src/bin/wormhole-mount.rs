@@ -17,7 +17,9 @@ use std::time::Duration;
 use clap::Parser;
 use fuser::MountOption;
 use tokio::runtime::Runtime;
-use tracing::{error, info, warn, Level};
+#[cfg(target_os = "macos")]
+use tracing::warn;
+use tracing::{error, info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 use teleport_daemon::bridge::FuseAsyncBridge;
