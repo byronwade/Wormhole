@@ -220,7 +220,7 @@ mod tests {
         let gc = GarbageCollector::with_config(disk_cache.clone(), 1000, 0.9, 0.7);
 
         // Add small amount of data (below threshold)
-        disk_cache.write(ChunkId::new(1, 0), &vec![0; 100]).unwrap();
+        disk_cache.write(ChunkId::new(1, 0), &[0; 100]).unwrap();
 
         // GC should not evict anything
         gc.maybe_gc().unwrap();
@@ -236,8 +236,8 @@ mod tests {
         let gc = GarbageCollector::with_config(disk_cache.clone(), 100, 0.9, 0.7);
 
         // Add data that exceeds threshold
-        disk_cache.write(ChunkId::new(1, 0), &vec![0; 50]).unwrap();
-        disk_cache.write(ChunkId::new(1, 1), &vec![0; 50]).unwrap();
+        disk_cache.write(ChunkId::new(1, 0), &[0; 50]).unwrap();
+        disk_cache.write(ChunkId::new(1, 1), &[0; 50]).unwrap();
 
         assert_eq!(disk_cache.total_size(), 100);
 
@@ -255,8 +255,8 @@ mod tests {
 
         let gc = GarbageCollector::with_config(disk_cache.clone(), 1000, 0.9, 0.7);
 
-        disk_cache.write(ChunkId::new(1, 0), &vec![0; 100]).unwrap();
-        disk_cache.write(ChunkId::new(1, 1), &vec![0; 200]).unwrap();
+        disk_cache.write(ChunkId::new(1, 0), &[0; 100]).unwrap();
+        disk_cache.write(ChunkId::new(1, 1), &[0; 200]).unwrap();
 
         let stats = gc.stats();
         assert_eq!(stats.current_bytes, 300);

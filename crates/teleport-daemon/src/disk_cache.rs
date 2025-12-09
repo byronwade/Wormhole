@@ -374,7 +374,7 @@ mod tests {
         let chunk_id = ChunkId::new(1, 0);
         let data = vec![1, 2, 3, 4, 5];
 
-        cache.write(chunk_id.clone(), &data).unwrap();
+        cache.write(chunk_id, &data).unwrap();
         assert!(cache.contains(&chunk_id));
 
         let read_data = cache.read(&chunk_id).unwrap().unwrap();
@@ -406,7 +406,7 @@ mod tests {
         let chunk_id = ChunkId::new(1, 0);
         let data = vec![1, 2, 3, 4, 5];
 
-        cache.write(chunk_id.clone(), &data).unwrap();
+        cache.write(chunk_id, &data).unwrap();
         assert!(cache.contains(&chunk_id));
         assert_eq!(cache.total_size(), 5);
 
@@ -422,11 +422,11 @@ mod tests {
 
         let chunk_id = ChunkId::new(1, 0);
 
-        cache.write(chunk_id.clone(), &vec![1; 100]).unwrap();
+        cache.write(chunk_id, &[1; 100]).unwrap();
         assert_eq!(cache.total_size(), 100);
 
         // Overwrite with smaller data
-        cache.write(chunk_id.clone(), &vec![2; 50]).unwrap();
+        cache.write(chunk_id, &[2; 50]).unwrap();
         assert_eq!(cache.total_size(), 50);
 
         let data = cache.read(&chunk_id).unwrap().unwrap();
@@ -456,7 +456,7 @@ mod tests {
         // Write data
         {
             let cache = DiskCache::with_dir(temp_path.clone()).unwrap();
-            cache.write(chunk_id.clone(), &data).unwrap();
+            cache.write(chunk_id, &data).unwrap();
         }
 
         // Verify file exists on disk
@@ -464,7 +464,7 @@ mod tests {
             let cache = DiskCache::with_dir(temp_path.clone()).unwrap();
             // Note: The index won't have the entry since we can't recover ChunkId from hash,
             // but we can manually insert it by writing again
-            cache.write(chunk_id.clone(), &data).unwrap();
+            cache.write(chunk_id, &data).unwrap();
             let read_data = cache.read(&chunk_id).unwrap().unwrap();
             assert_eq!(read_data, data);
         }

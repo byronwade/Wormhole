@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 /// Main configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
     /// Host/server settings
@@ -27,18 +27,6 @@ pub struct Config {
     pub signal: SignalConfig,
     /// Network settings
     pub network: NetworkConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            host: HostConfig::default(),
-            client: ClientConfig::default(),
-            cache: CacheConfig::default(),
-            signal: SignalConfig::default(),
-            network: NetworkConfig::default(),
-        }
-    }
 }
 
 /// Host/server configuration
@@ -255,7 +243,7 @@ impl Config {
         self.cache
             .cache_dir
             .clone()
-            .or_else(|| Self::default_cache_dir())
+            .or_else(Self::default_cache_dir)
             .unwrap_or_else(|| PathBuf::from("/tmp/wormhole"))
     }
 

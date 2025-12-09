@@ -112,19 +112,18 @@ impl InodeTable {
         }
 
         // Warn once when approaching the limit
-        if current_size >= INODE_WARNING_THRESHOLD {
-            if !self
+        if current_size >= INODE_WARNING_THRESHOLD
+            && !self
                 .warned_high_usage
                 .swap(true, std::sync::atomic::Ordering::Relaxed)
-            {
-                warn!(
-                    "Inode table is {}% full ({}/{} entries). \
+        {
+            warn!(
+                "Inode table is {}% full ({}/{} entries). \
                      Performance may degrade as the table grows.",
-                    current_size * 100 / MAX_INODE_ENTRIES,
-                    current_size,
-                    MAX_INODE_ENTRIES
-                );
-            }
+                current_size * 100 / MAX_INODE_ENTRIES,
+                current_size,
+                MAX_INODE_ENTRIES
+            );
         }
 
         let mut next = self.next_inode.write();

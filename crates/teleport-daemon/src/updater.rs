@@ -61,20 +61,15 @@ pub enum UpdateError {
 }
 
 /// Update channel selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum UpdateChannel {
     /// Only stable releases (no pre-release tags)
+    #[default]
     Stable,
     /// Include beta releases (e.g., v1.0.0-beta.1)
     Beta,
     /// Include all releases including alpha/nightly
     Nightly,
-}
-
-impl Default for UpdateChannel {
-    fn default() -> Self {
-        Self::Stable
-    }
 }
 
 impl std::fmt::Display for UpdateChannel {
@@ -418,10 +413,10 @@ impl UpdateChecker {
                 {
                     urls.linux_x64 = Some(asset.browser_download_url.clone());
                 }
-            } else if name.contains("windows") || name.contains(".exe") || name.contains(".msi") {
-                if name.contains("x64") || name.contains("x86_64") || name.contains("amd64") {
-                    urls.windows_x64 = Some(asset.browser_download_url.clone());
-                }
+            } else if (name.contains("windows") || name.contains(".exe") || name.contains(".msi"))
+                && (name.contains("x64") || name.contains("x86_64") || name.contains("amd64"))
+            {
+                urls.windows_x64 = Some(asset.browser_download_url.clone());
             }
         }
 

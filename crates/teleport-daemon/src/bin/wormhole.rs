@@ -1007,6 +1007,7 @@ struct CompletionsArgs {
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug)]
+#[allow(clippy::enum_variant_names)]
 enum Shell {
     Bash,
     Zsh,
@@ -1683,14 +1684,10 @@ async fn run_mount_via_signal(
             // Call mount directly with resolved address
             let _addr: SocketAddr = host_addr.parse()?;
 
+            // Note: args.use_kext is available for future kext-specific mount logic on macOS
             #[cfg(target_os = "macos")]
-            let actual_mount = if args.use_kext {
-                mount_point.clone()
-            } else {
-                mount_point.clone()
-            };
+            let _ = args.use_kext; // Silence unused warning until kext logic is implemented
 
-            #[cfg(not(target_os = "macos"))]
             let actual_mount = mount_point.clone();
 
             if !cli.quiet {
@@ -2507,19 +2504,17 @@ async fn run_doctor(args: &DoctorArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
         let cache_dir = dirs.cache_dir();
         if cache_dir.exists() {
             println!("                      ✓ OK ║");
-        } else {
-            if args.fix {
-                match std::fs::create_dir_all(cache_dir) {
-                    Ok(_) => println!("                   ✓ FIXED ║"),
-                    Err(_) => {
-                        println!("              ✗ CREATE FAIL ║");
-                        issues += 1;
-                    }
+        } else if args.fix {
+            match std::fs::create_dir_all(cache_dir) {
+                Ok(_) => println!("                   ✓ FIXED ║"),
+                Err(_) => {
+                    println!("              ✗ CREATE FAIL ║");
+                    issues += 1;
                 }
-            } else {
-                println!("                 ✗ MISSING ║");
-                warnings += 1;
             }
+        } else {
+            println!("                 ✗ MISSING ║");
+            warnings += 1;
         }
     } else {
         println!("              ✗ UNAVAILABLE ║");
@@ -2532,19 +2527,17 @@ async fn run_doctor(args: &DoctorArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
         let config_dir = dirs.config_dir();
         if config_dir.exists() {
             println!("                     ✓ OK ║");
-        } else {
-            if args.fix {
-                match std::fs::create_dir_all(config_dir) {
-                    Ok(_) => println!("                   ✓ FIXED ║"),
-                    Err(_) => {
-                        println!("              ✗ CREATE FAIL ║");
-                        issues += 1;
-                    }
+        } else if args.fix {
+            match std::fs::create_dir_all(config_dir) {
+                Ok(_) => println!("                   ✓ FIXED ║"),
+                Err(_) => {
+                    println!("              ✗ CREATE FAIL ║");
+                    issues += 1;
                 }
-            } else {
-                println!("                 ✗ MISSING ║");
-                warnings += 1;
             }
+        } else {
+            println!("                 ✗ MISSING ║");
+            warnings += 1;
         }
     } else {
         println!("              ✗ UNAVAILABLE ║");
