@@ -38,6 +38,7 @@ pub fn run() {
             commands::start_global_hosting,
             commands::connect_with_code,
             commands::generate_code,
+            commands::get_local_ip,
             // File browser
             commands::list_directory,
             commands::get_host_info,

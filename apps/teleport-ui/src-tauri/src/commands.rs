@@ -55,10 +55,26 @@ pub enum ServiceEvent {
     },
 }
 
+/// Host info structure
+#[derive(Clone, Serialize, Deserialize)]
+pub struct HostInfo {
+    pub share_path: String,
+    pub port: u16,
+    pub join_code: String,
+}
+
+/// Mount info structure
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MountInfo {
+    pub mount_point: String,
+}
+
 /// Handle for stopping the host
 struct HostHandle {
     /// Abort handle for the host task
     abort_handle: tokio::task::AbortHandle,
+    /// Host information
+    info: HostInfo,
 }
 
 /// Handle for stopping the client/mount
@@ -165,11 +181,16 @@ pub async fn start_hosting(
         }
     });
 
-    // Store the handle
+    // Store the handle with host info
     {
         let mut host_handle = state.host_handle.lock().await;
         *host_handle = Some(HostHandle {
             abort_handle: host_task.abort_handle(),
+            info: HostInfo {
+                share_path: share_path.to_string_lossy().to_string(),
+                port,
+                join_code: join_code.clone(),
+            },
         });
     }
 
@@ -346,35 +367,34 @@ pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
 
     let mut handle = state.client_handle.lock().await;
     if let Some(ch) = handle.take() {
-        // Unmount the filesystem
-        #[cfg(target_os = "macos")]
-        {
-            let mount_path = ch.mount_point.to_string_lossy().to_string();
-            // Try diskutil first (preferred on macOS)
-            let output = std::process::Command::new("diskutil")
-                .args(["unmount", &mount_path])
-                .output();
+        let mount_path = ch.mount_point.to_string_lossy().to_string();
 
-            if output.is_err() || !output.as_ref().map(|o| o.status.success()).unwrap_or(false) {
-                // Fallback to umount
+        // Force unmount in background - don't wait for it to complete
+        // This prevents freezing the UI/system when cancel is pressed
+        std::thread::spawn(move || {
+            #[cfg(target_os = "macos")]
+            {
+                // Use umount -f (force unmount) on macOS
+                info!("Force unmounting {}", mount_path);
                 let _ = std::process::Command::new("umount")
-                    .arg(&mount_path)
+                    .args(["-f", &mount_path])
                     .output();
             }
-        }
 
-        #[cfg(not(target_os = "macos"))]
-        {
-            let mount_path = ch.mount_point.to_string_lossy().to_string();
-            let _ = std::process::Command::new("fusermount")
-                .args(["-u", &mount_path])
-                .output();
-        }
+            #[cfg(not(target_os = "macos"))]
+            {
+                // Use fusermount -uz (lazy unmount) on Linux
+                info!("Force unmounting {}", mount_path);
+                let _ = std::process::Command::new("fusermount")
+                    .args(["-uz", &mount_path])
+                    .output();
+            }
+        });
 
-        // Wait for mount thread to finish (with timeout)
-        if let Some(thread) = ch.mount_thread {
-            // Give it a moment to unmount
-            let _ = thread.join();
+        // Don't wait for the mount thread - let it clean up in the background
+        // The force unmount will cause the FUSE mount to exit
+        if let Some(_thread) = ch.mount_thread {
+            info!("Disconnecting - mount thread will cleanup in background");
         }
 
         info!("Disconnected and unmounted");
@@ -513,23 +533,30 @@ pub async fn start_global_hosting(
         }
     });
 
-    // Store the handle
+    // Wait for the join code
+    let final_code = match code_rx.await {
+        Ok(Ok(code)) => {
+            info!("Global host started with join code: {}", code);
+            code
+        }
+        Ok(Err(e)) => return Err(e),
+        Err(_) => return Err("Failed to get join code".to_string()),
+    };
+
+    // Store the handle with host info
     {
         let mut host_handle = state.host_handle.lock().await;
         *host_handle = Some(HostHandle {
             abort_handle: host_task.abort_handle(),
+            info: HostInfo {
+                share_path: share_path.to_string_lossy().to_string(),
+                port: 4433, // Default port for global hosting
+                join_code: final_code.clone(),
+            },
         });
     }
 
-    // Wait for the join code
-    match code_rx.await {
-        Ok(Ok(code)) => {
-            info!("Global host started with join code: {}", code);
-            Ok(code)
-        }
-        Ok(Err(e)) => Err(e),
-        Err(_) => Err("Failed to get join code".to_string()),
-    }
+    Ok(final_code)
 }
 
 /// Connect to a global host using a join code
@@ -739,6 +766,49 @@ pub fn generate_code() -> String {
     generate_join_code()
 }
 
+/// Get the local IP address(es) of this machine
+#[tauri::command]
+pub fn get_local_ip() -> Result<Vec<String>, String> {
+    use std::net::UdpSocket;
+
+    // Try to get the primary local IP by connecting to a public DNS
+    let mut ips = Vec::new();
+
+    // Method 1: Connect to external address to find local IP
+    if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+        if socket.connect("8.8.8.8:80").is_ok() {
+            if let Ok(addr) = socket.local_addr() {
+                let ip = addr.ip().to_string();
+                if !ip.starts_with("127.") {
+                    ips.push(ip);
+                }
+            }
+        }
+    }
+
+    // Method 2: Get all network interfaces
+    use std::net::ToSocketAddrs;
+    if let Ok(hostname) = hostname::get() {
+        if let Some(hostname_str) = hostname.to_str() {
+            // Try to resolve hostname to get all IPs
+            if let Ok(addrs) = format!("{}:0", hostname_str).to_socket_addrs() {
+                for addr in addrs {
+                    let ip = addr.ip().to_string();
+                    if !ip.starts_with("127.") && !ip.starts_with("::") && !ips.contains(&ip) {
+                        ips.push(ip);
+                    }
+                }
+            }
+        }
+    }
+
+    if ips.is_empty() {
+        Err("Could not determine local IP address".to_string())
+    } else {
+        Ok(ips)
+    }
+}
+
 /// File entry for directory listing
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FileEntry {
@@ -814,9 +884,8 @@ pub fn list_directory(path: String) -> Result<Vec<FileEntry>, String> {
 #[tauri::command]
 pub async fn get_host_info(state: State<'_, Arc<AppState>>) -> Result<Option<HostInfo>, String> {
     let handle = state.host_handle.lock().await;
-    if handle.is_some() {
-        // Return stored host info - we'd need to track this
-        Ok(None) // Placeholder - actual implementation would return stored info
+    if let Some(h) = handle.as_ref() {
+        Ok(Some(h.info.clone()))
     } else {
         Ok(None)
     }
@@ -833,20 +902,6 @@ pub async fn get_mount_info(state: State<'_, Arc<AppState>>) -> Result<Option<Mo
     } else {
         Ok(None)
     }
-}
-
-/// Host info structure
-#[derive(Clone, Serialize, Deserialize)]
-pub struct HostInfo {
-    pub share_path: String,
-    pub port: u16,
-    pub join_code: String,
-}
-
-/// Mount info structure
-#[derive(Clone, Serialize, Deserialize)]
-pub struct MountInfo {
-    pub mount_point: String,
 }
 
 #[cfg(test)]

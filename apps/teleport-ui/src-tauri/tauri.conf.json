@@ -13,15 +13,15 @@
     "windows": [
       {
         "title": "Wormhole",
-        "width": 420,
-        "height": 600,
+        "width": 1200,
+        "height": 800,
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
         "transparent": false,
         "center": true,
-        "minWidth": 380,
-        "minHeight": 500
+        "minWidth": 900,
+        "minHeight": 600
       }
     ],
     "trayIcon": {
