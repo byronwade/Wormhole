@@ -7,6 +7,7 @@
 //! - Unix (Linux, macOS): Uses FUSE via the fuser crate
 //! - Windows: Uses WinFSP via the winfsp crate
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,7 +23,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 use tracing::{error, info};
 #[cfg(windows)]
-use winfsp::host::FileSystemHost;
+use winfsp::host::{FileSystemHost, VolumeParams};
 
 use teleport_core::crypto::generate_join_code;
 use teleport_daemon::bridge::FuseAsyncBridge;
@@ -71,6 +72,7 @@ pub enum ServiceEvent {
 /// Host info structure
 #[derive(Clone, Serialize, Deserialize)]
 pub struct HostInfo {
+    pub id: String,
     pub share_path: String,
     pub port: u16,
     pub join_code: String,
@@ -79,7 +81,9 @@ pub struct HostInfo {
 /// Mount info structure
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MountInfo {
+    pub id: String,
     pub mount_point: String,
+    pub join_code: String,
 }
 
 /// Handle for stopping the host
@@ -96,14 +100,19 @@ struct ClientHandle {
     mount_thread: Option<thread::JoinHandle<()>>,
     /// Mount point for cleanup
     mount_point: PathBuf,
+    /// Join code used for this connection
+    join_code: String,
 }
 
 /// Application state for managing host and client connections
+/// Supports multiple simultaneous hosts and clients via HashMaps
 pub struct AppState {
-    /// Currently hosting
-    host_handle: Mutex<Option<HostHandle>>,
-    /// Currently connected client
-    client_handle: Mutex<Option<ClientHandle>>,
+    /// Active hosts, keyed by share ID
+    host_handles: Mutex<HashMap<String, HostHandle>>,
+    /// Active client connections, keyed by connection ID
+    client_handles: Mutex<HashMap<String, ClientHandle>>,
+    /// Counter for auto-incrementing ports
+    next_port: Mutex<u16>,
     /// Tokio runtime for async operations
     runtime: Runtime,
 }
@@ -111,28 +120,40 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            host_handle: Mutex::new(None),
-            client_handle: Mutex::new(None),
+            host_handles: Mutex::new(HashMap::new()),
+            client_handles: Mutex::new(HashMap::new()),
+            next_port: Mutex::new(4433),
             runtime: Runtime::new().expect("Failed to create tokio runtime"),
         }
     }
 }
 
-/// Start hosting a folder using the real WormholeHost
+/// Start hosting a folder with a specific ID (supports multiple shares)
 #[tauri::command]
-pub async fn start_hosting(
+pub async fn start_hosting_with_id(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
+    id: String,
     path: String,
-    port: u16,
-) -> Result<(), String> {
-    info!("Starting host for path: {} on port {}", path, port);
+    port: Option<u16>,
+) -> Result<HostInfo, String> {
+    info!("Starting host {} for path: {}", id, path);
 
-    // Check if already hosting
+    // Get or auto-assign port
+    let port = if let Some(p) = port {
+        p
+    } else {
+        let mut next_port = state.next_port.lock().await;
+        let p = *next_port;
+        *next_port += 1;
+        p
+    };
+
+    // Check if this ID is already active
     {
-        let handle = state.host_handle.lock().await;
-        if handle.is_some() {
-            return Err("Already hosting. Stop current session first.".to_string());
+        let handles = state.host_handles.lock().await;
+        if handles.contains_key(&id) {
+            return Err(format!("Share {} is already active", id));
         }
     }
 
@@ -151,6 +172,7 @@ pub async fn start_hosting(
     let join_code_clone = join_code.clone();
     let path_clone = share_path.clone();
     let app_clone = app.clone();
+    let id_clone = id.clone();
 
     // Create host configuration
     let bind_addr: SocketAddr = format!("0.0.0.0:{}", port)
@@ -180,11 +202,11 @@ pub async fn start_hosting(
             },
         );
 
-        info!("Host serving {:?} on port {}", path_clone, port);
+        info!("Host {} serving {:?} on port {}", id_clone, path_clone, port);
 
         // This blocks until the host is stopped
         if let Err(e) = host.serve().await {
-            error!("Host error: {:?}", e);
+            error!("Host {} error: {:?}", id_clone, e);
             let _ = app_clone.emit(
                 "host-event",
                 ServiceEvent::Error {
@@ -194,36 +216,71 @@ pub async fn start_hosting(
         }
     });
 
+    let host_info = HostInfo {
+        id: id.clone(),
+        share_path: share_path.to_string_lossy().to_string(),
+        port,
+        join_code: join_code.clone(),
+    };
+
     // Store the handle with host info
     {
-        let mut host_handle = state.host_handle.lock().await;
-        *host_handle = Some(HostHandle {
-            abort_handle: host_task.abort_handle(),
-            info: HostInfo {
-                share_path: share_path.to_string_lossy().to_string(),
-                port,
-                join_code: join_code.clone(),
+        let mut handles = state.host_handles.lock().await;
+        handles.insert(
+            id.clone(),
+            HostHandle {
+                abort_handle: host_task.abort_handle(),
+                info: host_info.clone(),
             },
-        });
+        );
     }
 
-    info!("Host started with join code: {}", join_code);
+    info!("Host {} started with join code: {}", id, join_code);
+    Ok(host_info)
+}
+
+/// Stop hosting by ID
+#[tauri::command]
+pub async fn stop_hosting_by_id(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), String> {
+    info!("Stopping host: {}", id);
+
+    let mut handles = state.host_handles.lock().await;
+    if let Some(h) = handles.remove(&id) {
+        h.abort_handle.abort();
+        info!("Host {} stopped", id);
+        Ok(())
+    } else {
+        Err(format!("No active host with id: {}", id))
+    }
+}
+
+/// Legacy: Start hosting a folder (single share, backwards compatible)
+#[tauri::command]
+pub async fn start_hosting(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    path: String,
+    port: u16,
+) -> Result<(), String> {
+    // Use a fixed ID for legacy single-share mode
+    let id = "default".to_string();
+
+    // Stop any existing default host first
+    let _ = stop_hosting_by_id(state.clone(), id.clone()).await;
+
+    // Start with the new function
+    start_hosting_with_id(app, state, id, path, Some(port)).await?;
     Ok(())
 }
 
-/// Stop hosting
+/// Legacy: Stop hosting (single share, backwards compatible)
 #[tauri::command]
 pub async fn stop_hosting(state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    info!("Stopping host");
-
-    let mut handle = state.host_handle.lock().await;
-    if let Some(h) = handle.take() {
-        h.abort_handle.abort();
-        info!("Host stopped");
-        Ok(())
-    } else {
-        Err("Not currently hosting".to_string())
-    }
+    // Stop the default host
+    stop_hosting_by_id(state, "default".to_string()).await
 }
 
 /// Connect to a peer and mount their shared folder (Unix only)
@@ -240,13 +297,8 @@ pub async fn connect_to_peer(
         host_address, mount_path
     );
 
-    // Check if already connected
-    {
-        let handle = state.client_handle.lock().await;
-        if handle.is_some() {
-            return Err("Already connected. Disconnect first.".to_string());
-        }
-    }
+    // For legacy single-connection, use "default" ID
+    let _ = disconnect_by_id(state.clone(), "default".to_string()).await;
 
     // Parse the host address
     let server_addr: SocketAddr = host_address
@@ -364,11 +416,15 @@ pub async fn connect_to_peer(
 
     // Store the handle
     {
-        let mut client_handle = state.client_handle.lock().await;
-        *client_handle = Some(ClientHandle {
-            mount_thread: Some(mount_thread),
-            mount_point,
-        });
+        let mut handles = state.client_handles.lock().await;
+        handles.insert(
+            "default".to_string(),
+            ClientHandle {
+                mount_thread: Some(mount_thread),
+                mount_point,
+                join_code: host_address.clone(), // Use host_address as identifier
+            },
+        );
     }
 
     Ok(())
@@ -388,13 +444,8 @@ pub async fn connect_to_peer(
         host_address, mount_path
     );
 
-    // Check if already connected
-    {
-        let handle = state.client_handle.lock().await;
-        if handle.is_some() {
-            return Err("Already connected. Disconnect first.".to_string());
-        }
-    }
+    // For legacy single-connection, use "default" ID
+    let _ = disconnect_by_id(state.clone(), "default".to_string()).await;
 
     // Parse the host address
     let server_addr: SocketAddr = host_address
@@ -472,7 +523,12 @@ pub async fn connect_to_peer(
         info!("Mounting filesystem via WinFSP at {}", mount_path_str);
         let fs = WormholeWinFS::new(bridge);
 
-        match FileSystemHost::new(fs) {
+        // Create volume parameters
+        let mut params = VolumeParams::new();
+        params.filesystem_name("Wormhole");
+        params.volume_name("Wormhole Share");
+
+        match FileSystemHost::new(params, fs) {
             Ok(mut host) => {
                 if let Err(e) = host.mount(&mount_path_str) {
                     error!("Mount failed: {:?}", e);
@@ -515,31 +571,36 @@ pub async fn connect_to_peer(
 
     // Store the handle
     {
-        let mut client_handle = state.client_handle.lock().await;
-        *client_handle = Some(ClientHandle {
-            mount_thread: Some(mount_thread),
-            mount_point: PathBuf::from(&mount_path),
-        });
+        let mut handles = state.client_handles.lock().await;
+        handles.insert(
+            "default".to_string(),
+            ClientHandle {
+                mount_thread: Some(mount_thread),
+                mount_point: PathBuf::from(&mount_path),
+                join_code: host_address.clone(),
+            },
+        );
     }
 
     Ok(())
 }
 
-/// Disconnect from peer and unmount
+/// Disconnect by connection ID
 #[tauri::command]
-pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    info!("Disconnecting");
+pub async fn disconnect_by_id(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), String> {
+    info!("Disconnecting connection: {}", id);
 
-    let mut handle = state.client_handle.lock().await;
-    if let Some(ch) = handle.take() {
+    let mut handles = state.client_handles.lock().await;
+    if let Some(ch) = handles.remove(&id) {
         let mount_path = ch.mount_point.to_string_lossy().to_string();
 
         // Force unmount in background - don't wait for it to complete
-        // This prevents freezing the UI/system when cancel is pressed
         std::thread::spawn(move || {
             #[cfg(target_os = "macos")]
             {
-                // Use umount -f (force unmount) on macOS
                 info!("Force unmounting {}", mount_path);
                 let _ = std::process::Command::new("umount")
                     .args(["-f", &mount_path])
@@ -548,7 +609,6 @@ pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
 
             #[cfg(target_os = "linux")]
             {
-                // Use fusermount -uz (lazy unmount) on Linux
                 info!("Force unmounting {}", mount_path);
                 let _ = std::process::Command::new("fusermount")
                     .args(["-uz", &mount_path])
@@ -557,22 +617,34 @@ pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
 
             #[cfg(target_os = "windows")]
             {
-                // Windows: Use WinFSP's umount command
                 info!("Force unmounting WinFSP volume: {}", mount_path);
-                // The mount thread will clean up when the host is stopped
-                // WinFSP drives can be unmounted via the host.unmount() call
-                // or by stopping the host which we do when the thread exits
             }
         });
 
-        // Don't wait for the mount thread - let it clean up in the background
-        // The force unmount will cause the filesystem mount to exit
         if let Some(_thread) = ch.mount_thread {
-            info!("Disconnecting - mount thread will cleanup in background");
+            info!("Disconnecting {} - mount thread will cleanup in background", id);
         }
 
-        info!("Disconnected and unmounted");
+        info!("Disconnected {} and unmounted", id);
         Ok(())
+    } else {
+        Err(format!("No active connection with id: {}", id))
+    }
+}
+
+/// Legacy: Disconnect from peer and unmount (backwards compatible)
+#[tauri::command]
+pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
+    // Try to disconnect the default connection first
+    if disconnect_by_id(state.clone(), "default".to_string()).await.is_ok() {
+        return Ok(());
+    }
+
+    // Otherwise disconnect any connection
+    let handles = state.client_handles.lock().await;
+    if let Some(id) = handles.keys().next().cloned() {
+        drop(handles);
+        disconnect_by_id(state, id).await
     } else {
         Err("Not currently connected".to_string())
     }
@@ -581,39 +653,40 @@ pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
 /// Get application status
 #[tauri::command]
 pub async fn get_status(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
-    let is_hosting = state.host_handle.lock().await.is_some();
-    let is_connected = state.client_handle.lock().await.is_some();
-    let mount_point = state
-        .client_handle
-        .lock()
-        .await
-        .as_ref()
-        .map(|h| h.mount_point.to_string_lossy().to_string());
+    let host_handles = state.host_handles.lock().await;
+    let client_handles = state.client_handles.lock().await;
+
+    let is_hosting = !host_handles.is_empty();
+    let is_connected = !client_handles.is_empty();
+    let host_count = host_handles.len();
+    let connection_count = client_handles.len();
+    let mount_point = client_handles.values().next().map(|h| h.mount_point.to_string_lossy().to_string());
 
     Ok(serde_json::json!({
         "is_hosting": is_hosting,
         "is_connected": is_connected,
+        "host_count": host_count,
+        "connection_count": connection_count,
         "mount_point": mount_point
     }))
 }
 
-/// Start global hosting via signal server
-///
-/// This allows peers from anywhere on the internet to connect using a join code.
+/// Start global hosting via signal server with ID (supports multiple shares)
 #[tauri::command]
-pub async fn start_global_hosting(
+pub async fn start_global_hosting_with_id(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
+    id: String,
     path: String,
     join_code: Option<String>,
-) -> Result<String, String> {
-    info!("Starting global host for path: {}", path);
+) -> Result<HostInfo, String> {
+    info!("Starting global host {} for path: {}", id, path);
 
-    // Check if already hosting
+    // Check if this ID is already active
     {
-        let handle = state.host_handle.lock().await;
-        if handle.is_some() {
-            return Err("Already hosting. Stop current session first.".to_string());
+        let handles = state.host_handles.lock().await;
+        if handles.contains_key(&id) {
+            return Err(format!("Share {} is already active", id));
         }
     }
 
@@ -627,25 +700,31 @@ pub async fn start_global_hosting(
         return Err(format!("Path is not a directory: {}", path));
     }
 
+    // Auto-increment port for multiple shares
+    let port = {
+        let mut next_port = state.next_port.lock().await;
+        let p = *next_port;
+        *next_port += 1;
+        p
+    };
+
     let config = GlobalHostConfig {
         shared_path: share_path.clone(),
-        signal_server: None, // Use default
+        signal_server: None,
         join_code,
-        quic_port: 4433,
+        quic_port: port,
         max_connections: 10,
     };
 
     let app_clone = app.clone();
     let path_clone = share_path.clone();
+    let id_clone = id.clone();
 
-    // Use a channel to get the join code back from the async task
     let (code_tx, code_rx) = tokio::sync::oneshot::channel::<Result<String, String>>();
 
-    // Spawn the host task
     let host_task = state.runtime.spawn(async move {
         let mut final_code = String::new();
 
-        // Event callback to emit events to frontend
         let event_callback = |event: GlobalEvent| match &event {
             GlobalEvent::WaitingForPeer { join_code } => {
                 final_code = join_code.clone();
@@ -705,57 +784,86 @@ pub async fn start_global_hosting(
                 let _ = code_tx.send(Ok(final_code));
             }
             Err(e) => {
-                error!("Global host error: {:?}", e);
+                error!("Global host {} error: {:?}", id_clone, e);
                 let _ = code_tx.send(Err(format!("Global host error: {}", e)));
             }
         }
     });
 
-    // Wait for the join code
     let final_code = match code_rx.await {
         Ok(Ok(code)) => {
-            info!("Global host started with join code: {}", code);
+            info!("Global host {} started with join code: {}", id, code);
             code
         }
         Ok(Err(e)) => return Err(e),
         Err(_) => return Err("Failed to get join code".to_string()),
     };
 
-    // Store the handle with host info
+    let host_info = HostInfo {
+        id: id.clone(),
+        share_path: share_path.to_string_lossy().to_string(),
+        port,
+        join_code: final_code.clone(),
+    };
+
     {
-        let mut host_handle = state.host_handle.lock().await;
-        *host_handle = Some(HostHandle {
-            abort_handle: host_task.abort_handle(),
-            info: HostInfo {
-                share_path: share_path.to_string_lossy().to_string(),
-                port: 4433, // Default port for global hosting
-                join_code: final_code.clone(),
+        let mut handles = state.host_handles.lock().await;
+        handles.insert(
+            id.clone(),
+            HostHandle {
+                abort_handle: host_task.abort_handle(),
+                info: host_info.clone(),
             },
-        });
+        );
     }
 
-    Ok(final_code)
+    Ok(host_info)
 }
 
-/// Connect to a global host using a join code (Unix only)
-#[cfg(unix)]
+/// Legacy: Start global hosting (backwards compatible)
 #[tauri::command]
-pub async fn connect_with_code(
+pub async fn start_global_hosting(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
+    path: String,
+    join_code: Option<String>,
+) -> Result<String, String> {
+    let id = "default".to_string();
+    let _ = stop_hosting_by_id(state.clone(), id.clone()).await;
+    let host_info = start_global_hosting_with_id(app, state, id, path, join_code).await?;
+    Ok(host_info.join_code)
+}
+
+/// Connect to a global host using a join code with ID (Unix only)
+#[cfg(unix)]
+#[tauri::command]
+pub async fn connect_with_code_and_id(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
     join_code: String,
     mount_path: String,
-) -> Result<(), String> {
+) -> Result<MountInfo, String> {
     info!(
-        "Connecting with code {} to mount at {}",
-        join_code, mount_path
+        "Connecting {} with code {} to mount at {}",
+        id, join_code, mount_path
     );
 
-    // Check if already connected
+    // Check if this ID is already active
     {
-        let handle = state.client_handle.lock().await;
-        if handle.is_some() {
-            return Err("Already connected. Disconnect first.".to_string());
+        let handles = state.client_handles.lock().await;
+        if handles.contains_key(&id) {
+            return Err(format!("Connection {} is already active", id));
+        }
+    }
+
+    // Check if mount path is already in use
+    {
+        let handles = state.client_handles.lock().await;
+        for h in handles.values() {
+            if h.mount_point.to_string_lossy() == mount_path {
+                return Err(format!("Mount path {} is already in use", mount_path));
+            }
         }
     }
 
@@ -931,20 +1039,30 @@ pub async fn connect_with_code(
         info!("Filesystem unmounted");
     });
 
+    let mount_info = MountInfo {
+        id: id.clone(),
+        mount_point: mount_point.to_string_lossy().to_string(),
+        join_code: join_code.clone(),
+    };
+
     // Store the handle
     {
-        let mut client_handle = state.client_handle.lock().await;
-        *client_handle = Some(ClientHandle {
-            mount_thread: Some(mount_thread),
-            mount_point,
-        });
+        let mut handles = state.client_handles.lock().await;
+        handles.insert(
+            id.clone(),
+            ClientHandle {
+                mount_thread: Some(mount_thread),
+                mount_point,
+                join_code,
+            },
+        );
     }
 
-    Ok(())
+    Ok(mount_info)
 }
 
-/// Connect to a global host using a join code (Windows - WinFSP)
-#[cfg(windows)]
+/// Legacy: Connect to a global host using a join code (Unix only)
+#[cfg(unix)]
 #[tauri::command]
 pub async fn connect_with_code(
     app: AppHandle,
@@ -952,16 +1070,42 @@ pub async fn connect_with_code(
     join_code: String,
     mount_path: String,
 ) -> Result<(), String> {
+    let id = "default".to_string();
+    let _ = disconnect_by_id(state.clone(), id.clone()).await;
+    connect_with_code_and_id(app, state, id, join_code, mount_path).await?;
+    Ok(())
+}
+
+/// Connect to a global host using a join code with ID (Windows - WinFSP)
+#[cfg(windows)]
+#[tauri::command]
+pub async fn connect_with_code_and_id(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+    join_code: String,
+    mount_path: String,
+) -> Result<MountInfo, String> {
     info!(
-        "Connecting with code {} to mount at {}",
-        join_code, mount_path
+        "Connecting {} with code {} to mount at {}",
+        id, join_code, mount_path
     );
 
-    // Check if already connected
+    // Check if this ID is already active
     {
-        let handle = state.client_handle.lock().await;
-        if handle.is_some() {
-            return Err("Already connected. Disconnect first.".to_string());
+        let handles = state.client_handles.lock().await;
+        if handles.contains_key(&id) {
+            return Err(format!("Connection {} is already active", id));
+        }
+    }
+
+    // Check if mount path is already in use
+    {
+        let handles = state.client_handles.lock().await;
+        for h in handles.values() {
+            if h.mount_point.to_string_lossy() == mount_path {
+                return Err(format!("Mount path {} is already in use", mount_path));
+            }
         }
     }
 
@@ -1097,7 +1241,12 @@ pub async fn connect_with_code(
         info!("Mounting filesystem via WinFSP at {}", mount_path_str);
         let fs = WormholeWinFS::new(bridge);
 
-        match FileSystemHost::new(fs) {
+        // Create volume parameters
+        let mut params = VolumeParams::new();
+        params.filesystem_name("Wormhole");
+        params.volume_name("Wormhole Share");
+
+        match FileSystemHost::new(params, fs) {
             Ok(mut host) => {
                 if let Err(e) = host.mount(&mount_path_str) {
                     error!("Mount failed: {:?}", e);
@@ -1137,15 +1286,40 @@ pub async fn connect_with_code(
         }
     });
 
+    let mount_info = MountInfo {
+        id: id.clone(),
+        mount_point: mount_point.to_string_lossy().to_string(),
+        join_code: join_code.clone(),
+    };
+
     // Store the handle
     {
-        let mut client_handle = state.client_handle.lock().await;
-        *client_handle = Some(ClientHandle {
-            mount_thread: Some(mount_thread),
-            mount_point,
-        });
+        let mut handles = state.client_handles.lock().await;
+        handles.insert(
+            id.clone(),
+            ClientHandle {
+                mount_thread: Some(mount_thread),
+                mount_point,
+                join_code,
+            },
+        );
     }
 
+    Ok(mount_info)
+}
+
+/// Legacy: Connect to a global host using a join code (Windows)
+#[cfg(windows)]
+#[tauri::command]
+pub async fn connect_with_code(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    join_code: String,
+    mount_path: String,
+) -> Result<(), String> {
+    let id = "default".to_string();
+    let _ = disconnect_by_id(state.clone(), id.clone()).await;
+    connect_with_code_and_id(app, state, id, join_code, mount_path).await?;
     Ok(())
 }
 
@@ -1267,28 +1441,43 @@ pub fn list_directory(path: String) -> Result<Vec<FileEntry>, String> {
     Ok(entries)
 }
 
-/// Get current hosting info
+/// Get all active hosts
 #[tauri::command]
-pub async fn get_host_info(state: State<'_, Arc<AppState>>) -> Result<Option<HostInfo>, String> {
-    let handle = state.host_handle.lock().await;
-    if let Some(h) = handle.as_ref() {
-        Ok(Some(h.info.clone()))
-    } else {
-        Ok(None)
-    }
+pub async fn get_active_hosts(state: State<'_, Arc<AppState>>) -> Result<Vec<HostInfo>, String> {
+    let handles = state.host_handles.lock().await;
+    Ok(handles.values().map(|h| h.info.clone()).collect())
 }
 
-/// Get current mount info
+/// Get all active mounts/connections
+#[tauri::command]
+pub async fn get_active_mounts(state: State<'_, Arc<AppState>>) -> Result<Vec<MountInfo>, String> {
+    let handles = state.client_handles.lock().await;
+    Ok(handles
+        .iter()
+        .map(|(id, h)| MountInfo {
+            id: id.clone(),
+            mount_point: h.mount_point.to_string_lossy().to_string(),
+            join_code: h.join_code.clone(),
+        })
+        .collect())
+}
+
+/// Get current hosting info (legacy - returns first active host)
+#[tauri::command]
+pub async fn get_host_info(state: State<'_, Arc<AppState>>) -> Result<Option<HostInfo>, String> {
+    let handles = state.host_handles.lock().await;
+    Ok(handles.values().next().map(|h| h.info.clone()))
+}
+
+/// Get current mount info (legacy - returns first active mount)
 #[tauri::command]
 pub async fn get_mount_info(state: State<'_, Arc<AppState>>) -> Result<Option<MountInfo>, String> {
-    let handle = state.client_handle.lock().await;
-    if let Some(client) = handle.as_ref() {
-        Ok(Some(MountInfo {
-            mount_point: client.mount_point.to_string_lossy().to_string(),
-        }))
-    } else {
-        Ok(None)
-    }
+    let handles = state.client_handles.lock().await;
+    Ok(handles.iter().next().map(|(id, h)| MountInfo {
+        id: id.clone(),
+        mount_point: h.mount_point.to_string_lossy().to_string(),
+        join_code: h.join_code.clone(),
+    }))
 }
 
 /// Delete a file or folder
@@ -1459,6 +1648,123 @@ pub fn check_fuse_installed() -> bool {
     {
         false
     }
+}
+
+/// Index entry for fast searching
+#[derive(Clone, Serialize, Deserialize)]
+pub struct IndexEntry {
+    pub name: String,
+    pub name_lower: String, // Pre-computed lowercase for fast search
+    pub path: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub modified: Option<u64>,
+    pub root_path: String,   // Which share/mount this belongs to
+    pub root_name: String,   // Display name for the source
+    pub root_type: String,   // "share" or "connection"
+}
+
+/// Recursively index all files in a directory
+/// Returns a flat list of all files for instant search
+#[tauri::command]
+pub fn index_directory(
+    path: String,
+    root_name: String,
+    root_type: String,
+    max_depth: Option<u32>,
+) -> Result<Vec<IndexEntry>, String> {
+    let root_path = PathBuf::from(&path);
+
+    if !root_path.exists() {
+        return Err(format!("Path does not exist: {}", root_path.display()));
+    }
+
+    if !root_path.is_dir() {
+        return Err(format!("Path is not a directory: {}", root_path.display()));
+    }
+
+    let mut entries = Vec::new();
+    let max_depth = max_depth.unwrap_or(10); // Default max depth
+
+    fn walk_dir(
+        dir: &PathBuf,
+        entries: &mut Vec<IndexEntry>,
+        root_path: &str,
+        root_name: &str,
+        root_type: &str,
+        current_depth: u32,
+        max_depth: u32,
+    ) {
+        if current_depth > max_depth {
+            return;
+        }
+
+        if let Ok(read_dir) = std::fs::read_dir(dir) {
+            for entry in read_dir.flatten() {
+                let file_path = entry.path();
+                let metadata = entry.metadata().ok();
+                let name = entry.file_name().to_string_lossy().to_string();
+
+                // Skip hidden files/folders
+                if name.starts_with('.') {
+                    continue;
+                }
+
+                let is_dir = file_path.is_dir();
+                let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
+                let modified = metadata.as_ref().and_then(|m| {
+                    m.modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs())
+                });
+
+                entries.push(IndexEntry {
+                    name: name.clone(),
+                    name_lower: name.to_lowercase(),
+                    path: file_path.to_string_lossy().to_string(),
+                    is_dir,
+                    size,
+                    modified,
+                    root_path: root_path.to_string(),
+                    root_name: root_name.to_string(),
+                    root_type: root_type.to_string(),
+                });
+
+                // Recurse into directories
+                if is_dir {
+                    walk_dir(
+                        &file_path,
+                        entries,
+                        root_path,
+                        root_name,
+                        root_type,
+                        current_depth + 1,
+                        max_depth,
+                    );
+                }
+            }
+        }
+    }
+
+    walk_dir(
+        &root_path,
+        &mut entries,
+        &path,
+        &root_name,
+        &root_type,
+        0,
+        max_depth,
+    );
+
+    info!(
+        "Indexed {} files from {} ({})",
+        entries.len(),
+        root_name,
+        path
+    );
+
+    Ok(entries)
 }
 
 #[cfg(test)]
