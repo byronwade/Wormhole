@@ -340,10 +340,16 @@ function ShareCard({
           )}
         </div>
         <div className="flex items-center gap-3 text-xs text-zinc-500">
-          <code className="text-zinc-400">{share.joinCode}</code>
-          <span>Port {share.port}</span>
-          <span>{formatRelativeTime(share.lastActiveAt)}</span>
+          {share.joinCode && <code className="text-violet-400 font-medium">{share.joinCode}</code>}
+          {share.port && <span>Port {share.port}</span>}
+          {share.lastActiveAt && <span>{formatRelativeTime(share.lastActiveAt)}</span>}
         </div>
+        {/* Share link - truncated */}
+        {share.shareLink && (
+          <div className="text-xs text-zinc-600 truncate mt-0.5">
+            {share.shareLink}
+          </div>
+        )}
       </div>
 
       {/* Actions - Right side icons */}
@@ -451,9 +457,9 @@ function ConnectionCard({
           <StatusBadge status={connection.status} />
         </div>
         <div className="flex items-center gap-3 text-xs text-zinc-500">
-          <code className="text-zinc-400">{connection.joinCode}</code>
-          {isConnected && <span className="truncate max-w-[200px]">{connection.mountPoint}</span>}
-          <span>{formatRelativeTime(connection.lastConnectedAt)}</span>
+          {connection.joinCode && <code className="text-green-400 font-medium">{connection.joinCode}</code>}
+          {isConnected && connection.mountPoint && <span className="truncate max-w-[200px]">{connection.mountPoint}</span>}
+          {connection.lastConnectedAt && <span>{formatRelativeTime(connection.lastConnectedAt)}</span>}
         </div>
         {/* Error message inline */}
         {connection.status === "error" && connection.errorMessage && (
@@ -2308,18 +2314,8 @@ function App() {
             <div className="flex-1 flex flex-col bg-zinc-900 min-h-0">
               {connections.length > 0 ? (
                 <>
-                  {/* Column Headers */}
-                  <div className="px-5 py-2 flex items-center border-b border-zinc-800">
-                    <div className="flex-1 grid grid-cols-[1fr_120px_100px] gap-4 text-xs text-zinc-500">
-                      <div>Name</div>
-                      <div>Code</div>
-                      <div>Last Used</div>
-                    </div>
-                    <div className="w-20" /> {/* Space for action icons */}
-                  </div>
-
                   {/* Connection List */}
-                  <div className="flex-1 overflow-y-auto px-2 py-1">
+                  <div className="flex-1 overflow-y-auto px-2 py-2">
                     {connections.map((conn) => (
                       <MemoizedConnectionCard
                         key={conn.id}
@@ -2381,19 +2377,8 @@ function App() {
             <div className="flex-1 flex flex-col bg-zinc-900 min-h-0">
               {shares.length > 0 ? (
                 <>
-                  {/* Column Headers */}
-                  <div className="px-5 py-2 flex items-center border-b border-zinc-800">
-                    <div className="flex-1 grid grid-cols-[1fr_100px_80px_100px] gap-4 text-xs text-zinc-500">
-                      <div>Name</div>
-                      <div>Code</div>
-                      <div>Port</div>
-                      <div>Last Active</div>
-                    </div>
-                    <div className="w-24" /> {/* Space for action icons */}
-                  </div>
-
                   {/* Share List */}
-                  <div className="flex-1 overflow-y-auto px-2 py-1">
+                  <div className="flex-1 overflow-y-auto px-2 py-2">
                     {shares.map((share) => (
                       <MemoizedShareCard
                         key={share.id}
@@ -2572,7 +2557,7 @@ function App() {
               {favorites.length > 0 ? (
                 <>
                   {/* Column Headers */}
-                  <div className="px-5 py-2 flex items-center border-b border-zinc-800">
+                  <div className="px-5 py-2 flex items-center">
                     <div className="flex-1 grid grid-cols-[1fr_100px_80px] gap-4 text-xs text-zinc-500">
                       <div>Name</div>
                       <div>Source</div>
