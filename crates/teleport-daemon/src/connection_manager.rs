@@ -79,7 +79,10 @@ pub struct RegisteredShare {
 #[derive(Clone, Debug)]
 pub enum ConnectionEvent {
     /// A host connected successfully
-    HostConnected { host_id: String, host_info: HostInfo },
+    HostConnected {
+        host_id: String,
+        host_info: HostInfo,
+    },
     /// A host disconnected
     HostDisconnected { host_id: String, reason: String },
     /// A host is reconnecting
@@ -117,7 +120,10 @@ struct ManagedHost {
 
 impl ManagedHost {
     fn new(config: HostConnectionConfig) -> Self {
-        let name = config.display_name.clone().unwrap_or_else(|| config.address.to_string());
+        let name = config
+            .display_name
+            .clone()
+            .unwrap_or_else(|| config.address.to_string());
         Self {
             config,
             connection: None,
@@ -173,7 +179,11 @@ impl ConnectionManager {
     }
 
     /// Add and connect to a host
-    pub async fn add_host(&self, host_id: String, config: HostConnectionConfig) -> Result<(), ConnectionError> {
+    pub async fn add_host(
+        &self,
+        host_id: String,
+        config: HostConnectionConfig,
+    ) -> Result<(), ConnectionError> {
         info!("Adding host: {} at {}", host_id, config.address);
 
         let mut host = ManagedHost::new(config);
@@ -191,7 +201,9 @@ impl ConnectionManager {
     #[allow(deprecated)] // Using insecure endpoint for LAN/dev connections
     async fn connect_host(&self, host_id: &str) -> Result<(), ConnectionError> {
         let config = {
-            let host = self.hosts.get(host_id)
+            let host = self
+                .hosts
+                .get(host_id)
                 .ok_or_else(|| ConnectionError::HostNotFound(host_id.to_string()))?;
             host.config.clone()
         };
@@ -247,10 +259,15 @@ impl ConnectionManager {
     }
 
     /// Perform handshake with host
-    async fn handshake(&self, conn: &QuicConnection) -> Result<([u8; 16], String, Vec<ShareInfo>), ConnectionError> {
+    async fn handshake(
+        &self,
+        conn: &QuicConnection,
+    ) -> Result<([u8; 16], String, Vec<ShareInfo>), ConnectionError> {
         use teleport_core::{HelloMessage, NetMessage, PROTOCOL_VERSION};
 
-        let (mut send, mut recv) = conn.open_stream().await
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
         // Generate client ID
@@ -265,11 +282,13 @@ impl ConnectionManager {
             capabilities: vec!["read".into(), "write".into(), "multi-share".into()],
         });
 
-        send_message(&mut send, &hello).await
+        send_message(&mut send, &hello)
+            .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
         // Receive HelloAck
-        let response = recv_message(&mut recv).await
+        let response = recv_message(&mut recv)
+            .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
         match response {
@@ -290,12 +309,10 @@ impl ConnectionManager {
 
                 Ok((ack.session_id, ack.host_name, shares))
             }
-            NetMessage::Error(e) => {
-                Err(ConnectionError::Protocol(e.message))
-            }
-            _ => {
-                Err(ConnectionError::Protocol("unexpected response to Hello".into()))
-            }
+            NetMessage::Error(e) => Err(ConnectionError::Protocol(e.message)),
+            _ => Err(ConnectionError::Protocol(
+                "unexpected response to Hello".into(),
+            )),
         }
     }
 
@@ -367,7 +384,9 @@ impl ConnectionManager {
             }
         }
 
-        let _ = self.event_tx.send(ConnectionEvent::ShareDiscovered { share });
+        let _ = self
+            .event_tx
+            .send(ConnectionEvent::ShareDiscovered { share });
         info!("Registered share at index {}", index);
         Some(index)
     }
@@ -376,14 +395,18 @@ impl ConnectionManager {
     pub async fn remove_host(&self, host_id: &str) {
         if let Some((_, _host)) = self.hosts.remove(host_id) {
             // Remove all shares from this host
-            let share_ids: Vec<ShareId> = self.shares.iter()
+            let share_ids: Vec<ShareId> = self
+                .shares
+                .iter()
                 .filter(|s| s.host_id == host_id)
                 .map(|s| s.info.id)
                 .collect();
 
             for share_id in share_ids {
                 self.shares.remove(&share_id);
-                let _ = self.event_tx.send(ConnectionEvent::ShareRemoved { share_id });
+                let _ = self
+                    .event_tx
+                    .send(ConnectionEvent::ShareRemoved { share_id });
             }
 
             let _ = self.event_tx.send(ConnectionEvent::HostDisconnected {
@@ -442,16 +465,24 @@ impl ConnectionManager {
     }
 
     /// Perform a lookup operation on the appropriate host
-    pub async fn lookup(&self, global_parent: GlobalInode, name: &str) -> Result<FileAttr, FuseError> {
+    pub async fn lookup(
+        &self,
+        global_parent: GlobalInode,
+        name: &str,
+    ) -> Result<FileAttr, FuseError> {
         use teleport_core::{LookupRequest, LookupResponse, NetMessage};
 
-        let (share, local_parent) = self.resolve_inode(global_parent)
+        let (share, local_parent) = self
+            .resolve_inode(global_parent)
             .ok_or(FuseError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
-        let (mut send, mut recv) = conn.open_stream().await
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         let request = NetMessage::Lookup(LookupRequest {
@@ -459,25 +490,25 @@ impl ConnectionManager {
             name: name.to_string(),
         });
 
-        send_message(&mut send, &request).await
+        send_message(&mut send, &request)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv).await
+        let response = recv_message(&mut recv)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         match response {
-            NetMessage::LookupResponse(LookupResponse { attr: Some(mut attr) }) => {
+            NetMessage::LookupResponse(LookupResponse {
+                attr: Some(mut attr),
+            }) => {
                 // Convert local inode to global inode
                 let global = GlobalInode::new(share.index, attr.inode);
                 attr.inode = global.to_packed();
                 Ok(attr)
             }
-            NetMessage::LookupResponse(LookupResponse { attr: None }) => {
-                Err(FuseError::NotFound)
-            }
-            NetMessage::Error(e) => {
-                Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message)))
-            }
+            NetMessage::LookupResponse(LookupResponse { attr: None }) => Err(FuseError::NotFound),
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
             _ => Err(FuseError::Internal("unexpected response".into())),
         }
     }
@@ -486,42 +517,48 @@ impl ConnectionManager {
     pub async fn getattr(&self, global: GlobalInode) -> Result<FileAttr, FuseError> {
         use teleport_core::{GetAttrRequest, GetAttrResponse, NetMessage};
 
-        let (share, local_inode) = self.resolve_inode(global)
-            .ok_or(FuseError::NotFound)?;
+        let (share, local_inode) = self.resolve_inode(global).ok_or(FuseError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
-        let (mut send, mut recv) = conn.open_stream().await
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         let request = NetMessage::GetAttr(GetAttrRequest { inode: local_inode });
 
-        send_message(&mut send, &request).await
+        send_message(&mut send, &request)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv).await
+        let response = recv_message(&mut recv)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         match response {
-            NetMessage::GetAttrResponse(GetAttrResponse { attr: Some(mut attr) }) => {
+            NetMessage::GetAttrResponse(GetAttrResponse {
+                attr: Some(mut attr),
+            }) => {
                 // Convert local inode to global inode
                 let global = GlobalInode::new(share.index, attr.inode);
                 attr.inode = global.to_packed();
                 Ok(attr)
             }
-            NetMessage::GetAttrResponse(GetAttrResponse { attr: None }) => {
-                Err(FuseError::NotFound)
-            }
-            NetMessage::Error(e) => {
-                Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message)))
-            }
+            NetMessage::GetAttrResponse(GetAttrResponse { attr: None }) => Err(FuseError::NotFound),
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
             _ => Err(FuseError::Internal("unexpected response".into())),
         }
     }
 
     /// Read directory contents
-    pub async fn readdir(&self, global: GlobalInode, offset: u64) -> Result<Vec<DirEntry>, FuseError> {
+    pub async fn readdir(
+        &self,
+        global: GlobalInode,
+        offset: u64,
+    ) -> Result<Vec<DirEntry>, FuseError> {
         use teleport_core::{ListDirRequest, ListDirResponse, NetMessage};
 
         // Special case: virtual root lists all shares
@@ -538,13 +575,15 @@ impl ConnectionManager {
             return Ok(entries);
         }
 
-        let (share, local_inode) = self.resolve_inode(global)
-            .ok_or(FuseError::NotFound)?;
+        let (share, local_inode) = self.resolve_inode(global).ok_or(FuseError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
-        let (mut send, mut recv) = conn.open_stream().await
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         let request = NetMessage::ListDir(ListDirRequest {
@@ -553,10 +592,12 @@ impl ConnectionManager {
             limit: 1000,
         });
 
-        send_message(&mut send, &request).await
+        send_message(&mut send, &request)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv).await
+        let response = recv_message(&mut recv)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         match response {
@@ -568,24 +609,29 @@ impl ConnectionManager {
                 }
                 Ok(entries)
             }
-            NetMessage::Error(e) => {
-                Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message)))
-            }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
             _ => Err(FuseError::Internal("unexpected response".into())),
         }
     }
 
     /// Read file data
-    pub async fn read(&self, global: GlobalInode, offset: u64, size: u32) -> Result<Vec<u8>, FuseError> {
+    pub async fn read(
+        &self,
+        global: GlobalInode,
+        offset: u64,
+        size: u32,
+    ) -> Result<Vec<u8>, FuseError> {
         use teleport_core::{ChunkId, NetMessage, ReadChunkRequest, ReadChunkResponse};
 
-        let (share, local_inode) = self.resolve_inode(global)
-            .ok_or(FuseError::NotFound)?;
+        let (share, local_inode) = self.resolve_inode(global).ok_or(FuseError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
-        let (mut send, mut recv) = conn.open_stream().await
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         let chunk_id = ChunkId::from_offset(local_inode, offset);
@@ -595,10 +641,12 @@ impl ConnectionManager {
             priority: 0,
         });
 
-        send_message(&mut send, &request).await
+        send_message(&mut send, &request)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv).await
+        let response = recv_message(&mut recv)
+            .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
         match response {
@@ -622,9 +670,7 @@ impl ConnectionManager {
 
                 Ok(data[chunk_offset..chunk_offset + to_read].to_vec())
             }
-            NetMessage::Error(e) => {
-                Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message)))
-            }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
             _ => Err(FuseError::Internal("unexpected response".into())),
         }
     }
@@ -657,19 +703,23 @@ impl ConnectionManager {
         use teleport_core::{NetMessage, PingMessage};
 
         let conn = {
-            let host = self.hosts.get(host_id)
+            let host = self
+                .hosts
+                .get(host_id)
                 .ok_or_else(|| ConnectionError::HostNotFound(host_id.to_string()))?;
-            host.connection.clone()
+            host.connection
+                .clone()
                 .ok_or(ConnectionError::NotConnected)?
         };
 
-        let (mut send, mut recv) = conn.open_stream().await
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
         let start = Instant::now();
         let mut payload = [0u8; 8];
-        getrandom::getrandom(&mut payload)
-            .expect("RNG failed - system entropy source unavailable");
+        getrandom::getrandom(&mut payload).expect("RNG failed - system entropy source unavailable");
 
         let ping = NetMessage::Ping(PingMessage {
             // Safe conversion: millis since epoch won't overflow u64 until year 584 million
@@ -680,10 +730,12 @@ impl ConnectionManager {
             payload,
         });
 
-        send_message(&mut send, &ping).await
+        send_message(&mut send, &ping)
+            .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv).await
+        let response = recv_message(&mut recv)
+            .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
         let rtt = start.elapsed();
@@ -739,7 +791,10 @@ impl ConnectionManager {
                 Some(h) => h,
                 None => return,
             };
-            (host.config.reconnect.initial_delay, host.config.reconnect.max_attempts)
+            (
+                host.config.reconnect.initial_delay,
+                host.config.reconnect.max_attempts,
+            )
         };
 
         let mut current_delay = delay;
@@ -806,13 +861,20 @@ impl Default for ConnectionManager {
 
 impl ConnectionManager {
     /// Blocking lookup - for use in FUSE callbacks
-    pub fn lookup_blocking(&self, share_index: u16, parent: Inode, name: &str) -> Result<FileAttr, ConnectionError> {
+    pub fn lookup_blocking(
+        &self,
+        share_index: u16,
+        parent: Inode,
+        name: &str,
+    ) -> Result<FileAttr, ConnectionError> {
         use teleport_core::{LookupRequest, LookupResponse, NetMessage};
 
-        let share = self.get_share_by_index(share_index)
+        let share = self
+            .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
         // Use a runtime handle to run async code in blocking context
@@ -820,7 +882,9 @@ impl ConnectionManager {
             .map_err(|_| ConnectionError::Io("no tokio runtime".into()))?;
 
         handle.block_on(async {
-            let (mut send, mut recv) = conn.open_stream().await
+            let (mut send, mut recv) = conn
+                .open_stream()
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             let request = NetMessage::Lookup(LookupRequest {
@@ -828,70 +892,101 @@ impl ConnectionManager {
                 name: name.to_string(),
             });
 
-            send_message(&mut send, &request).await
+            send_message(&mut send, &request)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv).await
+            let response = recv_message(&mut recv)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             match response {
                 NetMessage::LookupResponse(LookupResponse { attr: Some(attr) }) => Ok(attr),
-                NetMessage::LookupResponse(LookupResponse { attr: None }) => Err(ConnectionError::NotFound),
-                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!("{:?}: {}", e.code, e.message))),
+                NetMessage::LookupResponse(LookupResponse { attr: None }) => {
+                    Err(ConnectionError::NotFound)
+                }
+                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!(
+                    "{:?}: {}",
+                    e.code, e.message
+                ))),
                 _ => Err(ConnectionError::Protocol("unexpected response".into())),
             }
         })
     }
 
     /// Blocking getattr - for use in FUSE callbacks
-    pub fn getattr_blocking(&self, share_index: u16, inode: Inode) -> Result<FileAttr, ConnectionError> {
+    pub fn getattr_blocking(
+        &self,
+        share_index: u16,
+        inode: Inode,
+    ) -> Result<FileAttr, ConnectionError> {
         use teleport_core::{GetAttrRequest, GetAttrResponse, NetMessage};
 
-        let share = self.get_share_by_index(share_index)
+        let share = self
+            .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
         let handle = tokio::runtime::Handle::try_current()
             .map_err(|_| ConnectionError::Io("no tokio runtime".into()))?;
 
         handle.block_on(async {
-            let (mut send, mut recv) = conn.open_stream().await
+            let (mut send, mut recv) = conn
+                .open_stream()
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             let request = NetMessage::GetAttr(GetAttrRequest { inode });
 
-            send_message(&mut send, &request).await
+            send_message(&mut send, &request)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv).await
+            let response = recv_message(&mut recv)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             match response {
                 NetMessage::GetAttrResponse(GetAttrResponse { attr: Some(attr) }) => Ok(attr),
-                NetMessage::GetAttrResponse(GetAttrResponse { attr: None }) => Err(ConnectionError::NotFound),
-                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!("{:?}: {}", e.code, e.message))),
+                NetMessage::GetAttrResponse(GetAttrResponse { attr: None }) => {
+                    Err(ConnectionError::NotFound)
+                }
+                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!(
+                    "{:?}: {}",
+                    e.code, e.message
+                ))),
                 _ => Err(ConnectionError::Protocol("unexpected response".into())),
             }
         })
     }
 
     /// Blocking readdir - for use in FUSE callbacks
-    pub fn readdir_blocking(&self, share_index: u16, inode: Inode, offset: u64) -> Result<Vec<DirEntry>, ConnectionError> {
+    pub fn readdir_blocking(
+        &self,
+        share_index: u16,
+        inode: Inode,
+        offset: u64,
+    ) -> Result<Vec<DirEntry>, ConnectionError> {
         use teleport_core::{ListDirRequest, ListDirResponse, NetMessage};
 
-        let share = self.get_share_by_index(share_index)
+        let share = self
+            .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
         let handle = tokio::runtime::Handle::try_current()
             .map_err(|_| ConnectionError::Io("no tokio runtime".into()))?;
 
         handle.block_on(async {
-            let (mut send, mut recv) = conn.open_stream().await
+            let (mut send, mut recv) = conn
+                .open_stream()
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             let request = NetMessage::ListDir(ListDirRequest {
@@ -900,35 +995,48 @@ impl ConnectionManager {
                 limit: 1000,
             });
 
-            send_message(&mut send, &request).await
+            send_message(&mut send, &request)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv).await
+            let response = recv_message(&mut recv)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             match response {
                 NetMessage::ListDirResponse(ListDirResponse { entries, .. }) => Ok(entries),
-                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!("{:?}: {}", e.code, e.message))),
+                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!(
+                    "{:?}: {}",
+                    e.code, e.message
+                ))),
                 _ => Err(ConnectionError::Protocol("unexpected response".into())),
             }
         })
     }
 
     /// Blocking read chunk - for use in FUSE callbacks
-    pub fn read_chunk_blocking(&self, share_index: u16, chunk_id: teleport_core::ChunkId) -> Result<Vec<u8>, ConnectionError> {
+    pub fn read_chunk_blocking(
+        &self,
+        share_index: u16,
+        chunk_id: teleport_core::ChunkId,
+    ) -> Result<Vec<u8>, ConnectionError> {
         use teleport_core::{NetMessage, ReadChunkRequest, ReadChunkResponse};
 
-        let share = self.get_share_by_index(share_index)
+        let share = self
+            .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self.get_connection_for_share(&share.info.id)
+        let conn = self
+            .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
         let handle = tokio::runtime::Handle::try_current()
             .map_err(|_| ConnectionError::Io("no tokio runtime".into()))?;
 
         handle.block_on(async {
-            let (mut send, mut recv) = conn.open_stream().await
+            let (mut send, mut recv) = conn
+                .open_stream()
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             let request = NetMessage::ReadChunk(ReadChunkRequest {
@@ -936,10 +1044,12 @@ impl ConnectionManager {
                 priority: 0,
             });
 
-            send_message(&mut send, &request).await
+            send_message(&mut send, &request)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv).await
+            let response = recv_message(&mut recv)
+                .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
             match response {
@@ -951,7 +1061,10 @@ impl ConnectionManager {
                     }
                     Ok(data)
                 }
-                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!("{:?}: {}", e.code, e.message))),
+                NetMessage::Error(e) => Err(ConnectionError::Protocol(format!(
+                    "{:?}: {}",
+                    e.code, e.message
+                ))),
                 _ => Err(ConnectionError::Protocol("unexpected response".into())),
             }
         })

@@ -156,7 +156,10 @@ impl Storage {
             )?;
         }
 
-        debug!("Peer added to storage: {} in room {}", info.peer_id, join_code);
+        debug!(
+            "Peer added to storage: {} in room {}",
+            info.peer_id, join_code
+        );
         Ok(())
     }
 
@@ -165,19 +168,24 @@ impl Storage {
         let conn = self.conn.lock().map_err(|_| StorageError::LockPoisoned)?;
 
         // Get the join code first
-        let join_code: Option<String> = conn.query_row(
-            "SELECT join_code FROM peers WHERE peer_id = ?1",
-            params![peer_id],
-            |row| row.get(0),
-        ).optional()?;
+        let join_code: Option<String> = conn
+            .query_row(
+                "SELECT join_code FROM peers WHERE peer_id = ?1",
+                params![peer_id],
+                |row| row.get(0),
+            )
+            .optional()?;
 
         if let Some(ref code) = join_code {
             // Check if this peer was the host
-            let was_host: Option<String> = conn.query_row(
-                "SELECT host_id FROM rooms WHERE join_code = ?1",
-                params![code],
-                |row| row.get(0),
-            ).optional()?.flatten();
+            let was_host: Option<String> = conn
+                .query_row(
+                    "SELECT host_id FROM rooms WHERE join_code = ?1",
+                    params![code],
+                    |row| row.get(0),
+                )
+                .optional()?
+                .flatten();
 
             // Delete the peer
             conn.execute("DELETE FROM peers WHERE peer_id = ?1", params![peer_id])?;
@@ -223,7 +231,8 @@ impl Storage {
         match result {
             Some((peer_id, public_addr, local_addrs_json, quic_port, is_host)) => {
                 let public_addr: Option<SocketAddr> = public_addr.and_then(|s| s.parse().ok());
-                let local_addrs: Vec<SocketAddr> = serde_json::from_str(&local_addrs_json).unwrap_or_default();
+                let local_addrs: Vec<SocketAddr> =
+                    serde_json::from_str(&local_addrs_json).unwrap_or_default();
 
                 Ok(Some(PeerInfo {
                     peer_id,
@@ -241,11 +250,14 @@ impl Storage {
     pub fn get_host(&self, join_code: &str) -> Result<Option<PeerInfo>, StorageError> {
         let conn = self.conn.lock().map_err(|_| StorageError::LockPoisoned)?;
 
-        let host_id: Option<String> = conn.query_row(
-            "SELECT host_id FROM rooms WHERE join_code = ?1",
-            params![join_code],
-            |row| row.get(0),
-        ).optional()?.flatten();
+        let host_id: Option<String> = conn
+            .query_row(
+                "SELECT host_id FROM rooms WHERE join_code = ?1",
+                params![join_code],
+                |row| row.get(0),
+            )
+            .optional()?
+            .flatten();
 
         drop(conn);
 
@@ -275,18 +287,21 @@ impl Storage {
 
         let result: Vec<PeerInfo> = peers
             .filter_map(|r| r.ok())
-            .map(|(peer_id, public_addr, local_addrs_json, quic_port, is_host)| {
-                let public_addr: Option<SocketAddr> = public_addr.and_then(|s| s.parse().ok());
-                let local_addrs: Vec<SocketAddr> = serde_json::from_str(&local_addrs_json).unwrap_or_default();
+            .map(
+                |(peer_id, public_addr, local_addrs_json, quic_port, is_host)| {
+                    let public_addr: Option<SocketAddr> = public_addr.and_then(|s| s.parse().ok());
+                    let local_addrs: Vec<SocketAddr> =
+                        serde_json::from_str(&local_addrs_json).unwrap_or_default();
 
-                PeerInfo {
-                    peer_id,
-                    public_addr,
-                    local_addrs,
-                    quic_port,
-                    is_host: is_host != 0,
-                }
-            })
+                    PeerInfo {
+                        peer_id,
+                        public_addr,
+                        local_addrs,
+                        quic_port,
+                        is_host: is_host != 0,
+                    }
+                },
+            )
             .collect();
 
         Ok(result)
@@ -312,7 +327,8 @@ impl Storage {
 
         // Get rooms to delete
         let mut stmt = conn.prepare("SELECT join_code FROM rooms WHERE last_activity < ?1")?;
-        let codes: Vec<String> = stmt.query_map(params![threshold], |row| row.get(0))?
+        let codes: Vec<String> = stmt
+            .query_map(params![threshold], |row| row.get(0))?
             .filter_map(|r| r.ok())
             .collect();
 
@@ -321,7 +337,10 @@ impl Storage {
         // Delete peers first
         conn.execute("DELETE FROM peers WHERE join_code IN (SELECT join_code FROM rooms WHERE last_activity < ?1)", params![threshold])?;
         // Delete rooms
-        conn.execute("DELETE FROM rooms WHERE last_activity < ?1", params![threshold])?;
+        conn.execute(
+            "DELETE FROM rooms WHERE last_activity < ?1",
+            params![threshold],
+        )?;
 
         if count > 0 {
             info!("Cleaned up {} idle rooms", count);
@@ -351,7 +370,8 @@ impl Storage {
         let conn = self.conn.lock().map_err(|_| StorageError::LockPoisoned)?;
 
         let mut stmt = conn.prepare("SELECT join_code FROM rooms")?;
-        let codes: Vec<String> = stmt.query_map([], |row| row.get(0))?
+        let codes: Vec<String> = stmt
+            .query_map([], |row| row.get(0))?
             .filter_map(|r| r.ok())
             .collect();
 
@@ -386,7 +406,9 @@ impl std::fmt::Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StorageError::Database(e) => write!(f, "Database error: {}", e),
-            StorageError::LockPoisoned => write!(f, "Lock poisoned: a thread panicked while holding the lock"),
+            StorageError::LockPoisoned => {
+                write!(f, "Lock poisoned: a thread panicked while holding the lock")
+            }
         }
     }
 }

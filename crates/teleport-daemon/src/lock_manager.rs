@@ -48,13 +48,9 @@ pub enum LockStatus {
     /// No locks held
     Unlocked,
     /// Shared locks held (multiple readers)
-    SharedLock {
-        holders: Vec<LockHold>,
-    },
+    SharedLock { holders: Vec<LockHold> },
     /// Exclusive lock held (single writer)
-    ExclusiveLock {
-        holder: LockHold,
-    },
+    ExclusiveLock { holder: LockHold },
 }
 
 /// Lock manager for coordinating file access

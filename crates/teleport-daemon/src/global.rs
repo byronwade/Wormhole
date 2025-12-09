@@ -20,13 +20,19 @@ pub enum GlobalEvent {
     /// Connecting to peer
     Connecting { peer_addr: SocketAddr },
     /// Peer connected successfully
-    PeerConnected { peer_addr: SocketAddr, is_local: bool },
+    PeerConnected {
+        peer_addr: SocketAddr,
+        is_local: bool,
+    },
     /// NAT hole punch in progress
     HolePunching { peer_addr: SocketAddr },
     /// Hole punch failed, trying direct connection anyway
     HolePunchFailed { peer_addr: SocketAddr },
     /// Host is ready and serving
-    HostReady { join_code: String, bind_addr: SocketAddr },
+    HostReady {
+        join_code: String,
+        bind_addr: SocketAddr,
+    },
     /// Mount is ready
     MountReady { mount_point: PathBuf },
     /// Error occurred
@@ -135,7 +141,9 @@ where
             peer_addr: result.peer_addr,
         });
 
-        if let Err(e) = crate::rendezvous::attempt_hole_punch(result.peer_addr, config.quic_port).await {
+        if let Err(e) =
+            crate::rendezvous::attempt_hole_punch(result.peer_addr, config.quic_port).await
+        {
             error!("Hole punch failed: {}", e);
             event_callback(GlobalEvent::HolePunchFailed {
                 peer_addr: result.peer_addr,

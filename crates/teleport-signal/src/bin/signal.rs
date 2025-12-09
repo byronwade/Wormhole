@@ -75,7 +75,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(ref store) = storage {
         let room_count = store.room_count().unwrap_or(0);
         let peer_count = store.total_peer_count().unwrap_or(0);
-        info!("Loaded {} rooms with {} peers from database", room_count, peer_count);
+        info!(
+            "Loaded {} rooms with {} peers from database",
+            room_count, peer_count
+        );
     }
 
     let server = SignalServer::new();

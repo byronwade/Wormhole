@@ -3,9 +3,9 @@
 //! Provides safe path handling to prevent path traversal attacks.
 //! All paths are validated before filesystem operations.
 
-use std::path::{Path, PathBuf, Component};
 use crate::error::ProtocolError;
-use crate::{MAX_PATH_LEN, MAX_FILENAME_LEN};
+use crate::{MAX_FILENAME_LEN, MAX_PATH_LEN};
+use std::path::{Component, Path, PathBuf};
 
 /// Validate and resolve a path safely within a base directory.
 ///
@@ -36,9 +36,11 @@ pub fn safe_path(base: &Path, relative: &str) -> Result<PathBuf, ProtocolError> 
 
     // Check path length
     if relative.len() > MAX_PATH_LEN {
-        return Err(ProtocolError::PathTraversal(
-            format!("path too long: {} bytes (max {})", relative.len(), MAX_PATH_LEN),
-        ));
+        return Err(ProtocolError::PathTraversal(format!(
+            "path too long: {} bytes (max {})",
+            relative.len(),
+            MAX_PATH_LEN
+        )));
     }
 
     let relative_path = Path::new(relative);
@@ -59,10 +61,11 @@ pub fn safe_path(base: &Path, relative: &str) -> Result<PathBuf, ProtocolError> 
                 // Check filename length
                 let name_str = name.to_string_lossy();
                 if name_str.len() > MAX_FILENAME_LEN {
-                    return Err(ProtocolError::PathTraversal(
-                        format!("filename too long: {} bytes (max {})",
-                                name_str.len(), MAX_FILENAME_LEN),
-                    ));
+                    return Err(ProtocolError::PathTraversal(format!(
+                        "filename too long: {} bytes (max {})",
+                        name_str.len(),
+                        MAX_FILENAME_LEN
+                    )));
                 }
                 result.push(name);
             }
@@ -111,9 +114,11 @@ pub fn validate_filename(name: &str) -> Result<(), ProtocolError> {
     }
 
     if name.len() > MAX_FILENAME_LEN {
-        return Err(ProtocolError::PathTraversal(
-            format!("filename too long: {} bytes (max {})", name.len(), MAX_FILENAME_LEN),
-        ));
+        return Err(ProtocolError::PathTraversal(format!(
+            "filename too long: {} bytes (max {})",
+            name.len(),
+            MAX_FILENAME_LEN
+        )));
     }
 
     if name == "." || name == ".." {
@@ -150,14 +155,14 @@ pub fn validate_filename(name: &str) -> Result<(), ProtocolError> {
 /// Call after checking the file exists to avoid TOCTOU issues.
 pub fn safe_real_path(base: &Path, path: &Path) -> Result<PathBuf, ProtocolError> {
     // Canonicalize base directory (should already exist)
-    let canonical_base = base.canonicalize().map_err(|e| {
-        ProtocolError::PathTraversal(format!("cannot canonicalize base: {}", e))
-    })?;
+    let canonical_base = base
+        .canonicalize()
+        .map_err(|e| ProtocolError::PathTraversal(format!("cannot canonicalize base: {}", e)))?;
 
     // Canonicalize the target path (follows all symlinks)
-    let canonical_path = path.canonicalize().map_err(|e| {
-        ProtocolError::PathTraversal(format!("cannot canonicalize path: {}", e))
-    })?;
+    let canonical_path = path
+        .canonicalize()
+        .map_err(|e| ProtocolError::PathTraversal(format!("cannot canonicalize path: {}", e)))?;
 
     // Verify the canonical path is within the canonical base
     if !canonical_path.starts_with(&canonical_base) {

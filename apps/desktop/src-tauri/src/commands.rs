@@ -20,8 +20,10 @@ use teleport_core::crypto::generate_join_code;
 use teleport_daemon::bridge::FuseAsyncBridge;
 use teleport_daemon::client::{ClientConfig, WormholeClient};
 use teleport_daemon::fuse::WormholeFS;
+use teleport_daemon::global::{
+    connect_global, start_host_global, GlobalEvent, GlobalHostConfig, GlobalMountConfig,
+};
 use teleport_daemon::host::{HostConfig, WormholeHost};
-use teleport_daemon::global::{GlobalHostConfig, GlobalMountConfig, GlobalEvent, start_host_global, connect_global};
 
 /// Events emitted to the frontend
 #[derive(Clone, Serialize, Deserialize)]
@@ -472,54 +474,58 @@ pub async fn start_global_hosting(
         let mut final_code = String::new();
 
         // Event callback to emit events to frontend
-        let event_callback = |event: GlobalEvent| {
-            match &event {
-                GlobalEvent::WaitingForPeer { join_code } => {
-                    final_code = join_code.clone();
-                    let _ = app_clone.emit(
-                        "global-event",
-                        ServiceEvent::GlobalWaitingForPeer {
-                            join_code: join_code.clone(),
-                        },
-                    );
-                }
-                GlobalEvent::PeerConnected { peer_addr, is_local } => {
-                    let _ = app_clone.emit(
-                        "global-event",
-                        ServiceEvent::GlobalPeerConnected {
-                            peer_addr: peer_addr.to_string(),
-                            is_local: *is_local,
-                        },
-                    );
-                }
-                GlobalEvent::HolePunching { peer_addr } => {
-                    let _ = app_clone.emit(
-                        "global-event",
-                        ServiceEvent::GlobalHolePunching {
-                            peer_addr: peer_addr.to_string(),
-                        },
-                    );
-                }
-                GlobalEvent::HostReady { join_code, bind_addr } => {
-                    let _ = app_clone.emit(
-                        "host-event",
-                        ServiceEvent::HostStarted {
-                            port: bind_addr.port(),
-                            share_path: path_clone.to_string_lossy().to_string(),
-                            join_code: join_code.clone(),
-                        },
-                    );
-                }
-                GlobalEvent::Error { message } => {
-                    let _ = app_clone.emit(
-                        "global-event",
-                        ServiceEvent::Error {
-                            message: message.clone(),
-                        },
-                    );
-                }
-                _ => {}
+        let event_callback = |event: GlobalEvent| match &event {
+            GlobalEvent::WaitingForPeer { join_code } => {
+                final_code = join_code.clone();
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::GlobalWaitingForPeer {
+                        join_code: join_code.clone(),
+                    },
+                );
             }
+            GlobalEvent::PeerConnected {
+                peer_addr,
+                is_local,
+            } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::GlobalPeerConnected {
+                        peer_addr: peer_addr.to_string(),
+                        is_local: *is_local,
+                    },
+                );
+            }
+            GlobalEvent::HolePunching { peer_addr } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::GlobalHolePunching {
+                        peer_addr: peer_addr.to_string(),
+                    },
+                );
+            }
+            GlobalEvent::HostReady {
+                join_code,
+                bind_addr,
+            } => {
+                let _ = app_clone.emit(
+                    "host-event",
+                    ServiceEvent::HostStarted {
+                        port: bind_addr.port(),
+                        share_path: path_clone.to_string_lossy().to_string(),
+                        join_code: join_code.clone(),
+                    },
+                );
+            }
+            GlobalEvent::Error { message } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::Error {
+                        message: message.clone(),
+                    },
+                );
+            }
+            _ => {}
         };
 
         match start_host_global(config, event_callback).await {
@@ -567,7 +573,10 @@ pub async fn connect_with_code(
     join_code: String,
     mount_path: String,
 ) -> Result<(), String> {
-    info!("Connecting with code {} to mount at {}", join_code, mount_path);
+    info!(
+        "Connecting with code {} to mount at {}",
+        join_code, mount_path
+    );
 
     // Check if already connected
     {
@@ -600,38 +609,39 @@ pub async fn connect_with_code(
     // Spawn connection task
     let connect_task = state.runtime.spawn(async move {
         // Event callback
-        let event_callback = |event: GlobalEvent| {
-            match &event {
-                GlobalEvent::Connecting { .. } => {
-                    let _ = app_clone.emit("global-event", ServiceEvent::GlobalConnecting);
-                }
-                GlobalEvent::PeerConnected { peer_addr, is_local } => {
-                    let _ = app_clone.emit(
-                        "global-event",
-                        ServiceEvent::GlobalPeerConnected {
-                            peer_addr: peer_addr.to_string(),
-                            is_local: *is_local,
-                        },
-                    );
-                }
-                GlobalEvent::HolePunching { peer_addr } => {
-                    let _ = app_clone.emit(
-                        "global-event",
-                        ServiceEvent::GlobalHolePunching {
-                            peer_addr: peer_addr.to_string(),
-                        },
-                    );
-                }
-                GlobalEvent::Error { message } => {
-                    let _ = app_clone.emit(
-                        "global-event",
-                        ServiceEvent::Error {
-                            message: message.clone(),
-                        },
-                    );
-                }
-                _ => {}
+        let event_callback = |event: GlobalEvent| match &event {
+            GlobalEvent::Connecting { .. } => {
+                let _ = app_clone.emit("global-event", ServiceEvent::GlobalConnecting);
             }
+            GlobalEvent::PeerConnected {
+                peer_addr,
+                is_local,
+            } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::GlobalPeerConnected {
+                        peer_addr: peer_addr.to_string(),
+                        is_local: *is_local,
+                    },
+                );
+            }
+            GlobalEvent::HolePunching { peer_addr } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::GlobalHolePunching {
+                        peer_addr: peer_addr.to_string(),
+                    },
+                );
+            }
+            GlobalEvent::Error { message } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::Error {
+                        message: message.clone(),
+                    },
+                );
+            }
+            _ => {}
         };
 
         match connect_global(config, event_callback).await {
@@ -869,12 +879,10 @@ pub fn list_directory(path: String) -> Result<Vec<FileEntry>, String> {
     }
 
     // Sort: directories first, then by name
-    entries.sort_by(|a, b| {
-        match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
+    entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
 
     Ok(entries)
@@ -1029,7 +1037,8 @@ mod tests {
 
     #[test]
     fn test_service_event_deserialization() {
-        let json = r#"{"type":"HostStarted","port":4433,"share_path":"/test","join_code":"ABC-123"}"#;
+        let json =
+            r#"{"type":"HostStarted","port":4433,"share_path":"/test","join_code":"ABC-123"}"#;
         let event: ServiceEvent = serde_json::from_str(json).unwrap();
         match event {
             ServiceEvent::HostStarted {

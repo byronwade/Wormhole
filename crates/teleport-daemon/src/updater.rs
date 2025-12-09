@@ -148,7 +148,7 @@ pub struct DownloadUrls {
 struct GitHubAsset {
     name: String,
     browser_download_url: String,
-    size: u64,  // Keep for future download progress display
+    size: u64, // Keep for future download progress display
 }
 
 /// GitHub release information from API
@@ -207,8 +207,8 @@ pub struct UpdateChecker {
 impl UpdateChecker {
     /// Create a new update checker with default settings
     pub fn new(owner: impl Into<String>, repo: impl Into<String>, channel: UpdateChannel) -> Self {
-        let current_version = Version::parse(env!("CARGO_PKG_VERSION"))
-            .unwrap_or_else(|_| Version::new(0, 0, 0));
+        let current_version =
+            Version::parse(env!("CARGO_PKG_VERSION")).unwrap_or_else(|_| Version::new(0, 0, 0));
 
         let cache_path = directories::ProjectDirs::from("", "", "wormhole")
             .map(|dirs| dirs.cache_dir().join("update_cache.json"));
@@ -257,7 +257,10 @@ impl UpdateChecker {
                     .as_secs();
 
                 if now - cached.last_check < self.check_interval.as_secs() {
-                    debug!("Using cached update info (age: {}s)", now - cached.last_check);
+                    debug!(
+                        "Using cached update info (age: {}s)",
+                        now - cached.last_check
+                    );
                     return Ok(cached.cached_update);
                 }
             }
@@ -337,7 +340,10 @@ impl UpdateChecker {
             let version = match Version::parse(version_str) {
                 Ok(v) => v,
                 Err(e) => {
-                    debug!("Skipping release with invalid version {}: {}", release.tag_name, e);
+                    debug!(
+                        "Skipping release with invalid version {}: {}",
+                        release.tag_name, e
+                    );
                     continue;
                 }
             };
@@ -452,8 +458,8 @@ impl UpdateChecker {
             return Ok(None);
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| UpdateError::CacheError(e.to_string()))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| UpdateError::CacheError(e.to_string()))?;
 
         let cache: UpdateCache =
             serde_json::from_str(&content).map_err(|e| UpdateError::CacheError(e.to_string()))?;
@@ -476,12 +482,11 @@ impl UpdateChecker {
 
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| UpdateError::CacheError(e.to_string()))?;
+            std::fs::create_dir_all(parent).map_err(|e| UpdateError::CacheError(e.to_string()))?;
         }
 
-        let content =
-            serde_json::to_string_pretty(cache).map_err(|e| UpdateError::CacheError(e.to_string()))?;
+        let content = serde_json::to_string_pretty(cache)
+            .map_err(|e| UpdateError::CacheError(e.to_string()))?;
 
         std::fs::write(path, content).map_err(|e| UpdateError::CacheError(e.to_string()))?;
 
@@ -548,16 +553,20 @@ pub fn format_update_message(update: &UpdateInfo, current_version: &str) -> Stri
         msg.push_str("📦 Update available!\n\n");
     }
 
-    msg.push_str(&format!(
-        "  Current version:  {}\n",
-        current_version
-    ));
+    msg.push_str(&format!("  Current version:  {}\n", current_version));
     msg.push_str(&format!(
         "  Latest version:   {}{}\n",
         update.version,
-        if update.prerelease { " (pre-release)" } else { "" }
+        if update.prerelease {
+            " (pre-release)"
+        } else {
+            ""
+        }
     ));
-    msg.push_str(&format!("  Released:         {}\n", &update.published_at[..10]));
+    msg.push_str(&format!(
+        "  Released:         {}\n",
+        &update.published_at[..10]
+    ));
     msg.push('\n');
 
     if !update.body.is_empty() {
@@ -601,10 +610,22 @@ mod tests {
 
     #[test]
     fn test_channel_parsing() {
-        assert_eq!("stable".parse::<UpdateChannel>().unwrap(), UpdateChannel::Stable);
-        assert_eq!("beta".parse::<UpdateChannel>().unwrap(), UpdateChannel::Beta);
-        assert_eq!("nightly".parse::<UpdateChannel>().unwrap(), UpdateChannel::Nightly);
-        assert_eq!("STABLE".parse::<UpdateChannel>().unwrap(), UpdateChannel::Stable);
+        assert_eq!(
+            "stable".parse::<UpdateChannel>().unwrap(),
+            UpdateChannel::Stable
+        );
+        assert_eq!(
+            "beta".parse::<UpdateChannel>().unwrap(),
+            UpdateChannel::Beta
+        );
+        assert_eq!(
+            "nightly".parse::<UpdateChannel>().unwrap(),
+            UpdateChannel::Nightly
+        );
+        assert_eq!(
+            "STABLE".parse::<UpdateChannel>().unwrap(),
+            UpdateChannel::Stable
+        );
     }
 
     #[test]
@@ -669,8 +690,17 @@ mod tests {
 
         let urls = checker.extract_download_urls(&assets);
 
-        assert_eq!(urls.macos_arm64, Some("https://example.com/macos-arm64".to_string()));
-        assert_eq!(urls.linux_x64, Some("https://example.com/linux-x64".to_string()));
-        assert_eq!(urls.windows_x64, Some("https://example.com/windows-x64".to_string()));
+        assert_eq!(
+            urls.macos_arm64,
+            Some("https://example.com/macos-arm64".to_string())
+        );
+        assert_eq!(
+            urls.linux_x64,
+            Some("https://example.com/linux-x64".to_string())
+        );
+        assert_eq!(
+            urls.windows_x64,
+            Some("https://example.com/windows-x64".to_string())
+        );
     }
 }

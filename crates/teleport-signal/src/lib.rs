@@ -11,14 +11,14 @@
 //! 4. Peers establish direct QUIC connection
 //! 5. Signal connection can be dropped
 
-pub mod server;
 pub mod messages;
 pub mod room;
+pub mod server;
 pub mod storage;
 
-pub use server::SignalServer;
-pub use messages::{SignalMessage, PeerInfo};
+pub use messages::{PeerInfo, SignalMessage};
 pub use room::Room;
+pub use server::SignalServer;
 pub use storage::{Storage, StorageError};
 
 /// Default WebSocket port

@@ -222,8 +222,8 @@ export default function Home() {
                   <div>Scanning folder... <span className="text-green-400">47.3 GB</span> in 1,247 files</div>
                   <div>Starting QUIC server on port 4433...</div>
                   <div className="mt-3 p-3 rounded bg-zinc-800 border border-zinc-700">
-                    <div className="text-white">Join Code: <span className="text-violet-400 font-bold">WORM-7X9K-BETA</span></div>
-                    <div className="text-xs text-zinc-500 mt-1">Anyone with this code can mount your folder</div>
+                    <div className="text-white">Share this link: <span className="text-violet-400 font-bold">wormhole.dev/j/MARS-WIND</span></div>
+                    <div className="text-xs text-zinc-500 mt-1">Anyone with this link can mount your folder</div>
                   </div>
                 </div>
               </div>
@@ -612,20 +612,20 @@ export default function Home() {
                 title: "Host your folder",
                 description: "Run wormhole host on any folder. Server starts instantly.",
                 code: "$ wormhole host ~/Projects/video-edit",
-                output: "Join Code: WORM-7X9K-BETA"
+                output: "Share link: wormhole.dev/j/MARS-WIND"
               },
               {
                 step: "2",
-                title: "Share the code",
-                description: "Send the join code to your collaborator - text, slack, email.",
+                title: "Share the link",
+                description: "Send the link to your collaborator - text, slack, email. They click to join.",
                 code: "# Just copy and share",
-                output: "WORM-7X9K-BETA"
+                output: "wormhole.dev/j/MARS-WIND"
               },
               {
                 step: "3",
                 title: "Mount and work",
-                description: "They mount your folder as a local drive. Access any file instantly.",
-                code: "$ wormhole mount WORM-7X9K-BETA",
+                description: "They click the link or paste it in the app. Files mount as a local drive.",
+                code: "$ wormhole mount wormhole.dev/j/MARS-WIND",
                 output: "Mounted at /Volumes/wormhole"
               },
             ].map((item, i) => (

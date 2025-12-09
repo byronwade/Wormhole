@@ -39,9 +39,10 @@ use tokio::signal;
 use tracing::{error, Level};
 use tracing_subscriber::EnvFilter;
 
+use teleport_core::crypto::{extract_join_code, make_share_link};
 use teleport_core::{CHUNK_SIZE, PROTOCOL_VERSION};
 use teleport_daemon::host::{HostConfig, WormholeHost};
-use teleport_daemon::updater::{UpdateChecker, UpdateChannel, format_update_message};
+use teleport_daemon::updater::{format_update_message, UpdateChannel, UpdateChecker};
 use teleport_daemon::{DiskCache, HybridCacheManager};
 
 // ============================================================================
@@ -289,9 +290,9 @@ struct HostArgs {
 // Mount Command
 // ============================================================================
 
-#[derive(Args)]
+#[derive(Args, Clone)]
 struct MountArgs {
-    /// Join code (ABC-123) or direct address (ip:port)
+    /// Join code (ABC-123), share link (wormhole.dev/j/ABC-123), or direct address (ip:port)
     #[arg(value_name = "TARGET")]
     target: String,
 
@@ -300,7 +301,12 @@ struct MountArgs {
     path: Option<PathBuf>,
 
     /// Signal server URL
-    #[arg(short, long, default_value = "ws://localhost:8080", env = "WORMHOLE_SIGNAL")]
+    #[arg(
+        short,
+        long,
+        default_value = "ws://localhost:8080",
+        env = "WORMHOLE_SIGNAL"
+    )]
     signal: String,
 
     /// Use kernel extension backend instead of FSKit (macOS)
@@ -1475,8 +1481,11 @@ fn print_host_banner(
     args: &HostArgs,
     cli: &Cli,
 ) {
+    let share_link = make_share_link(join_code);
+
     if cli.quiet {
-        println!("{}", join_code);
+        // In quiet mode, just print the share link
+        println!("{}", share_link);
         return;
     }
 
@@ -1487,6 +1496,7 @@ fn print_host_banner(
                 "path": path,
                 "bind_addr": bind_addr.to_string(),
                 "join_code": join_code,
+                "share_link": share_link,
                 "host_name": host_name,
                 "allow_write": args.allow_write,
                 "max_connections": args.max_connections,
@@ -1499,45 +1509,71 @@ fn print_host_banner(
             println!("path: {:?}", path);
             println!("bind_addr: {}", bind_addr);
             println!("join_code: {}", join_code);
+            println!("share_link: {}", share_link);
             return;
         }
         OutputFormat::Text => {}
     }
 
     println!();
-    println!("╔═══════════════════════════════════════════════════════════════╗");
-    println!("║              🌀 WORMHOLE - SHARING ACTIVE                     ║");
-    println!("╠═══════════════════════════════════════════════════════════════╣");
-    println!("║                                                               ║");
-    println!("║  Share:     {:<49} ║", host_name);
-    println!("║  Path:      {:<49} ║", format!("{:?}", path));
-    println!("║  Address:   {:<49} ║", bind_addr);
-    println!("║                                                               ║");
-    println!("║  ┌───────────────────────────────────────────────────────┐   ║");
-    println!("║  │                                                       │   ║");
-    println!("║  │             JOIN CODE:  {:<10}                   │   ║", join_code);
-    println!("║  │                                                       │   ║");
-    println!("║  └───────────────────────────────────────────────────────┘   ║");
-    println!("║                                                               ║");
-    println!("║  Access:    {:<49} ║", if args.allow_write { "Read/Write" } else { "Read-Only" });
-    println!("║  Max Peers: {:<49} ║", args.max_connections);
-    println!("║                                                               ║");
-    println!("║  Connect with:                                                ║");
-    println!("║    wormhole mount {}                                   ║", join_code);
-    println!("║                                                               ║");
-    println!("║  Press Ctrl+C to stop sharing                                 ║");
-    println!("╚═══════════════════════════════════════════════════════════════╝");
+    println!("╔═══════════════════════════════════════════════════════════════════════╗");
+    println!("║                  🌀 WORMHOLE - SHARING ACTIVE                         ║");
+    println!("╠═══════════════════════════════════════════════════════════════════════╣");
+    println!("║                                                                       ║");
+    println!("║  Share:     {:<57} ║", host_name);
+    println!("║  Path:      {:<57} ║", format!("{:?}", path));
+    println!("║  Address:   {:<57} ║", bind_addr);
+    println!("║                                                                       ║");
+    println!("║  ┌───────────────────────────────────────────────────────────────┐   ║");
+    println!("║  │                                                               │   ║");
+    println!("║  │   Share this link:  {:<40}   │   ║", share_link);
+    println!("║  │                                                               │   ║");
+    println!("║  │   Or use code: {:<46}│   ║", join_code);
+    println!("║  │                                                               │   ║");
+    println!("║  └───────────────────────────────────────────────────────────────┘   ║");
+    println!("║                                                                       ║");
+    println!(
+        "║  Access:    {:<57} ║",
+        if args.allow_write {
+            "Read/Write"
+        } else {
+            "Read-Only"
+        }
+    );
+    println!("║  Max Peers: {:<57} ║", args.max_connections);
+    println!("║                                                                       ║");
+    println!("║  Connect with:                                                        ║");
+    println!("║    wormhole mount {}                      ║", share_link);
+    println!("║                                                                       ║");
+    println!("║  Press Ctrl+C to stop sharing                                         ║");
+    println!("╚═══════════════════════════════════════════════════════════════════════╝");
     println!();
 }
 
 async fn run_mount(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // First, try to extract join code from URL if it's a URL
+    let target = if let Some(code) = extract_join_code(&args.target) {
+        if !cli.quiet && args.target != code {
+            println!("Extracted join code from link: {}", code);
+        }
+        code
+    } else {
+        args.target.clone()
+    };
+
     // Determine if this is a direct IP or join code
-    let is_direct = is_ip_address(&args.target);
+    let is_direct = is_ip_address(&target);
+
+    // Create a modified args with the extracted target
+    let modified_args = MountArgs {
+        target,
+        ..args.clone()
+    };
 
     if is_direct {
-        run_mount_direct(args, cli).await
+        run_mount_direct(&modified_args, cli).await
     } else {
-        run_mount_via_signal(args, cli).await
+        run_mount_via_signal(&modified_args, cli).await
     }
 }
 
@@ -1545,10 +1581,7 @@ fn is_ip_address(target: &str) -> bool {
     target.parse::<SocketAddr>().is_ok()
 }
 
-async fn run_mount_direct(
-    args: &MountArgs,
-    cli: &Cli,
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_mount_direct(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = args.target.parse()?;
 
     #[cfg(target_os = "macos")]
@@ -1613,9 +1646,10 @@ async fn run_mount_via_signal(
         return Err("Invalid join code".into());
     }
 
-    let mount_point = args.path.clone().unwrap_or_else(|| {
-        std::env::temp_dir().join(format!("wormhole-{}", &code))
-    });
+    let mount_point = args
+        .path
+        .clone()
+        .unwrap_or_else(|| std::env::temp_dir().join(format!("wormhole-{}", &code)));
 
     if !mount_point.exists() {
         std::fs::create_dir_all(&mount_point)?;
@@ -1744,7 +1778,10 @@ async fn run_cache(args: &CacheArgs, _cli: &Cli) -> Result<(), Box<dyn std::erro
             println!("║                                                               ║");
             println!("║  Disk Cache:                                                  ║");
             println!("║    Entries:    {:<47} ║", cache.entry_count());
-            println!("║    Total Size: {:<47} ║", format_bytes(cache.total_size()));
+            println!(
+                "║    Total Size: {:<47} ║",
+                format_bytes(cache.total_size())
+            );
             println!("║                                                               ║");
 
             // Show RAM cache stats if available
@@ -1752,7 +1789,10 @@ async fn run_cache(args: &CacheArgs, _cli: &Cli) -> Result<(), Box<dyn std::erro
             let stats = ram_cache.stats();
 
             println!("║  RAM Cache:                                                   ║");
-            println!("║    Size:       {:<47} ║", format_bytes(stats.ram_size_bytes as u64));
+            println!(
+                "║    Size:       {:<47} ║",
+                format_bytes(stats.ram_size_bytes as u64)
+            );
             println!("║    Hits:       {:<47} ║", stats.ram_hits);
             println!("║    Disk Hits:  {:<47} ║", stats.disk_hits);
             println!("║    Misses:     {:<47} ║", stats.misses);
@@ -1783,7 +1823,10 @@ async fn run_cache(args: &CacheArgs, _cli: &Cli) -> Result<(), Box<dyn std::erro
             let cache = DiskCache::new()?;
             let size_before = cache.total_size();
             cache.clear()?;
-            println!("Cache cleared. Freed {} of space.", format_bytes(size_before));
+            println!(
+                "Cache cleared. Freed {} of space.",
+                format_bytes(size_before)
+            );
         }
 
         CacheCommands::Path => {
@@ -1799,9 +1842,11 @@ async fn run_cache(args: &CacheArgs, _cli: &Cli) -> Result<(), Box<dyn std::erro
             if let Some(target_gb) = gc_args.target_gb {
                 let target_bytes = target_gb * 1024 * 1024 * 1024;
                 if gc_args.dry_run {
-                    println!("Would free {} to reach target size of {}",
+                    println!(
+                        "Would free {} to reach target size of {}",
                         format_bytes(size_before.saturating_sub(target_bytes)),
-                        format_bytes(target_bytes));
+                        format_bytes(target_bytes)
+                    );
                 } else {
                     // Evict until target size
                     let entries = cache.entries_by_access_time();
@@ -1816,8 +1861,10 @@ async fn run_cache(args: &CacheArgs, _cli: &Cli) -> Result<(), Box<dyn std::erro
                         }
                     }
 
-                    println!("Garbage collection complete. Freed {}.",
-                        format_bytes(size_before - current_size));
+                    println!(
+                        "Garbage collection complete. Freed {}.",
+                        format_bytes(size_before - current_size)
+                    );
                 }
             } else {
                 println!("No target size specified. Use --target-gb to set.");
@@ -2023,7 +2070,8 @@ async fn run_ping(args: &PingArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         args.target.clone()
     } else {
         // Resolve via signal server
-        let rendezvous = teleport_daemon::rendezvous::RendezvousClient::new(Some(args.signal.clone()));
+        let rendezvous =
+            teleport_daemon::rendezvous::RendezvousClient::new(Some(args.signal.clone()));
         let code = teleport_core::crypto::normalize_join_code(&args.target);
 
         if !cli.quiet {
@@ -2053,7 +2101,8 @@ async fn run_ping(args: &PingArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         let result = tokio::time::timeout(
             Duration::from_secs(args.timeout),
             teleport_daemon::net::connect(&endpoint, addr, "localhost"),
-        ).await;
+        )
+        .await;
 
         let elapsed = start.elapsed();
 
@@ -2131,7 +2180,9 @@ fn run_init(args: &InitArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error
 
         // Create default config
         let config_path = wormhole_dir.join("config.toml");
-        std::fs::write(&config_path, r#"# Wormhole local configuration
+        std::fs::write(
+            &config_path,
+            r#"# Wormhole local configuration
 # This file configures wormhole behavior for this directory
 
 [host]
@@ -2151,7 +2202,8 @@ fn run_init(args: &InitArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error
 [sync]
 # Patterns to exclude from sync
 # exclude = ["*.tmp", ".git"]
-"#)?;
+"#,
+        )?;
 
         // Create .gitignore in .wormhole
         std::fs::write(wormhole_dir.join(".gitignore"), "*\n")?;
@@ -2297,15 +2349,11 @@ async fn run_update(args: &UpdateArgs, cli: &Cli) -> Result<(), Box<dyn std::err
     let _channel: UpdateChannel = args.channel.into();
 
     match &args.command {
-        Some(UpdateCommands::Check(check_args)) => {
-            run_update_check(check_args, cli).await
-        }
+        Some(UpdateCommands::Check(check_args)) => run_update_check(check_args, cli).await,
         Some(UpdateCommands::Changelog(changelog_args)) => {
             run_update_changelog(changelog_args, cli).await
         }
-        Some(UpdateCommands::Config(config_args)) => {
-            run_update_config(config_args, cli)
-        }
+        Some(UpdateCommands::Config(config_args)) => run_update_config(config_args, cli),
         None => {
             // Default: check for updates
             let check_args = UpdateCheckArgs {
@@ -2318,7 +2366,10 @@ async fn run_update(args: &UpdateArgs, cli: &Cli) -> Result<(), Box<dyn std::err
     }
 }
 
-async fn run_update_check(args: &UpdateCheckArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_update_check(
+    args: &UpdateCheckArgs,
+    cli: &Cli,
+) -> Result<(), Box<dyn std::error::Error>> {
     let channel: UpdateChannel = args.channel.into();
     let current_version = env!("CARGO_PKG_VERSION");
 
@@ -2336,29 +2387,29 @@ async fn run_update_check(args: &UpdateCheckArgs, cli: &Cli) -> Result<(), Box<d
     };
 
     match checker.check_for_update().await {
-        Ok(Some(update)) => {
-            match cli.format {
-                OutputFormat::Json => {
-                    println!("{}", serde_json::to_string_pretty(&update)?);
-                }
-                OutputFormat::Yaml => {
-                    println!("version: {}", update.version);
-                    println!("name: {}", update.name);
-                    println!("prerelease: {}", update.prerelease);
-                    println!("critical: {}", update.is_critical);
-                    println!("url: {}", update.html_url);
-                }
-                OutputFormat::Text => {
-                    println!("{}", format_update_message(&update, current_version));
+        Ok(Some(update)) => match cli.format {
+            OutputFormat::Json => {
+                println!("{}", serde_json::to_string_pretty(&update)?);
+            }
+            OutputFormat::Yaml => {
+                println!("version: {}", update.version);
+                println!("name: {}", update.name);
+                println!("prerelease: {}", update.prerelease);
+                println!("critical: {}", update.is_critical);
+                println!("url: {}", update.html_url);
+            }
+            OutputFormat::Text => {
+                println!("{}", format_update_message(&update, current_version));
 
-                    if args.show_url {
-                        if let Some(url) = UpdateChecker::get_download_url_for_current_platform(&update.download_urls) {
-                            println!("  Direct download: {}", url);
-                        }
+                if args.show_url {
+                    if let Some(url) =
+                        UpdateChecker::get_download_url_for_current_platform(&update.download_urls)
+                    {
+                        println!("  Direct download: {}", url);
                     }
                 }
             }
-        }
+        },
         Ok(None) => {
             if !cli.quiet {
                 println!("You're running the latest version ({}).", current_version);
@@ -2380,7 +2431,10 @@ async fn run_update_check(args: &UpdateCheckArgs, cli: &Cli) -> Result<(), Box<d
     Ok(())
 }
 
-async fn run_update_changelog(_args: &UpdateChangelogArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_update_changelog(
+    _args: &UpdateChangelogArgs,
+    _cli: &Cli,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("Changelog feature coming soon.");
     println!();
     println!("View release notes at:");
@@ -2389,7 +2443,10 @@ async fn run_update_changelog(_args: &UpdateChangelogArgs, _cli: &Cli) -> Result
     Ok(())
 }
 
-fn run_update_config(args: &UpdateConfigArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+fn run_update_config(
+    args: &UpdateConfigArgs,
+    _cli: &Cli,
+) -> Result<(), Box<dyn std::error::Error>> {
     if args.auto_check.is_none() && args.channel.is_none() && args.check_interval_hours.is_none() {
         // Show current config
         println!("Update configuration:");
@@ -2501,21 +2558,19 @@ async fn run_doctor(args: &DoctorArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
             .timeout(Duration::from_secs(5))
             .build()
         {
-            Ok(client) => {
-                match client.get("https://api.github.com").send().await {
-                    Ok(resp) if resp.status().is_success() => {
-                        println!("                ✓ OK ║");
-                    }
-                    Ok(_) => {
-                        println!("             ⚠ LIMITED ║");
-                        warnings += 1;
-                    }
-                    Err(_) => {
-                        println!("              ✗ FAILED ║");
-                        warnings += 1;
-                    }
+            Ok(client) => match client.get("https://api.github.com").send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    println!("                ✓ OK ║");
                 }
-            }
+                Ok(_) => {
+                    println!("             ⚠ LIMITED ║");
+                    warnings += 1;
+                }
+                Err(_) => {
+                    println!("              ✗ FAILED ║");
+                    warnings += 1;
+                }
+            },
             Err(_) => {
                 println!("              ✗ FAILED ║");
                 warnings += 1;
@@ -2571,9 +2626,15 @@ async fn run_doctor(args: &DoctorArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
     if issues == 0 && warnings == 0 {
         println!("║  Status: All checks passed!                                  ║");
     } else if issues == 0 {
-        println!("║  Status: {} warning(s), no critical issues                   ║", warnings);
+        println!(
+            "║  Status: {} warning(s), no critical issues                   ║",
+            warnings
+        );
     } else {
-        println!("║  Status: {} issue(s), {} warning(s)                           ║", issues, warnings);
+        println!(
+            "║  Status: {} issue(s), {} warning(s)                           ║",
+            issues, warnings
+        );
     }
 
     println!("║                                                               ║");

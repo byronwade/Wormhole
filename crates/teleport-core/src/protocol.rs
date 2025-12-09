@@ -5,8 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::types::{ChunkId, DirEntry, FileAttr, Inode, LockToken, LockType, ShareId, ShareInfo};
 use crate::error::ErrorCode;
+use crate::types::{ChunkId, DirEntry, FileAttr, Inode, LockToken, LockType, ShareId, ShareInfo};
 
 /// All possible network messages
 #[derive(Clone, Debug, Serialize, Deserialize)]

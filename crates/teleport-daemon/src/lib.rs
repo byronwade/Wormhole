@@ -52,36 +52,28 @@ pub mod updater;
 pub use bridge::FuseAsyncBridge;
 pub use cache::{CacheManager, ChunkCache, HybridCacheManager, HybridChunkCache};
 pub use client::WormholeClient;
+pub use connection_manager::{
+    ConnectionError, ConnectionEvent, ConnectionManager, HostConnectionConfig, ReconnectConfig,
+    RegisteredShare,
+};
 pub use disk_cache::DiskCache;
 pub use fuse::WormholeFS;
 pub use gc::GarbageCollector;
+pub use global::{
+    connect_global, start_host_global, GlobalEvent, GlobalHostConfig, GlobalHostError,
+    GlobalMountConfig, GlobalMountError,
+};
 pub use governor::Governor;
 pub use host::WormholeHost;
-pub use lock_manager::{LockManager, LockHold, LockStatus, LockError};
-pub use rendezvous::{RendezvousClient, RendezvousResult, RendezvousError};
-pub use sync_engine::{SyncEngine, SyncRunner, SyncStatus, DirtyChunk, FileLock};
-pub use connection_manager::{
-    ConnectionManager, ConnectionEvent, ConnectionError,
-    HostConnectionConfig, ReconnectConfig, RegisteredShare,
-};
-pub use multi_host::{
-    MultiShareHost, MultiHostConfig, SharedFolder,
-};
-pub use multi_fuse::{
-    MultiShareFS, MountedShare,
-};
-pub use global::{
-    GlobalEvent, GlobalHostConfig, GlobalMountConfig,
-    GlobalHostError, GlobalMountError,
-    start_host_global, connect_global,
-};
+pub use lock_manager::{LockError, LockHold, LockManager, LockStatus};
+pub use multi_fuse::{MountedShare, MultiShareFS};
+pub use multi_host::{MultiHostConfig, MultiShareHost, SharedFolder};
+pub use rendezvous::{RendezvousClient, RendezvousError, RendezvousResult};
+pub use sync_engine::{DirtyChunk, FileLock, SyncEngine, SyncRunner, SyncStatus};
 
 /// Default mount options
-pub const DEFAULT_MOUNT_OPTIONS: &[&str] = &[
-    "fsname=wormhole",
-    "default_permissions",
-    "allow_other",
-];
+pub const DEFAULT_MOUNT_OPTIONS: &[&str] =
+    &["fsname=wormhole", "default_permissions", "allow_other"];
 
 /// Maximum concurrent FUSE requests in flight
 pub const MAX_INFLIGHT_REQUESTS: usize = 64;

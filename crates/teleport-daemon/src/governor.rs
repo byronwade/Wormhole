@@ -62,7 +62,8 @@ impl Governor {
 
     /// Create a new governor with a custom capacity
     pub fn with_capacity(capacity: usize) -> Self {
-        let cap = NonZeroUsize::new(capacity).unwrap_or(NonZeroUsize::new(MAX_FILE_STATES).unwrap());
+        let cap =
+            NonZeroUsize::new(capacity).unwrap_or(NonZeroUsize::new(MAX_FILE_STATES).unwrap());
         Self {
             file_state: LruCache::new(cap),
             prefetch_window: PREFETCH_WINDOW,
@@ -86,11 +87,13 @@ impl Governor {
     /// the detected access pattern.
     pub fn record_access(&mut self, chunk_id: &ChunkId) -> Vec<ChunkId> {
         // Use get_or_insert_mut to get or create the state (also promotes to MRU)
-        let state = self.file_state.get_or_insert_mut(chunk_id.inode, || FileAccessState {
-            last_chunk: chunk_id.index,
-            sequential_streak: 0,
-            direction: AccessDirection::Random,
-        });
+        let state = self
+            .file_state
+            .get_or_insert_mut(chunk_id.inode, || FileAccessState {
+                last_chunk: chunk_id.index,
+                sequential_streak: 0,
+                direction: AccessDirection::Random,
+            });
 
         let diff = chunk_id.index as i64 - state.last_chunk as i64;
 

@@ -200,7 +200,8 @@ impl MultiShareFS {
         GlobalInode {
             share_index,
             local_inode,
-        }.to_packed()
+        }
+        .to_packed()
     }
 
     /// Create FileAttr for the virtual root directory
@@ -279,7 +280,10 @@ impl MultiShareFS {
         // Cache miss - fetch from connection manager
         trace!("fetch_chunk: cache miss for {:?}, fetching", chunk_id);
 
-        match self.connection_manager.read_chunk_blocking(share_index, chunk_id) {
+        match self
+            .connection_manager
+            .read_chunk_blocking(share_index, chunk_id)
+        {
             Ok(data) => {
                 self.cache.chunks.insert(chunk_id, data.clone());
                 Ok(data)
@@ -292,7 +296,13 @@ impl MultiShareFS {
     }
 
     /// Read data spanning potentially multiple chunks
-    fn read_stitched(&self, share_index: u16, ino: Inode, offset: u64, size: u32) -> Result<Vec<u8>, i32> {
+    fn read_stitched(
+        &self,
+        share_index: u16,
+        ino: Inode,
+        offset: u64,
+        size: u32,
+    ) -> Result<Vec<u8>, i32> {
         let chunk_size = teleport_core::CHUNK_SIZE as u64;
         let start_chunk = offset / chunk_size;
         let end_offset = offset + size as u64;
@@ -394,7 +404,10 @@ impl Filesystem for MultiShareFS {
         // Normal lookup within a share
         let (share_index, local_parent) = self.unpack_inode(parent);
 
-        match self.connection_manager.lookup_blocking(share_index, local_parent, &name) {
+        match self
+            .connection_manager
+            .lookup_blocking(share_index, local_parent, &name)
+        {
             Ok(attr) => {
                 let fuser_attr = self.to_fuser_attr(&attr, share_index);
                 self.cache.attrs.insert(attr.inode, attr);
@@ -427,7 +440,10 @@ impl Filesystem for MultiShareFS {
             return;
         }
 
-        match self.connection_manager.getattr_blocking(share_index, local_ino) {
+        match self
+            .connection_manager
+            .getattr_blocking(share_index, local_ino)
+        {
             Ok(attr) => {
                 let fuser_attr = self.to_fuser_attr(&attr, share_index);
                 self.cache.attrs.insert(local_ino, attr);
@@ -546,7 +562,10 @@ impl Filesystem for MultiShareFS {
             return;
         }
 
-        match self.connection_manager.readdir_blocking(share_index, local_ino, offset as u64) {
+        match self
+            .connection_manager
+            .readdir_blocking(share_index, local_ino, offset as u64)
+        {
             Ok(entries) => {
                 self.cache.dirs.insert(local_ino, entries.clone());
                 self.reply_dir_entries(share_index, ino, local_ino, &entries, offset, reply);
@@ -648,7 +667,11 @@ impl Filesystem for MultiShareFS {
         let chunk_size = teleport_core::CHUNK_SIZE as u64;
         let start_chunk = offset / chunk_size;
         let end_offset = offset + data.len() as u64;
-        let end_chunk = if end_offset == 0 { 0 } else { (end_offset - 1) / chunk_size };
+        let end_chunk = if end_offset == 0 {
+            0
+        } else {
+            (end_offset - 1) / chunk_size
+        };
 
         let mut written = 0usize;
         let mut current_offset = offset;
@@ -686,7 +709,8 @@ impl Filesystem for MultiShareFS {
 
             // Bounds check before slice operations to prevent panics
             let data_end = written.saturating_add(to_write);
-            if data_end > data.len() || offset_in_chunk.saturating_add(to_write) > chunk_data.len() {
+            if data_end > data.len() || offset_in_chunk.saturating_add(to_write) > chunk_data.len()
+            {
                 error!("write: bounds check failed - data_end={}, data.len()={}, chunk end={}, chunk.len()={}",
                        data_end, data.len(), offset_in_chunk + to_write, chunk_data.len());
                 reply.error(libc::EIO);
@@ -858,7 +882,7 @@ mod tests {
 
         let shares = fs.get_shares();
         assert_eq!(shares.len(), 3); // placeholder at 0, shares at 1 and 2
-        // Second should have unique name
+                                     // Second should have unique name
         assert_ne!(shares[1].mount_name, shares[2].mount_name);
     }
 }

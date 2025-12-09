@@ -126,7 +126,10 @@ impl SyncEngine {
 
     /// Get dirty chunk data (for reading back modified data)
     pub fn get_dirty_chunk(&self, chunk_id: &ChunkId) -> Option<Vec<u8>> {
-        self.dirty_chunks.read().get(chunk_id).map(|c| c.data.clone())
+        self.dirty_chunks
+            .read()
+            .get(chunk_id)
+            .map(|c| c.data.clone())
     }
 
     /// Get all dirty chunks for an inode
@@ -361,7 +364,11 @@ impl SyncRunner {
 
                 // If we don't have a lock but there are dirty chunks, we may need to acquire one
                 // For now, we'll try to sync anyway - the host will reject if lock is required
-                if lock_token.is_none() && self.sync_engine.has_lock(chunk_id.inode, LockType::Exclusive) {
+                if lock_token.is_none()
+                    && self
+                        .sync_engine
+                        .has_lock(chunk_id.inode, LockType::Exclusive)
+                {
                     warn!(
                         "No lock token for inode {} but has_lock returned true - lock may have expired",
                         chunk_id.inode
@@ -476,7 +483,12 @@ mod tests {
         engine.mark_dirty(chunk1, vec![1]);
         engine.mark_dirty(chunk2, vec![2]);
         engine.mark_dirty(chunk3, vec![3]);
-        engine.store_lock(1, LockToken::generate(), LockType::Exclusive, Duration::from_secs(30));
+        engine.store_lock(
+            1,
+            LockToken::generate(),
+            LockType::Exclusive,
+            Duration::from_secs(30),
+        );
 
         engine.clear_inode(1);
 

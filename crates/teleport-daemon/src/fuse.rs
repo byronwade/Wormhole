@@ -182,12 +182,7 @@ impl WormholeFS {
             // Use compare_exchange to avoid races
             if self
                 .prefetch_inflight
-                .compare_exchange(
-                    current,
-                    current + 1,
-                    Ordering::AcqRel,
-                    Ordering::Acquire,
-                )
+                .compare_exchange(current, current + 1, Ordering::AcqRel, Ordering::Acquire)
                 .is_err()
             {
                 // Another thread beat us, skip this chunk
@@ -212,8 +207,7 @@ impl WormholeFS {
             // Spawn background prefetch (fire-and-forget)
             std::thread::spawn(move || {
                 let offset = chunk_id.byte_offset();
-                let result =
-                    bridge.read(chunk_id.inode, offset, teleport_core::CHUNK_SIZE as u32);
+                let result = bridge.read(chunk_id.inode, offset, teleport_core::CHUNK_SIZE as u32);
 
                 // SECURITY: Always decrement counter when done, even on error
                 inflight_counter.fetch_sub(1, Ordering::Release);
@@ -238,7 +232,9 @@ impl WormholeFS {
         let offset = chunk_id.byte_offset();
         trace!("fetch_chunk: cache miss for {:?}, fetching", chunk_id);
 
-        let data = self.bridge.read(chunk_id.inode, offset, teleport_core::CHUNK_SIZE as u32)?;
+        let data = self
+            .bridge
+            .read(chunk_id.inode, offset, teleport_core::CHUNK_SIZE as u32)?;
         self.cache.chunks.insert(chunk_id, data.clone());
         Ok(data)
     }
@@ -573,7 +569,11 @@ impl Filesystem for WormholeFS {
         let chunk_size = teleport_core::CHUNK_SIZE as u64;
         let start_chunk = offset / chunk_size;
         let end_offset = offset + data.len() as u64;
-        let end_chunk = if end_offset == 0 { 0 } else { (end_offset - 1) / chunk_size };
+        let end_chunk = if end_offset == 0 {
+            0
+        } else {
+            (end_offset - 1) / chunk_size
+        };
 
         // For now, we write locally to dirty cache and let sync engine handle write-back
         // In a full implementation, we'd:
@@ -657,7 +657,10 @@ impl Filesystem for WormholeFS {
         // For now, we rely on background sync
         // A full implementation would immediately sync dirty chunks for this inode
         if self.sync_engine.has_dirty_chunks(ino) {
-            debug!("flush: {} has dirty chunks, sync will happen in background", ino);
+            debug!(
+                "flush: {} has dirty chunks, sync will happen in background",
+                ino
+            );
             // Could trigger immediate sync here via bridge.flush(ino)
         }
 
@@ -777,7 +780,13 @@ impl Filesystem for WormholeFS {
     }
 
     /// Remove a file (Phase 7)
-    fn unlink(&mut self, _req: &Request<'_>, parent: Inode, name: &OsStr, reply: fuser::ReplyEmpty) {
+    fn unlink(
+        &mut self,
+        _req: &Request<'_>,
+        parent: Inode,
+        name: &OsStr,
+        reply: fuser::ReplyEmpty,
+    ) {
         let name = match name.to_str() {
             Some(n) => n.to_string(),
             None => {
@@ -905,10 +914,7 @@ impl Filesystem for WormholeFS {
             }
         };
 
-        debug!(
-            "rename: {}/{} -> {}/{}",
-            parent, name, newparent, newname
-        );
+        debug!("rename: {}/{} -> {}/{}", parent, name, newparent, newname);
 
         // Check if writes are enabled
         if !self.writable {
@@ -917,7 +923,10 @@ impl Filesystem for WormholeFS {
             return;
         }
 
-        match self.bridge.rename(parent, name.clone(), newparent, newname.clone()) {
+        match self
+            .bridge
+            .rename(parent, name.clone(), newparent, newname.clone())
+        {
             Ok(()) => {
                 // Invalidate both parent directories
                 self.cache.dirs.invalidate(parent);
@@ -952,10 +961,7 @@ impl Filesystem for WormholeFS {
         _flags: Option<u32>,
         reply: ReplyAttr,
     ) {
-        debug!(
-            "setattr: ino={}, mode={:?}, size={:?}",
-            ino, mode, size
-        );
+        debug!("setattr: ino={}, mode={:?}, size={:?}", ino, mode, size);
 
         // Check if any attributes require write permission
         let needs_write = mode.is_some() || size.is_some() || atime.is_some() || mtime.is_some();

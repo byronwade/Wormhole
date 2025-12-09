@@ -48,7 +48,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     // Set up logging
-    let level = if cli.verbose { Level::DEBUG } else { Level::INFO };
+    let level = if cli.verbose {
+        Level::DEBUG
+    } else {
+        Level::INFO
+    };
     let subscriber = FmtSubscriber::builder()
         .with_max_level(level)
         .with_target(false)
@@ -56,9 +60,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     // Determine mount point - default to /Volumes/wormhole for FSKit compatibility
-    let mount_point = cli.mount_point.unwrap_or_else(|| {
-        PathBuf::from("/Volumes/wormhole")
-    });
+    let mount_point = cli
+        .mount_point
+        .unwrap_or_else(|| PathBuf::from("/Volumes/wormhole"));
 
     // On macOS with FSKit, mount point must be in /Volumes
     #[cfg(target_os = "macos")]
@@ -203,7 +207,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             error!("Common issues:");
             error!("  1. FUSE not installed");
             error!("  2. Permission denied - try running with sudo");
-            error!("  3. Mount point busy - unmount first: umount {:?}", actual_mount_point);
+            error!(
+                "  3. Mount point busy - unmount first: umount {:?}",
+                actual_mount_point
+            );
         }
     }
 

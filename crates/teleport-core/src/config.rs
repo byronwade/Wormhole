@@ -114,7 +114,7 @@ impl Default for CacheConfig {
     fn default() -> Self {
         Self {
             max_disk_bytes: 10 * 1024 * 1024 * 1024, // 10GB
-            max_ram_bytes: 512 * 1024 * 1024,         // 512MB
+            max_ram_bytes: 512 * 1024 * 1024,        // 512MB
             cache_dir: None,
             chunk_ttl_secs: 3600, // 1 hour
             gc_interval_secs: 60, // 1 minute
@@ -186,7 +186,10 @@ impl Config {
     pub fn load() -> Self {
         match Self::default_path() {
             Some(path) => Self::load_from(&path).unwrap_or_else(|e| {
-                warn!("Failed to load config from {:?}: {}, using defaults", path, e);
+                warn!(
+                    "Failed to load config from {:?}: {}, using defaults",
+                    path, e
+                );
                 Self::default()
             }),
             None => {
@@ -203,11 +206,10 @@ impl Config {
             return Ok(Self::default());
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ConfigError::Io(e.to_string()))?;
+        let content = std::fs::read_to_string(path).map_err(|e| ConfigError::Io(e.to_string()))?;
 
-        let config: Config = toml::from_str(&content)
-            .map_err(|e| ConfigError::Parse(e.to_string()))?;
+        let config: Config =
+            toml::from_str(&content).map_err(|e| ConfigError::Parse(e.to_string()))?;
 
         info!("Loaded config from {:?}", path);
         Ok(config)
@@ -225,15 +227,13 @@ impl Config {
     pub fn save_to(&self, path: &Path) -> Result<(), ConfigError> {
         // Create parent directory if needed
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| ConfigError::Io(e.to_string()))?;
+            std::fs::create_dir_all(parent).map_err(|e| ConfigError::Io(e.to_string()))?;
         }
 
-        let content = toml::to_string_pretty(self)
-            .map_err(|e| ConfigError::Serialize(e.to_string()))?;
+        let content =
+            toml::to_string_pretty(self).map_err(|e| ConfigError::Serialize(e.to_string()))?;
 
-        std::fs::write(path, content)
-            .map_err(|e| ConfigError::Io(e.to_string()))?;
+        std::fs::write(path, content).map_err(|e| ConfigError::Io(e.to_string()))?;
 
         info!("Saved config to {:?}", path);
         Ok(())
@@ -247,13 +247,14 @@ impl Config {
 
     /// Get the default cache directory
     pub fn default_cache_dir() -> Option<PathBuf> {
-        ProjectDirs::from("com", "wormhole", "wormhole")
-            .map(|dirs| dirs.cache_dir().to_path_buf())
+        ProjectDirs::from("com", "wormhole", "wormhole").map(|dirs| dirs.cache_dir().to_path_buf())
     }
 
     /// Get the effective cache directory (config override or system default)
     pub fn cache_dir(&self) -> PathBuf {
-        self.cache.cache_dir.clone()
+        self.cache
+            .cache_dir
+            .clone()
             .or_else(|| Self::default_cache_dir())
             .unwrap_or_else(|| PathBuf::from("/tmp/wormhole"))
     }

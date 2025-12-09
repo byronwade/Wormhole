@@ -15,15 +15,14 @@ use tokio::sync::Semaphore;
 use tracing::{debug, error, info, warn};
 
 use teleport_core::{
-    crypto::checksum, DirEntry, ErrorCode, ErrorMessage, FileAttr, FileType, GetAttrRequest,
-    GetAttrResponse, HelloAckMessage, Inode, ListDirRequest, ListDirResponse, LockRequest,
-    LockResponse, LookupRequest, LookupResponse, NetMessage, ReadChunkRequest, ReadChunkResponse,
-    ReleaseRequest, ReleaseResponse, WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE,
-    FIRST_USER_INODE, PROTOCOL_VERSION, ROOT_INODE, LockType,
-    CreateFileRequest, CreateFileResponse, DeleteFileRequest, DeleteFileResponse,
-    CreateDirRequest, CreateDirResponse, DeleteDirRequest, DeleteDirResponse,
-    RenameRequest, RenameResponse, TruncateRequest, TruncateResponse,
-    SetAttrRequest, SetAttrResponse,
+    crypto::checksum, CreateDirRequest, CreateDirResponse, CreateFileRequest, CreateFileResponse,
+    DeleteDirRequest, DeleteDirResponse, DeleteFileRequest, DeleteFileResponse, DirEntry,
+    ErrorCode, ErrorMessage, FileAttr, FileType, GetAttrRequest, GetAttrResponse, HelloAckMessage,
+    Inode, ListDirRequest, ListDirResponse, LockRequest, LockResponse, LockType, LookupRequest,
+    LookupResponse, NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest,
+    ReleaseResponse, RenameRequest, RenameResponse, SetAttrRequest, SetAttrResponse,
+    TruncateRequest, TruncateResponse, WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE,
+    FIRST_USER_INODE, PROTOCOL_VERSION, ROOT_INODE,
 };
 
 use crate::lock_manager::LockManager;
@@ -114,7 +113,10 @@ impl InodeTable {
 
         // Warn once when approaching the limit
         if current_size >= INODE_WARNING_THRESHOLD {
-            if !self.warned_high_usage.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            if !self
+                .warned_high_usage
+                .swap(true, std::sync::atomic::Ordering::Relaxed)
+            {
                 warn!(
                     "Inode table is {}% full ({}/{} entries). \
                      Performance may degrade as the table grows.",
@@ -177,7 +179,8 @@ impl InodeTable {
                 self.len()
             );
             // Reset warning flag after cleanup
-            self.warned_high_usage.store(false, std::sync::atomic::Ordering::Relaxed);
+            self.warned_high_usage
+                .store(false, std::sync::atomic::Ordering::Relaxed);
         }
 
         removed
@@ -216,7 +219,9 @@ impl WormholeHost {
 
         info!(
             "Wormhole host listening on {} serving {:?} (cert fingerprint: {})",
-            self.config.bind_addr, self.config.shared_path, hex::encode(cert_fingerprint)
+            self.config.bind_addr,
+            self.config.shared_path,
+            hex::encode(cert_fingerprint)
         );
 
         // Spawn a background task to periodically clean up expired rate limiter entries
@@ -253,8 +258,7 @@ impl WormholeHost {
                         let remaining = self.rate_limiter.get_block_remaining(remote_ip);
                         warn!(
                             "Rate limited connection from {} (blocked for {:?})",
-                            remote_ip,
-                            remaining
+                            remote_ip, remaining
                         );
                         // Don't accept the connection - just drop the incoming
                         continue;
@@ -297,7 +301,10 @@ impl WormholeHost {
                                         // SECURITY: Record failed handshake
                                         let blocked = rate_limiter.record_failure(remote_ip);
                                         if blocked {
-                                            warn!("Connection error from {} (now blocked): {:?}", remote, e);
+                                            warn!(
+                                                "Connection error from {} (now blocked): {:?}",
+                                                remote, e
+                                            );
                                         } else {
                                             error!("Connection error from {}: {:?}", remote, e);
                                         }
@@ -308,7 +315,10 @@ impl WormholeHost {
                                 // SECURITY: Record TLS/connection failures
                                 let blocked = rate_limiter.record_failure(remote_ip);
                                 if blocked {
-                                    warn!("Connection failed from {} (now blocked): {:?}", remote_ip, e);
+                                    warn!(
+                                        "Connection failed from {} (now blocked): {:?}",
+                                        remote_ip, e
+                                    );
                                 } else {
                                     warn!("Connection failed: {:?}", e);
                                 }
@@ -373,11 +383,13 @@ async fn handle_connection(
 
     // Generate session ID
     let mut session_id = [0u8; 16];
-    getrandom::getrandom(&mut session_id)
-        .expect("RNG failed - system entropy source unavailable");
+    getrandom::getrandom(&mut session_id).expect("RNG failed - system entropy source unavailable");
 
     // Create a unique holder ID for this client
-    let holder_id = format!("{:02x}{:02x}{:02x}{:02x}", client_id[0], client_id[1], client_id[2], client_id[3]);
+    let holder_id = format!(
+        "{:02x}{:02x}{:02x}{:02x}",
+        client_id[0], client_id[1], client_id[2], client_id[3]
+    );
 
     // Send HelloAck with write capability
     let ack = NetMessage::HelloAck(HelloAckMessage {
@@ -423,8 +435,15 @@ async fn handle_connection(
                 let holder_id = holder_id.clone();
 
                 tokio::spawn(async move {
-                    if let Err(e) =
-                        handle_request(&mut send, &mut recv, &inodes, &shared_path, &lock_manager, &holder_id).await
+                    if let Err(e) = handle_request(
+                        &mut send,
+                        &mut recv,
+                        &inodes,
+                        &shared_path,
+                        &lock_manager,
+                        &holder_id,
+                    )
+                    .await
                     {
                         debug!("Request error: {:?}", e);
                     }
@@ -637,11 +656,13 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
             message: "directory not found".into(),
             related_inode: Some(req.inode),
         }),
-        Err(e) if e.kind() == std::io::ErrorKind::NotADirectory => NetMessage::Error(ErrorMessage {
-            code: ErrorCode::NotADirectory,
-            message: "not a directory".into(),
-            related_inode: Some(req.inode),
-        }),
+        Err(e) if e.kind() == std::io::ErrorKind::NotADirectory => {
+            NetMessage::Error(ErrorMessage {
+                code: ErrorCode::NotADirectory,
+                message: "not a directory".into(),
+                related_inode: Some(req.inode),
+            })
+        }
         Err(e) => NetMessage::Error(ErrorMessage {
             code: ErrorCode::IoError,
             message: e.to_string(),
@@ -713,7 +734,11 @@ fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable) -> NetMessage {
 }
 
 /// Handle a write chunk request (Phase 7)
-fn handle_write_chunk(req: WriteChunkRequest, inodes: &InodeTable, lock_manager: &LockManager) -> NetMessage {
+fn handle_write_chunk(
+    req: WriteChunkRequest,
+    inodes: &InodeTable,
+    lock_manager: &LockManager,
+) -> NetMessage {
     let inode = req.chunk_id.inode;
 
     // Verify the lock token is valid for exclusive write
@@ -785,7 +810,12 @@ fn handle_write_chunk(req: WriteChunkRequest, inodes: &InodeTable, lock_manager:
     // Get new file size
     let new_size = file.metadata().map(|m| m.len()).ok();
 
-    info!("Write chunk: inode={}, offset={}, size={}", inode, offset, req.data.len());
+    info!(
+        "Write chunk: inode={}, offset={}, size={}",
+        inode,
+        offset,
+        req.data.len()
+    );
 
     NetMessage::WriteChunkResponse(WriteChunkResponse {
         chunk_id: req.chunk_id,
@@ -795,7 +825,11 @@ fn handle_write_chunk(req: WriteChunkRequest, inodes: &InodeTable, lock_manager:
 }
 
 /// Handle a lock acquire request (Phase 7)
-fn handle_acquire_lock(req: LockRequest, lock_manager: &LockManager, holder_id: &str) -> NetMessage {
+fn handle_acquire_lock(
+    req: LockRequest,
+    lock_manager: &LockManager,
+    holder_id: &str,
+) -> NetMessage {
     let timeout = if req.timeout_ms > 0 {
         Some(Duration::from_millis(req.timeout_ms as u64))
     } else {
@@ -804,7 +838,10 @@ fn handle_acquire_lock(req: LockRequest, lock_manager: &LockManager, holder_id: 
 
     match lock_manager.acquire(req.inode, req.lock_type, holder_id, timeout) {
         Ok(token) => {
-            info!("Lock acquired: inode={}, type={:?}, holder={}", req.inode, req.lock_type, holder_id);
+            info!(
+                "Lock acquired: inode={}, type={:?}, holder={}",
+                req.inode, req.lock_type, holder_id
+            );
             NetMessage::AcquireLockResponse(LockResponse {
                 granted: true,
                 token: Some(token),
@@ -812,7 +849,11 @@ fn handle_acquire_lock(req: LockRequest, lock_manager: &LockManager, holder_id: 
                 retry_after_ms: None,
             })
         }
-        Err(crate::lock_manager::LockError::Conflict { holder, retry_after, .. }) => {
+        Err(crate::lock_manager::LockError::Conflict {
+            holder,
+            retry_after,
+            ..
+        }) => {
             debug!("Lock conflict: inode={}, holder={:?}", req.inode, holder);
             NetMessage::AcquireLockResponse(LockResponse {
                 granted: false,
@@ -821,13 +862,11 @@ fn handle_acquire_lock(req: LockRequest, lock_manager: &LockManager, holder_id: 
                 retry_after_ms: retry_after.map(|d| d.as_millis() as u32),
             })
         }
-        Err(crate::lock_manager::LockError::TokenNotFound) => {
-            NetMessage::Error(ErrorMessage {
-                code: ErrorCode::LockRequired,
-                message: "Lock token not found".into(),
-                related_inode: Some(req.inode),
-            })
-        }
+        Err(crate::lock_manager::LockError::TokenNotFound) => NetMessage::Error(ErrorMessage {
+            code: ErrorCode::LockRequired,
+            message: "Lock token not found".into(),
+            related_inode: Some(req.inode),
+        }),
     }
 }
 
@@ -842,21 +881,25 @@ fn handle_release_lock(req: ReleaseRequest, lock_manager: &LockManager) -> NetMe
             warn!("Attempted to release non-existent lock");
             NetMessage::ReleaseLockResponse(ReleaseResponse { success: false })
         }
-        Err(_) => {
-            NetMessage::ReleaseLockResponse(ReleaseResponse { success: false })
-        }
+        Err(_) => NetMessage::ReleaseLockResponse(ReleaseResponse { success: false }),
     }
 }
 
 // === SECURE FILE OPERATION HANDLERS (Phase 7) ===
 
 /// Helper: Validate path is within shared directory (SECURITY CRITICAL)
-fn validate_path_security(path: &Path, shared_path: &Path, parent_inode: Inode) -> Result<(), NetMessage> {
+fn validate_path_security(
+    path: &Path,
+    shared_path: &Path,
+    parent_inode: Inode,
+) -> Result<(), NetMessage> {
     // SECURITY: Ensure path doesn't escape shared directory via symlinks or traversal
     // Use canonicalize to resolve symlinks and check containment
     match path.canonicalize() {
         Ok(canonical) => {
-            let shared_canonical = shared_path.canonicalize().unwrap_or_else(|_| shared_path.to_path_buf());
+            let shared_canonical = shared_path
+                .canonicalize()
+                .unwrap_or_else(|_| shared_path.to_path_buf());
             if !canonical.starts_with(&shared_canonical) {
                 return Err(NetMessage::Error(ErrorMessage {
                     code: ErrorCode::PathTraversal,
@@ -869,7 +912,9 @@ fn validate_path_security(path: &Path, shared_path: &Path, parent_inode: Inode) 
             // Path doesn't exist yet - validate the parent instead
             if let Some(parent) = path.parent() {
                 if let Ok(parent_canonical) = parent.canonicalize() {
-                    let shared_canonical = shared_path.canonicalize().unwrap_or_else(|_| shared_path.to_path_buf());
+                    let shared_canonical = shared_path
+                        .canonicalize()
+                        .unwrap_or_else(|_| shared_path.to_path_buf());
                     if !parent_canonical.starts_with(&shared_canonical) {
                         return Err(NetMessage::Error(ErrorMessage {
                             code: ErrorCode::PathTraversal,
@@ -936,36 +981,33 @@ fn handle_create_file(
     #[cfg(unix)]
     options.mode(req.mode);
 
-    match options.open(&file_path)
-    {
-        Ok(_file) => {
-            match fs::metadata(&file_path) {
-                Ok(meta) => {
-                    let inode = match inodes.get_or_create_inode(file_path) {
-                        Some(i) => i,
-                        None => {
-                            return NetMessage::CreateFileResponse(CreateFileResponse {
-                                success: false,
-                                attr: None,
-                                error: Some("inode allocation failed".into()),
-                            });
-                        }
-                    };
-                    let attr = metadata_to_attr(inode, &meta);
-                    info!("Created file: {:?} (inode {})", req.name, inode);
-                    NetMessage::CreateFileResponse(CreateFileResponse {
-                        success: true,
-                        attr: Some(attr),
-                        error: None,
-                    })
-                }
-                Err(e) => NetMessage::CreateFileResponse(CreateFileResponse {
-                    success: false,
-                    attr: None,
-                    error: Some(format!("failed to stat created file: {}", e)),
-                }),
+    match options.open(&file_path) {
+        Ok(_file) => match fs::metadata(&file_path) {
+            Ok(meta) => {
+                let inode = match inodes.get_or_create_inode(file_path) {
+                    Some(i) => i,
+                    None => {
+                        return NetMessage::CreateFileResponse(CreateFileResponse {
+                            success: false,
+                            attr: None,
+                            error: Some("inode allocation failed".into()),
+                        });
+                    }
+                };
+                let attr = metadata_to_attr(inode, &meta);
+                info!("Created file: {:?} (inode {})", req.name, inode);
+                NetMessage::CreateFileResponse(CreateFileResponse {
+                    success: true,
+                    attr: Some(attr),
+                    error: None,
+                })
             }
-        }
+            Err(e) => NetMessage::CreateFileResponse(CreateFileResponse {
+                success: false,
+                attr: None,
+                error: Some(format!("failed to stat created file: {}", e)),
+            }),
+        },
         Err(e) => NetMessage::CreateFileResponse(CreateFileResponse {
             success: false,
             attr: None,
@@ -1045,11 +1087,7 @@ fn handle_delete_file(
 }
 
 /// Handle create directory request (SECURITY: validates path)
-fn handle_create_dir(
-    req: CreateDirRequest,
-    inodes: &InodeTable,
-    shared_path: &Path,
-) -> NetMessage {
+fn handle_create_dir(req: CreateDirRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
     // SECURITY: Validate directory name
     if let Err(e) = teleport_core::path::validate_filename(&req.name) {
         return NetMessage::Error(ErrorMessage {
@@ -1124,11 +1162,7 @@ fn handle_create_dir(
 }
 
 /// Handle delete directory request (SECURITY: validates path)
-fn handle_delete_dir(
-    req: DeleteDirRequest,
-    inodes: &InodeTable,
-    shared_path: &Path,
-) -> NetMessage {
+fn handle_delete_dir(req: DeleteDirRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
     // SECURITY: Validate directory name
     if let Err(e) = teleport_core::path::validate_filename(&req.name) {
         return NetMessage::Error(ErrorMessage {
@@ -1353,7 +1387,8 @@ fn handle_setattr(
     };
 
     // SECURITY: Require lock token for modifications
-    let needs_lock = req.size.is_some() || req.mode.is_some() || req.mtime.is_some() || req.atime.is_some();
+    let needs_lock =
+        req.size.is_some() || req.mode.is_some() || req.mtime.is_some() || req.atime.is_some();
     if needs_lock {
         if let Some(ref token) = req.lock_token {
             if !lock_manager.validate(req.inode, token, LockType::Exclusive) {
@@ -1479,15 +1514,21 @@ mod tests {
         assert_eq!(table.get_path(ROOT_INODE), Some(PathBuf::from("/shared")));
 
         // New paths get new inodes
-        let inode = table.get_or_create_inode(PathBuf::from("/shared/file.txt")).unwrap();
+        let inode = table
+            .get_or_create_inode(PathBuf::from("/shared/file.txt"))
+            .unwrap();
         assert_eq!(inode, FIRST_USER_INODE);
 
         // Same path returns same inode
-        let inode2 = table.get_or_create_inode(PathBuf::from("/shared/file.txt")).unwrap();
+        let inode2 = table
+            .get_or_create_inode(PathBuf::from("/shared/file.txt"))
+            .unwrap();
         assert_eq!(inode, inode2);
 
         // Different path gets different inode
-        let inode3 = table.get_or_create_inode(PathBuf::from("/shared/other.txt")).unwrap();
+        let inode3 = table
+            .get_or_create_inode(PathBuf::from("/shared/other.txt"))
+            .unwrap();
         assert_ne!(inode, inode3);
     }
 

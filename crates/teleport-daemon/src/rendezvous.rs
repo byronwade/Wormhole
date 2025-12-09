@@ -139,8 +139,11 @@ impl RendezvousClient {
 
         // Wait for client to join
         info!("Waiting for peer to connect...");
-        let peer_result =
-            timeout(DISCOVERY_TIMEOUT, self.wait_for_peer(&mut ws, pake, &pake_msg)).await;
+        let peer_result = timeout(
+            DISCOVERY_TIMEOUT,
+            self.wait_for_peer(&mut ws, pake, &pake_msg),
+        )
+        .await;
 
         match peer_result {
             Ok(Ok(result)) => Ok(result),
@@ -345,8 +348,7 @@ impl RendezvousClient {
                             .map_err(|_| RendezvousError::PakeFailed)?;
 
                         // Determine best address
-                        let (peer_addr, is_local) =
-                            select_best_address(&info, &self.local_addrs)?;
+                        let (peer_addr, is_local) = select_best_address(&info, &self.local_addrs)?;
 
                         return Ok(RendezvousResult {
                             peer_addr,
@@ -422,10 +424,7 @@ fn select_best_address(
                     && peer_octets[2] == my_octets[2]
                 {
                     info!("Detected same LAN, using local address: {}", peer_local);
-                    return Ok((
-                        SocketAddr::new(peer_local.ip(), peer.quic_port),
-                        true,
-                    ));
+                    return Ok((SocketAddr::new(peer_local.ip(), peer.quic_port), true));
                 }
             }
         }
@@ -463,7 +462,10 @@ fn try_generate_peer_id() -> Result<String, getrandom::Error> {
 ///
 /// Sends a burst of UDP packets to help establish a NAT mapping.
 /// This is best-effort and may not work with all NAT types.
-pub async fn attempt_hole_punch(peer_addr: SocketAddr, local_port: u16) -> Result<(), std::io::Error> {
+pub async fn attempt_hole_punch(
+    peer_addr: SocketAddr,
+    local_port: u16,
+) -> Result<(), std::io::Error> {
     let socket = UdpSocket::bind(format!("0.0.0.0:{}", local_port))?;
     socket.set_nonblocking(true)?;
 

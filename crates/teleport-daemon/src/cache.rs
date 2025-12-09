@@ -396,7 +396,10 @@ impl HybridChunkCache {
             match disk_cache.read(chunk_id) {
                 Ok(Some(data)) => {
                     self.stats.disk_hits.fetch_add(1, Ordering::Relaxed);
-                    trace!("hybrid_cache: Disk hit for {:?}, promoting to RAM", chunk_id);
+                    trace!(
+                        "hybrid_cache: Disk hit for {:?}, promoting to RAM",
+                        chunk_id
+                    );
 
                     // Promote to RAM cache - wrap in Arc once and share it
                     // This avoids cloning the full Vec<u8> data
@@ -458,7 +461,9 @@ impl HybridChunkCache {
             }
 
             // Increment active count (may slightly overshoot due to race, but bounded)
-            self.stats.active_disk_threads.fetch_add(1, Ordering::Relaxed);
+            self.stats
+                .active_disk_threads
+                .fetch_add(1, Ordering::Relaxed);
             self.stats.disk_writes.fetch_add(1, Ordering::Relaxed);
 
             let disk_cache = disk_cache.clone();

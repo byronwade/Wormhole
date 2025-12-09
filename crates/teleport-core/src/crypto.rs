@@ -49,10 +49,86 @@ pub fn normalize_join_code(code: &str) -> String {
 /// Validate a join code format
 pub fn validate_join_code(code: &str) -> bool {
     let normalized = normalize_join_code(code);
-    normalized.len() == JOIN_CODE_LENGTH
-        && normalized
-            .bytes()
-            .all(|b| JOIN_CODE_CHARS.contains(&b))
+    normalized.len() == JOIN_CODE_LENGTH && normalized.bytes().all(|b| JOIN_CODE_CHARS.contains(&b))
+}
+
+/// Base URL for wormhole share links
+pub const WORMHOLE_BASE_URL: &str = "https://wormhole.dev";
+
+/// Extract a join code from a URL or return the input if it's already a code
+///
+/// Handles formats:
+/// - `ABC-123` (plain code)
+/// - `https://wormhole.dev/j/ABC-123` (web link)
+/// - `wormhole://join/ABC-123` (deep link)
+/// - `wormhole://j/ABC-123` (deep link short)
+/// - `wormhole://ABC-123` (deep link direct)
+pub fn extract_join_code(input: &str) -> Option<String> {
+    let input = input.trim();
+
+    // Check if it's a wormhole:// deep link
+    if let Some(path) = input
+        .strip_prefix("wormhole://")
+        .or_else(|| input.strip_prefix("wormhole:"))
+    {
+        let path = path.trim_start_matches('/');
+        let code = if let Some(rest) = path.strip_prefix("join/") {
+            rest
+        } else if let Some(rest) = path.strip_prefix("j/") {
+            rest
+        } else {
+            path
+        };
+        let normalized = normalize_join_code(code);
+        if validate_join_code(&normalized) {
+            return Some(format_join_code(&normalized));
+        }
+        return None;
+    }
+
+    // Check if it's a web URL
+    if input.starts_with("http://") || input.starts_with("https://") {
+        // Try to extract from URL path
+        // Formats: /j/CODE, /join/CODE
+        if let Some(path_start) = input.find("/j/").or_else(|| input.find("/join/")) {
+            let after_prefix = if input[path_start..].starts_with("/j/") {
+                &input[path_start + 3..]
+            } else {
+                &input[path_start + 6..]
+            };
+            // Take until next / or end
+            let code = after_prefix.split('/').next().unwrap_or("");
+            let normalized = normalize_join_code(code);
+            if validate_join_code(&normalized) {
+                return Some(format_join_code(&normalized));
+            }
+        }
+        return None;
+    }
+
+    // It might be a plain code
+    let normalized = normalize_join_code(input);
+    if validate_join_code(&normalized) {
+        return Some(format_join_code(&normalized));
+    }
+
+    None
+}
+
+/// Format a normalized join code with dashes (e.g., "ABCXYZ" -> "ABC-XYZ")
+pub fn format_join_code(normalized: &str) -> String {
+    if normalized.len() == JOIN_CODE_LENGTH {
+        format!("{}-{}", &normalized[..3], &normalized[3..])
+    } else {
+        normalized.to_string()
+    }
+}
+
+/// Generate a full share link for a join code
+pub fn make_share_link(join_code: &str) -> String {
+    let normalized = normalize_join_code(join_code);
+    let formatted = format_join_code(&normalized);
+    format!("{}/j/{}", WORMHOLE_BASE_URL, formatted)
 }
 
 /// Compute BLAKE3 checksum of data
@@ -318,5 +394,81 @@ mod tests {
         let host = PakeHandshake::start_host("TEST-CD");
         // SPAKE2 messages are 33 bytes (compressed Ed25519 point)
         assert_eq!(host.outbound_message().len(), PAKE_MESSAGE_SIZE);
+    }
+
+    #[test]
+    fn test_extract_join_code_plain() {
+        // Plain codes
+        assert_eq!(extract_join_code("ABC-DEF"), Some("ABC-DEF".to_string()));
+        assert_eq!(extract_join_code("ABCDEF"), Some("ABC-DEF".to_string()));
+        assert_eq!(extract_join_code("abc-def"), Some("ABC-DEF".to_string()));
+        assert_eq!(
+            extract_join_code("  ABC-DEF  "),
+            Some("ABC-DEF".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_join_code_web_url() {
+        // Web URLs
+        assert_eq!(
+            extract_join_code("https://wormhole.dev/j/ABC-DEF"),
+            Some("ABC-DEF".to_string())
+        );
+        assert_eq!(
+            extract_join_code("https://wormhole.dev/j/ABCDEF"),
+            Some("ABC-DEF".to_string())
+        );
+        assert_eq!(
+            extract_join_code("http://wormhole.dev/join/ABC-DEF"),
+            Some("ABC-DEF".to_string())
+        );
+        assert_eq!(
+            extract_join_code("https://example.com/j/ABC-DEF"),
+            Some("ABC-DEF".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_join_code_deep_link() {
+        // Deep links
+        assert_eq!(
+            extract_join_code("wormhole://join/ABC-DEF"),
+            Some("ABC-DEF".to_string())
+        );
+        assert_eq!(
+            extract_join_code("wormhole://j/ABC-DEF"),
+            Some("ABC-DEF".to_string())
+        );
+        assert_eq!(
+            extract_join_code("wormhole://ABC-DEF"),
+            Some("ABC-DEF".to_string())
+        );
+        assert_eq!(
+            extract_join_code("wormhole:ABC-DEF"),
+            Some("ABC-DEF".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_join_code_invalid() {
+        // Invalid inputs
+        assert_eq!(extract_join_code(""), None);
+        assert_eq!(extract_join_code("ABC"), None);
+        assert_eq!(extract_join_code("https://wormhole.dev/"), None);
+        assert_eq!(extract_join_code("wormhole://"), None);
+        assert_eq!(extract_join_code("random text"), None);
+    }
+
+    #[test]
+    fn test_make_share_link() {
+        assert_eq!(make_share_link("ABC-DEF"), "https://wormhole.dev/j/ABC-DEF");
+        assert_eq!(make_share_link("abcdef"), "https://wormhole.dev/j/ABC-DEF");
+    }
+
+    #[test]
+    fn test_format_join_code() {
+        assert_eq!(format_join_code("ABCDEF"), "ABC-DEF");
+        assert_eq!(format_join_code("ABC"), "ABC"); // Too short, return as-is
     }
 }

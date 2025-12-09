@@ -26,8 +26,8 @@
 //! 3. Separate runtime from FUSE thread
 //! 4. No locks held across await points
 
-use std::time::Duration;
 use crossbeam_channel::{bounded, Receiver, Sender, TrySendError};
+use std::time::Duration;
 use tokio::sync::oneshot;
 use tracing::{debug, error, warn};
 
@@ -268,7 +268,10 @@ impl FuseAsyncBridge {
             reply: reply_tx,
         })?;
 
-        self.recv_response(reply_rx, &format!("read {} @ {} len {}", inode, offset, size))
+        self.recv_response(
+            reply_rx,
+            &format!("read {} @ {} len {}", inode, offset, size),
+        )
     }
 
     /// Write file data (blocking) - Phase 7
@@ -283,7 +286,10 @@ impl FuseAsyncBridge {
             reply: reply_tx,
         })?;
 
-        self.recv_response(reply_rx, &format!("write {} @ {} len {}", inode, offset, len))
+        self.recv_response(
+            reply_rx,
+            &format!("write {} @ {} len {}", inode, offset, len),
+        )
     }
 
     /// Acquire a lock on a file (blocking) - Phase 7
@@ -296,7 +302,10 @@ impl FuseAsyncBridge {
             reply: reply_tx,
         })?;
 
-        self.recv_response(reply_rx, &format!("acquire_lock {} exclusive={}", inode, exclusive))
+        self.recv_response(
+            reply_rx,
+            &format!("acquire_lock {} exclusive={}", inode, exclusive),
+        )
     }
 
     /// Release a lock on a file (blocking) - Phase 7
@@ -324,7 +333,12 @@ impl FuseAsyncBridge {
     }
 
     /// Create a new file (blocking) - Phase 7
-    pub fn create_file(&self, parent: Inode, name: String, mode: u32) -> Result<FileAttr, FuseError> {
+    pub fn create_file(
+        &self,
+        parent: Inode,
+        name: String,
+        mode: u32,
+    ) -> Result<FileAttr, FuseError> {
         let (reply_tx, reply_rx) = oneshot::channel();
 
         self.send_request(FuseRequest::CreateFile {
@@ -351,7 +365,12 @@ impl FuseAsyncBridge {
     }
 
     /// Create a directory (blocking) - Phase 7
-    pub fn create_dir(&self, parent: Inode, name: String, mode: u32) -> Result<FileAttr, FuseError> {
+    pub fn create_dir(
+        &self,
+        parent: Inode,
+        name: String,
+        mode: u32,
+    ) -> Result<FileAttr, FuseError> {
         let (reply_tx, reply_rx) = oneshot::channel();
 
         self.send_request(FuseRequest::CreateDir {
@@ -397,7 +416,10 @@ impl FuseAsyncBridge {
 
         self.recv_response(
             reply_rx,
-            &format!("rename {}/{} -> {}/{}", old_parent, old_name, new_parent, new_name),
+            &format!(
+                "rename {}/{} -> {}/{}",
+                old_parent, old_name, new_parent, new_name
+            ),
         )
     }
 
@@ -528,7 +550,12 @@ mod tests {
             // Simulate async runtime receiving request
             let request = rx.recv_timeout(Duration::from_secs(1)).unwrap();
 
-            if let FuseRequest::Lookup { parent, name, reply } = request {
+            if let FuseRequest::Lookup {
+                parent,
+                name,
+                reply,
+            } = request
+            {
                 assert_eq!(parent, 1);
                 assert_eq!(name, "test.txt");
 

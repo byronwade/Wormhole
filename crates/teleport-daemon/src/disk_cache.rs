@@ -54,8 +54,7 @@ impl DiskCache {
         // Linux: ~/.cache/wormhole/chunks/
         // macOS: ~/Library/Caches/wormhole/chunks/
         // Windows: %LOCALAPPDATA%\wormhole\chunks\
-        let dirs = ProjectDirs::from("", "", "wormhole")
-            .ok_or(DiskCacheError::NoCacheDir)?;
+        let dirs = ProjectDirs::from("", "", "wormhole").ok_or(DiskCacheError::NoCacheDir)?;
 
         let cache_dir = dirs.cache_dir().join("chunks");
         fs::create_dir_all(&cache_dir).map_err(|e| DiskCacheError::Io(e.to_string()))?;
@@ -128,7 +127,9 @@ impl DiskCache {
                     let entry3 = entry3.map_err(|e| DiskCacheError::Io(e.to_string()))?;
                     let file_path = entry3.path();
 
-                    if file_path.is_file() && !file_path.extension().map(|e| e == "tmp").unwrap_or(false) {
+                    if file_path.is_file()
+                        && !file_path.extension().map(|e| e == "tmp").unwrap_or(false)
+                    {
                         if let Ok(metadata) = fs::metadata(&file_path) {
                             // We can't recover the original ChunkId from the hash,
                             // so we'll skip index recovery for now.
@@ -201,7 +202,10 @@ impl DiskCache {
 
         // Update index
         {
-            let mut index = self.index.write().map_err(|_| DiskCacheError::LockPoisoned)?;
+            let mut index = self
+                .index
+                .write()
+                .map_err(|_| DiskCacheError::LockPoisoned)?;
             if let Some(old_entry) = index.insert(
                 chunk_id,
                 DiskCacheEntry {
@@ -211,17 +215,14 @@ impl DiskCache {
                 },
             ) {
                 // Subtract old size if replacing
-                self.total_bytes.fetch_sub(old_entry.size, Ordering::Relaxed);
+                self.total_bytes
+                    .fetch_sub(old_entry.size, Ordering::Relaxed);
             }
         }
 
         self.total_bytes.fetch_add(size, Ordering::Relaxed);
 
-        trace!(
-            "disk_cache: wrote {} bytes to {:?}",
-            size,
-            target_path
-        );
+        trace!("disk_cache: wrote {} bytes to {:?}", size, target_path);
 
         Ok(())
     }
@@ -229,7 +230,10 @@ impl DiskCache {
     /// Read chunk from disk cache
     pub fn read(&self, chunk_id: &ChunkId) -> Result<Option<Vec<u8>>, DiskCacheError> {
         let entry = {
-            let index = self.index.read().map_err(|_| DiskCacheError::LockPoisoned)?;
+            let index = self
+                .index
+                .read()
+                .map_err(|_| DiskCacheError::LockPoisoned)?;
             index.get(chunk_id).cloned()
         };
 
@@ -243,7 +247,10 @@ impl DiskCache {
 
             // Update access time
             {
-                let mut index = self.index.write().map_err(|_| DiskCacheError::LockPoisoned)?;
+                let mut index = self
+                    .index
+                    .write()
+                    .map_err(|_| DiskCacheError::LockPoisoned)?;
                 if let Some(e) = index.get_mut(chunk_id) {
                     e.last_accessed = SystemTime::now();
                 }
@@ -263,7 +270,10 @@ impl DiskCache {
 
     /// Check if chunk exists in disk cache
     pub fn contains(&self, chunk_id: &ChunkId) -> bool {
-        self.index.read().map(|index| index.contains_key(chunk_id)).unwrap_or(false)
+        self.index
+            .read()
+            .map(|index| index.contains_key(chunk_id))
+            .unwrap_or(false)
     }
 
     /// Get total size of cached data
@@ -279,7 +289,10 @@ impl DiskCache {
     /// Remove a chunk from disk cache
     pub fn remove(&self, chunk_id: &ChunkId) -> Result<bool, DiskCacheError> {
         let entry = {
-            let mut index = self.index.write().map_err(|_| DiskCacheError::LockPoisoned)?;
+            let mut index = self
+                .index
+                .write()
+                .map_err(|_| DiskCacheError::LockPoisoned)?;
             index.remove(chunk_id)
         };
 
@@ -308,7 +321,10 @@ impl DiskCache {
     /// Clear all cached data
     pub fn clear(&self) -> Result<(), DiskCacheError> {
         let entries: Vec<_> = {
-            let index = self.index.read().map_err(|_| DiskCacheError::LockPoisoned)?;
+            let index = self
+                .index
+                .read()
+                .map_err(|_| DiskCacheError::LockPoisoned)?;
             index.keys().cloned().collect()
         };
 
@@ -336,7 +352,9 @@ impl std::fmt::Display for DiskCacheError {
         match self {
             DiskCacheError::NoCacheDir => write!(f, "Could not determine cache directory"),
             DiskCacheError::Io(e) => write!(f, "IO error: {}", e),
-            DiskCacheError::LockPoisoned => write!(f, "Lock poisoned: a thread panicked while holding the lock"),
+            DiskCacheError::LockPoisoned => {
+                write!(f, "Lock poisoned: a thread panicked while holding the lock")
+            }
         }
     }
 }

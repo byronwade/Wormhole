@@ -21,15 +21,15 @@ use tracing::{debug, error, info, warn};
 use teleport_core::{
     crypto::checksum, path::safe_real_path, DirEntry, ErrorCode, ErrorMessage, FileAttr, FileType,
     GetAttrRequest, GetAttrResponse, HelloAckMessage, Inode, ListDirRequest, ListDirResponse,
-    ListSharesResponse, LockRequest, LockResponse, LookupRequest, LookupResponse, NetMessage,
-    ReadChunkRequest, ReadChunkResponse, ReleaseRequest, ReleaseResponse, ShareId, ShareInfo,
-    WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE, FIRST_USER_INODE, LockType,
+    ListSharesResponse, LockRequest, LockResponse, LockType, LookupRequest, LookupResponse,
+    NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest, ReleaseResponse, ShareId,
+    ShareInfo, WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE, FIRST_USER_INODE,
     PROTOCOL_VERSION, ROOT_INODE,
 };
 
 use crate::lock_manager::LockManager;
-use crate::rate_limiter::RateLimiter;
 use crate::net::{create_server_endpoint, recv_message, send_message, ConnectionError};
+use crate::rate_limiter::RateLimiter;
 
 /// SECURITY: Maximum session duration before forced re-authentication (24 hours)
 /// This prevents stale or compromised sessions from being used indefinitely.
@@ -102,7 +102,8 @@ impl MultiHostConfig {
     /// Create with a single share (backward compatible)
     pub fn single_share(path: impl Into<PathBuf>) -> Self {
         let path = path.into();
-        let name = path.file_name()
+        let name = path
+            .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| "share".into());
 
@@ -230,9 +231,15 @@ impl MultiShareHost {
         );
 
         for share in &self.share_infos {
-            info!("  - {}: {:?}", share.name, self.config.shares.iter()
-                .find(|s| s.id == share.id)
-                .map(|s| &s.path));
+            info!(
+                "  - {}: {:?}",
+                share.name,
+                self.config
+                    .shares
+                    .iter()
+                    .find(|s| s.id == share.id)
+                    .map(|s| &s.path)
+            );
         }
 
         // Spawn a background task to periodically clean up expired rate limiter entries
@@ -258,8 +265,7 @@ impl MultiShareHost {
                         let remaining = self.rate_limiter.get_block_remaining(remote_ip);
                         warn!(
                             "Rate limited connection from {} (blocked for {:?})",
-                            remote_ip,
-                            remaining
+                            remote_ip, remaining
                         );
                         // Don't accept the connection - just drop the incoming
                         continue;
@@ -305,7 +311,10 @@ impl MultiShareHost {
                                         // SECURITY: Record failed handshake
                                         let blocked = rate_limiter.record_failure(remote_ip);
                                         if blocked {
-                                            warn!("Connection error from {} (now blocked): {:?}", remote, e);
+                                            warn!(
+                                                "Connection error from {} (now blocked): {:?}",
+                                                remote, e
+                                            );
                                         } else {
                                             error!("Connection error from {}: {:?}", remote, e);
                                         }
@@ -316,7 +325,10 @@ impl MultiShareHost {
                                 // SECURITY: Record TLS/connection failures
                                 let blocked = rate_limiter.record_failure(remote_ip);
                                 if blocked {
-                                    warn!("Connection failed from {} (now blocked): {:?}", remote_ip, e);
+                                    warn!(
+                                        "Connection failed from {} (now blocked): {:?}",
+                                        remote_ip, e
+                                    );
                                 } else {
                                     warn!("Connection failed: {:?}", e);
                                 }
@@ -382,8 +394,7 @@ async fn handle_connection(
 
     // Generate session ID
     let mut session_id = [0u8; 16];
-    getrandom::getrandom(&mut session_id)
-        .expect("RNG failed - system entropy source unavailable");
+    getrandom::getrandom(&mut session_id).expect("RNG failed - system entropy source unavailable");
 
     // Create a unique holder ID for this client
     let holder_id = format!(
@@ -495,7 +506,11 @@ async fn handle_request(
     let response = match request {
         NetMessage::ListShares(req) => {
             let shares = if let Some(filter) = req.filter_id {
-                share_infos.iter().filter(|s| s.id == filter).cloned().collect()
+                share_infos
+                    .iter()
+                    .filter(|s| s.id == filter)
+                    .cloned()
+                    .collect()
             } else {
                 share_infos.to_vec()
             };
@@ -655,7 +670,11 @@ fn handle_lookup(req: LookupRequest, table: &ShareInodeTable, shared_path: &Path
             // SECURITY: After confirming the file exists, verify symlinks don't escape
             // the shared directory. This follows all symlinks and checks the real path.
             if let Err(e) = safe_real_path(shared_path, &child_path) {
-                warn!("Path traversal attempt via symlink: {}: {}", child_path.display(), e);
+                warn!(
+                    "Path traversal attempt via symlink: {}: {}",
+                    child_path.display(),
+                    e
+                );
                 return NetMessage::Error(ErrorMessage {
                     code: ErrorCode::PathTraversal,
                     message: "symlink escapes shared directory".into(),
@@ -672,7 +691,7 @@ fn handle_lookup(req: LookupRequest, table: &ShareInodeTable, shared_path: &Path
                     code: ErrorCode::IoError,
                     message: "inode space exhausted".into(),
                     related_inode: Some(req.parent),
-                })
+                }),
             }
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -780,11 +799,13 @@ fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
             message: "directory not found".into(),
             related_inode: Some(req.inode),
         }),
-        Err(e) if e.kind() == std::io::ErrorKind::NotADirectory => NetMessage::Error(ErrorMessage {
-            code: ErrorCode::NotADirectory,
-            message: "not a directory".into(),
-            related_inode: Some(req.inode),
-        }),
+        Err(e) if e.kind() == std::io::ErrorKind::NotADirectory => {
+            NetMessage::Error(ErrorMessage {
+                code: ErrorCode::NotADirectory,
+                message: "not a directory".into(),
+                related_inode: Some(req.inode),
+            })
+        }
         Err(e) => NetMessage::Error(ErrorMessage {
             code: ErrorCode::IoError,
             message: e.to_string(),
@@ -808,7 +829,11 @@ fn handle_read_chunk(req: ReadChunkRequest, table: &ShareInodeTable) -> NetMessa
     // SECURITY: Verify symlinks don't escape shared directory before reading content.
     // This check must happen before fs::File::open which follows symlinks.
     if let Err(e) = safe_real_path(&table.root_path, &path) {
-        warn!("Path traversal attempt in read_chunk via symlink: {}: {}", path.display(), e);
+        warn!(
+            "Path traversal attempt in read_chunk via symlink: {}: {}",
+            path.display(),
+            e
+        );
         return NetMessage::Error(ErrorMessage {
             code: ErrorCode::PathTraversal,
             message: "symlink escapes shared directory".into(),
@@ -906,7 +931,11 @@ fn handle_write_chunk(
     // This check is CRITICAL for write operations - without it, an attacker could
     // overwrite arbitrary files on the host system via symlinks.
     if let Err(e) = safe_real_path(&table.root_path, &path) {
-        warn!("Path traversal attempt in write_chunk via symlink: {}: {}", path.display(), e);
+        warn!(
+            "Path traversal attempt in write_chunk via symlink: {}: {}",
+            path.display(),
+            e
+        );
         return NetMessage::Error(ErrorMessage {
             code: ErrorCode::PathTraversal,
             message: "symlink escapes shared directory".into(),
@@ -967,7 +996,11 @@ fn handle_write_chunk(
     })
 }
 
-fn handle_acquire_lock(req: LockRequest, lock_manager: &LockManager, holder_id: &str) -> NetMessage {
+fn handle_acquire_lock(
+    req: LockRequest,
+    lock_manager: &LockManager,
+    holder_id: &str,
+) -> NetMessage {
     let timeout = if req.timeout_ms > 0 {
         Some(Duration::from_millis(req.timeout_ms as u64))
     } else {

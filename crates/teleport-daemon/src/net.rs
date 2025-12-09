@@ -14,7 +14,10 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use quinn::{ClientConfig, Connection, Endpoint, RecvStream, SendStream, ServerConfig, TransportConfig, VarInt};
+use quinn::{
+    ClientConfig, Connection, Endpoint, RecvStream, SendStream, ServerConfig, TransportConfig,
+    VarInt,
+};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use tracing::{debug, info, warn};
 
@@ -168,7 +171,10 @@ pub fn generate_self_signed_cert_with_fingerprint() -> (
 ) {
     let (certs, key) = generate_self_signed_cert();
     let fingerprint = compute_cert_fingerprint(&certs[0]);
-    debug!("Generated certificate with fingerprint: {}", hex::encode(fingerprint));
+    debug!(
+        "Generated certificate with fingerprint: {}",
+        hex::encode(fingerprint)
+    );
     (certs, key, fingerprint)
 }
 
@@ -186,9 +192,7 @@ pub fn create_nat_transport_config() -> TransportConfig {
     transport.keep_alive_interval(Some(NAT_KEEPALIVE_INTERVAL));
 
     // Idle timeout - close connection after no activity
-    transport.max_idle_timeout(Some(
-        IDLE_TIMEOUT.try_into().expect("idle timeout valid")
-    ));
+    transport.max_idle_timeout(Some(IDLE_TIMEOUT.try_into().expect("idle timeout valid")));
 
     // Conservative initial RTT estimate for internet connections
     transport.initial_rtt(Duration::from_millis(100));
@@ -224,8 +228,8 @@ pub fn create_client_endpoint() -> Result<Endpoint, ConnectionError> {
 pub fn create_client_endpoint_with_port(port: u16) -> Result<Endpoint, ConnectionError> {
     warn!("SECURITY: Creating client endpoint WITHOUT certificate pinning");
     let bind_addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
-    let mut endpoint = Endpoint::client(bind_addr)
-        .map_err(|e| ConnectionError::Connect(e.to_string()))?;
+    let mut endpoint =
+        Endpoint::client(bind_addr).map_err(|e| ConnectionError::Connect(e.to_string()))?;
 
     // Configure for self-signed certs (development only - INSECURE)
     let crypto = rustls::ClientConfig::builder()
@@ -265,8 +269,8 @@ pub fn create_client_endpoint_with_pinned_cert(
         hex::encode(expected_fingerprint)
     );
     let bind_addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
-    let mut endpoint = Endpoint::client(bind_addr)
-        .map_err(|e| ConnectionError::Connect(e.to_string()))?;
+    let mut endpoint =
+        Endpoint::client(bind_addr).map_err(|e| ConnectionError::Connect(e.to_string()))?;
 
     // Configure with certificate pinning
     let crypto = rustls::ClientConfig::builder()
@@ -306,10 +310,13 @@ pub fn create_server_endpoint(
     // Apply NAT-friendly transport configuration
     config.transport_config(Arc::new(create_nat_transport_config()));
 
-    let endpoint = Endpoint::server(config, bind_addr)
-        .map_err(|e| ConnectionError::Connect(e.to_string()))?;
+    let endpoint =
+        Endpoint::server(config, bind_addr).map_err(|e| ConnectionError::Connect(e.to_string()))?;
 
-    info!("Server endpoint created with cert fingerprint: {}", hex::encode(fingerprint));
+    info!(
+        "Server endpoint created with cert fingerprint: {}",
+        hex::encode(fingerprint)
+    );
     Ok((endpoint, fingerprint))
 }
 
@@ -340,7 +347,9 @@ struct PinnedCertVerifier {
 
 impl PinnedCertVerifier {
     fn new(expected_fingerprint: CertFingerprint) -> Self {
-        Self { expected_fingerprint }
+        Self {
+            expected_fingerprint,
+        }
     }
 }
 
@@ -356,7 +365,10 @@ impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {
         let actual_fingerprint = compute_cert_fingerprint(end_entity);
 
         if actual_fingerprint == self.expected_fingerprint {
-            debug!("Certificate fingerprint verified: {}", hex::encode(actual_fingerprint));
+            debug!(
+                "Certificate fingerprint verified: {}",
+                hex::encode(actual_fingerprint)
+            );
             Ok(rustls::client::danger::ServerCertVerified::assertion())
         } else {
             warn!(
@@ -364,7 +376,9 @@ impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {
                 hex::encode(self.expected_fingerprint),
                 hex::encode(actual_fingerprint)
             );
-            Err(rustls::Error::General("certificate fingerprint mismatch".into()))
+            Err(rustls::Error::General(
+                "certificate fingerprint mismatch".into(),
+            ))
         }
     }
 

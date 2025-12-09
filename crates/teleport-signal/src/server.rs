@@ -54,7 +54,10 @@ impl SignalServer {
             let peer_count = self.peer_rooms.len();
 
             tokio::spawn(async move {
-                if let Err(e) = handle_connection(stream, peer_addr, rooms, peer_rooms, room_count, peer_count).await {
+                if let Err(e) =
+                    handle_connection(stream, peer_addr, rooms, peer_rooms, room_count, peer_count)
+                        .await
+                {
                     debug!("Connection error from {}: {:?}", peer_addr, e);
                 }
             });
@@ -123,8 +126,11 @@ async fn handle_connection(
         let request = match SignalMessage::from_json(&msg) {
             Ok(r) => r,
             Err(e) => {
-                let error = SignalMessage::error(ErrorCode::InternalError, format!("Invalid JSON: {}", e));
-                let _ = ws_sender.send(Message::Text(error.to_json().unwrap())).await;
+                let error =
+                    SignalMessage::error(ErrorCode::InternalError, format!("Invalid JSON: {}", e));
+                let _ = ws_sender
+                    .send(Message::Text(error.to_json().unwrap()))
+                    .await;
                 continue;
             }
         };
@@ -183,10 +189,7 @@ async fn handle_http_request(
         ),
         "/stats" => (
             "200 OK",
-            format!(
-                r#"{{"rooms":{},"peers":{}}}"#,
-                room_count, peer_count
-            ),
+            format!(r#"{{"rooms":{},"peers":{}}}"#, room_count, peer_count),
         ),
         _ => ("404 Not Found", r#"{"error":"not found"}"#.to_string()),
     };
@@ -292,7 +295,10 @@ fn handle_message(
 
             // SECURITY: Use same generic error to avoid revealing room exists but is full
             if room.add_peer(info).is_err() {
-                return Some(SignalMessage::error(ErrorCode::RoomFull, "Unable to join room"));
+                return Some(SignalMessage::error(
+                    ErrorCode::RoomFull,
+                    "Unable to join room",
+                ));
             }
 
             peer_rooms.insert(peer_id.into(), code.clone());

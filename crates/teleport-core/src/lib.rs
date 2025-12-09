@@ -10,7 +10,7 @@ pub mod path;
 pub mod protocol;
 pub mod types;
 
-pub use config::{Config, CacheConfig, ClientConfig, HostConfig, NetworkConfig, SignalConfig};
+pub use config::{CacheConfig, ClientConfig, Config, HostConfig, NetworkConfig, SignalConfig};
 pub use error::*;
 pub use protocol::*;
 pub use types::*;

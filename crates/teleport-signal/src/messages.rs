@@ -14,14 +14,10 @@ pub enum SignalMessage {
     },
 
     /// Room created successfully
-    RoomCreated {
-        join_code: String,
-    },
+    RoomCreated { join_code: String },
 
     /// Client joins a room
-    JoinRoom {
-        join_code: String,
-    },
+    JoinRoom { join_code: String },
 
     /// Successfully joined room
     JoinedRoom {
@@ -33,10 +29,7 @@ pub enum SignalMessage {
     PeerInfo(PeerInfo),
 
     /// Relay a message to a peer
-    Relay {
-        to_peer_id: String,
-        payload: String,
-    },
+    Relay { to_peer_id: String, payload: String },
 
     /// Relayed message from another peer
     Relayed {
@@ -45,34 +38,22 @@ pub enum SignalMessage {
     },
 
     /// Peer connected to the room
-    PeerConnected {
-        peer_id: String,
-        info: PeerInfo,
-    },
+    PeerConnected { peer_id: String, info: PeerInfo },
 
     /// Peer disconnected from the room
-    PeerDisconnected {
-        peer_id: String,
-    },
+    PeerDisconnected { peer_id: String },
 
     /// Leave the current room
     LeaveRoom,
 
     /// Error response
-    Error {
-        code: ErrorCode,
-        message: String,
-    },
+    Error { code: ErrorCode, message: String },
 
     /// Ping for keepalive
-    Ping {
-        timestamp: u64,
-    },
+    Ping { timestamp: u64 },
 
     /// Pong response
-    Pong {
-        timestamp: u64,
-    },
+    Pong { timestamp: u64 },
 }
 
 /// Peer connection information

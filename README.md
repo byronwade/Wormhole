@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # Wormhole
 
@@ -859,4 +859,3 @@ Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE) at your o
 [Website](https://wormhole.dev) • [Documentation](https://wormhole.dev/docs) • [Discord](https://discord.gg/wormhole)
 
 </div>
-]]>
