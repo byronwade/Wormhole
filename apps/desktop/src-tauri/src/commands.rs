@@ -1767,6 +1767,124 @@ pub fn index_directory(
     Ok(entries)
 }
 
+/// Update information from GitHub
+#[derive(Clone, Serialize, Deserialize)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub release_url: String,
+    pub release_notes: Option<String>,
+    pub published_at: Option<String>,
+}
+
+/// Check for updates from GitHub releases
+#[tauri::command]
+pub async fn check_for_updates(current_version: String) -> Result<Option<UpdateInfo>, String> {
+    use semver::Version;
+
+    let url = "https://api.github.com/repos/byronwade/wormhole/releases/latest";
+
+    let client = reqwest::Client::builder()
+        .user_agent("Wormhole-Desktop")
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch releases: {}", e))?;
+
+    if !response.status().is_success() {
+        // No releases found or rate limited
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        return Err(format!("GitHub API error: {}", response.status()));
+    }
+
+    let release: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse release: {}", e))?;
+
+    let tag_name = release["tag_name"]
+        .as_str()
+        .ok_or("No tag name in release")?;
+
+    // Remove 'v' prefix if present
+    let latest_version_str = tag_name.trim_start_matches('v');
+    let current_version_str = current_version.trim_start_matches('v');
+
+    // Parse versions
+    let latest_version = Version::parse(latest_version_str)
+        .map_err(|e| format!("Invalid latest version '{}': {}", latest_version_str, e))?;
+    let current_version = Version::parse(current_version_str)
+        .map_err(|e| format!("Invalid current version '{}': {}", current_version_str, e))?;
+
+    // Compare versions
+    if latest_version > current_version {
+        Ok(Some(UpdateInfo {
+            version: tag_name.to_string(),
+            release_url: release["html_url"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            release_notes: release["body"].as_str().map(|s| s.to_string()),
+            published_at: release["published_at"].as_str().map(|s| s.to_string()),
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Start hosting with expiration support
+#[tauri::command]
+pub async fn start_hosting_with_expiration(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+    path: String,
+    port: Option<u16>,
+    expires_in_ms: Option<u64>,
+) -> Result<HostInfo, String> {
+    info!(
+        "Starting host {} for path: {} with expiration: {:?}ms",
+        id, path, expires_in_ms
+    );
+
+    // Start the host normally first
+    let host_info = start_hosting_with_id(app.clone(), state.clone(), id.clone(), path.clone(), port).await?;
+
+    // If expiration is set, spawn a task to auto-stop the share
+    if let Some(ms) = expires_in_ms {
+        let state_clone = state.inner().clone();
+        let app_clone = app.clone();
+        let id_clone = id.clone();
+
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(ms)).await;
+
+            info!("Share {} has expired, stopping...", id_clone);
+
+            // Stop the host
+            let mut handles = state_clone.host_handles.lock().await;
+            if let Some(h) = handles.remove(&id_clone) {
+                h.abort_handle.abort();
+
+                // Emit expired event to frontend
+                let _ = app_clone.emit("share-expired", serde_json::json!({
+                    "id": id_clone,
+                    "share_path": h.info.share_path,
+                }));
+
+                info!("Expired share {} stopped successfully", id_clone);
+            }
+        });
+    }
+
+    Ok(host_info)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

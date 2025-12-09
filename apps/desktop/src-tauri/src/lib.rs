@@ -85,18 +85,28 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(Arc::new(AppState::default()))
         .invoke_handler(tauri::generate_handler![
+            // Legacy single-share commands (backwards compatible)
             commands::start_hosting,
             commands::stop_hosting,
             commands::connect_to_peer,
             commands::disconnect,
             commands::get_status,
-            // Phase 6: Global code-based connections
+            // Phase 6: Global code-based connections (legacy)
             commands::start_global_hosting,
             commands::connect_with_code,
             commands::generate_code,
             commands::get_local_ip,
+            // Multi-share ID-based commands (new)
+            commands::start_hosting_with_id,
+            commands::stop_hosting_by_id,
+            commands::start_global_hosting_with_id,
+            commands::connect_with_code_and_id,
+            commands::disconnect_by_id,
+            commands::get_active_hosts,
+            commands::get_active_mounts,
             // File browser
             commands::list_directory,
+            commands::index_directory,
             commands::get_host_info,
             commands::get_mount_info,
             // File operations
@@ -105,6 +115,10 @@ pub fn run() {
             commands::reveal_in_explorer,
             // Setup wizard
             commands::check_fuse_installed,
+            // Share expiration
+            commands::start_hosting_with_expiration,
+            // Updates
+            commands::check_for_updates,
         ])
         .setup(|app| {
             info!("Wormhole app setup complete");

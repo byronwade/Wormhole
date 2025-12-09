@@ -1,8 +1,41 @@
 // Wormhole History Types
 // Persistent storage for share and connection history
 
-export type ShareStatus = "active" | "paused" | "inactive";
+export type ShareStatus = "active" | "paused" | "inactive" | "expired";
 export type ConnectionStatus = "connected" | "disconnected" | "connecting" | "error";
+export type ExpirationOption = "forever" | "1h" | "24h" | "7d" | "30d";
+
+// Convert expiration option to milliseconds (null = forever)
+export function expirationToMs(option: ExpirationOption): number | null {
+  switch (option) {
+    case "forever":
+      return null;
+    case "1h":
+      return 60 * 60 * 1000;
+    case "24h":
+      return 24 * 60 * 60 * 1000;
+    case "7d":
+      return 7 * 24 * 60 * 60 * 1000;
+    case "30d":
+      return 30 * 24 * 60 * 60 * 1000;
+  }
+}
+
+// Get human-readable label for expiration option
+export function expirationLabel(option: ExpirationOption): string {
+  switch (option) {
+    case "forever":
+      return "Forever";
+    case "1h":
+      return "1 Hour";
+    case "24h":
+      return "24 Hours";
+    case "7d":
+      return "7 Days";
+    case "30d":
+      return "30 Days";
+  }
+}
 
 // Share history item - represents a folder being shared
 export interface ShareHistoryItem {
@@ -15,6 +48,8 @@ export interface ShareHistoryItem {
   status: ShareStatus; // Current status
   createdAt: number; // Unix timestamp
   lastActiveAt: number; // Last time it was active
+  expirationOption: ExpirationOption; // Selected expiration option
+  expiresAt: number | null; // Unix timestamp when share expires, null = never
 }
 
 // Connection history item - represents a connection to a remote share
@@ -123,9 +158,9 @@ export function addShareToHistory(
   // Check if share with same path already exists
   const existingIndex = history.shares.findIndex((s) => s.path === share.path);
   if (existingIndex >= 0) {
-    // Update existing share
+    // Update existing share - keep the NEW id from backend to maintain sync
     const updated = [...history.shares];
-    updated[existingIndex] = { ...share, id: history.shares[existingIndex].id };
+    updated[existingIndex] = { ...share }; // Use new share data including new ID
     return { ...history, shares: updated };
   }
   return { ...history, shares: [share, ...history.shares] };
@@ -141,12 +176,9 @@ export function addConnectionToHistory(
     (c) => c.joinCode === connection.joinCode
   );
   if (existingIndex >= 0) {
-    // Update existing connection
+    // Update existing connection - keep the NEW id from backend to maintain sync
     const updated = [...history.connections];
-    updated[existingIndex] = {
-      ...connection,
-      id: history.connections[existingIndex].id,
-    };
+    updated[existingIndex] = { ...connection }; // Use new connection data including new ID
     return { ...history, connections: updated };
   }
   return { ...history, connections: [connection, ...history.connections] };

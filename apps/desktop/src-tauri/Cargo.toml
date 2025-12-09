@@ -30,6 +30,8 @@ teleport-core = { path = "../../../crates/teleport-core" }
 
 # Utilities
 hostname = "0.4"
+reqwest = { version = "0.11", features = ["json"] }
+semver = "1.0"
 
 # FUSE for mounting (Unix only - Linux, macOS)
 [target.'cfg(unix)'.dependencies]

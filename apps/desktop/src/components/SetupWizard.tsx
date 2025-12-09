@@ -19,6 +19,12 @@ import {
   Download,
   Terminal,
   Copy,
+  Info,
+  ShieldCheck,
+  ShieldAlert,
+  MonitorSmartphone,
+  Folder,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +41,10 @@ interface SystemCheck {
   helpText?: string;
   installCommand?: string;
   platform: "all" | "macos" | "windows" | "linux";
+  whyNeeded?: string;
+  securityNote?: string;
+  steps?: string[];
+  canAutoInstall?: boolean;
 }
 
 interface WizardStep {
@@ -71,10 +81,13 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
   const [isRunningChecks, setIsRunningChecks] = useState(false);
   const [allChecksPassed, setAllChecksPassed] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
+  const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
+  const [isAutoInstalling, setIsAutoInstalling] = useState<string | null>(null);
 
   const steps: WizardStep[] = [
     { id: "welcome", title: "Welcome" },
     { id: "requirements", title: "Requirements" },
+    { id: "security", title: "Security Info" },
     { id: "ready", title: "Ready" },
   ];
 
@@ -90,6 +103,8 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
         required: true,
         platform: "all",
         helpText: "Check your firewall settings and ensure Wormhole is allowed to access the network.",
+        whyNeeded: "Wormhole creates direct encrypted connections between computers. Network access is essential for discovering peers and transferring files.",
+        securityNote: "Wormhole only connects to peers you explicitly approve via join codes. No data is sent to external servers.",
       },
 
       // macOS specific
@@ -101,38 +116,93 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
         required: true,
         platform: "macos",
         helpUrl: "https://osxfuse.github.io/",
-        helpText: "macFUSE is required to mount remote folders as local drives. Install it via Homebrew or download from the official website.",
+        helpText: "macFUSE is an open-source project that allows non-kernel software to create file systems on macOS.",
         installCommand: "brew install --cask macfuse",
+        whyNeeded: "macFUSE allows Wormhole to show remote folders as if they were local drives in Finder. Without it, you'd need to manually download each file.",
+        securityNote: "macFUSE is a widely-used, open-source kernel extension trusted by millions of developers. It's maintained by the same team that built the original FUSE for macOS. Apple requires you to approve kernel extensions for your security.",
+        steps: [
+          "Open Terminal (Applications → Utilities → Terminal)",
+          "Run: brew install --cask macfuse",
+          "Or download from osxfuse.github.io and run the installer",
+          "After installation, you'll need to approve the kernel extension (next step)",
+        ],
+        canAutoInstall: true,
       },
       {
         id: "kernel-extensions",
-        name: "System Extension",
-        description: "macFUSE kernel extension must be approved",
+        name: "Approve System Extension",
+        description: "macFUSE kernel extension must be approved in System Settings",
         status: "pending",
         required: true,
         platform: "macos",
-        helpText: "After installing macFUSE, open System Settings → Privacy & Security → scroll down and click \"Allow\" next to the macFUSE extension. You may need to restart your Mac.",
+        helpText: "macOS requires you to manually approve kernel extensions for security. This is a one-time setup.",
+        whyNeeded: "Apple's security model requires explicit user approval for any software that extends the kernel. This protects you from malicious software installing itself silently.",
+        securityNote: "This is a standard macOS security feature, not a workaround. By approving macFUSE, you're telling macOS you trust this well-known open-source software. You can revoke this permission anytime in System Settings.",
+        steps: [
+          "Open System Settings (Apple menu → System Settings)",
+          "Go to Privacy & Security",
+          "Scroll down to the Security section",
+          "You should see a message about blocked software from 'Benjamin Fleischer' (macFUSE developer)",
+          "Click 'Allow' next to the message",
+          "Enter your password when prompted",
+          "Restart your Mac to complete the setup",
+        ],
       },
 
       // Windows specific
       {
         id: "winfsp",
         name: "WinFSP",
-        description: "Enables mounting remote folders in Explorer",
+        description: "Enables mounting remote folders in File Explorer",
         status: "pending",
         required: true,
         platform: "windows",
         helpUrl: "https://winfsp.dev/rel/",
-        helpText: "WinFSP (Windows File System Proxy) allows Wormhole to show remote folders in File Explorer. Download and install from the official website.",
+        helpText: "WinFSP (Windows File System Proxy) is the Windows equivalent of FUSE - it allows programs to create virtual drives.",
+        whyNeeded: "WinFSP allows Wormhole to show remote folders as drive letters (like W:) in File Explorer. This makes accessing remote files feel just like local files.",
+        securityNote: "WinFSP is an open-source project created by a Microsoft employee. It's used by major software including SSHFS-Win, rclone, and many cloud storage tools. It's been audited and is considered safe.",
+        steps: [
+          "Download WinFSP from winfsp.dev/rel/",
+          "Run the installer (winfsp-x.x.xxxxx.msi)",
+          "Click 'Next' through the installation wizard",
+          "Accept the default options",
+          "No restart required",
+        ],
+        canAutoInstall: false, // Requires manual download
       },
       {
         id: "windows-firewall",
         name: "Firewall Access",
-        description: "Wormhole needs to accept incoming connections",
+        description: "Allow Wormhole through Windows Firewall",
         status: "pending",
         required: true,
         platform: "windows",
-        helpText: "When Windows prompts you, click \"Allow access\" for both private and public networks. You can also manually add Wormhole in Windows Defender Firewall.",
+        helpText: "Windows Firewall protects your computer. Wormhole needs permission to accept incoming connections from peers.",
+        whyNeeded: "To receive files and connections from other computers, Wormhole needs to accept incoming network connections. Windows Firewall blocks these by default.",
+        securityNote: "When you see the firewall prompt, you're allowing Wormhole (and only Wormhole) to receive connections. This doesn't expose other programs or your files. Only people with your join code can connect.",
+        steps: [
+          "When you first share a folder, Windows will show a firewall prompt",
+          "Check both 'Private networks' and 'Public networks'",
+          "Click 'Allow access'",
+          "If you missed the prompt: open Windows Security → Firewall → Allow an app → Add Wormhole",
+        ],
+      },
+      {
+        id: "smartscreen",
+        name: "Windows SmartScreen",
+        description: "App signature verification (one-time)",
+        status: "pending",
+        required: false,
+        platform: "windows",
+        helpText: "Windows may show a SmartScreen warning because Wormhole is new and doesn't have an expensive code-signing certificate yet.",
+        whyNeeded: "Microsoft charges $200-400/year for certificates that prevent SmartScreen warnings. As an open-source project, we're working on getting one.",
+        securityNote: "SmartScreen warnings don't mean software is dangerous - they mean it's not commonly downloaded yet. Wormhole is open-source (github.com/byronwade/Wormhole), so you can verify the code yourself. This warning will go away once more users download Wormhole.",
+        steps: [
+          "When you see 'Windows protected your PC' - click 'More info'",
+          "Click 'Run anyway'",
+          "This is a one-time prompt per version",
+          "You can verify Wormhole is safe by checking our open-source code on GitHub",
+        ],
       },
 
       // Linux specific
@@ -143,8 +213,17 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
         status: "pending",
         required: true,
         platform: "linux",
-        helpText: "FUSE3 is required to mount remote folders. Install using your package manager.",
-        installCommand: "sudo apt install fuse3  # Debian/Ubuntu\nsudo dnf install fuse3  # Fedora\nsudo pacman -S fuse3   # Arch",
+        helpText: "FUSE3 is the standard Linux mechanism for user-space filesystems. Most distributions include it by default.",
+        installCommand: "# Debian/Ubuntu:\nsudo apt install fuse3\n\n# Fedora:\nsudo dnf install fuse3\n\n# Arch:\nsudo pacman -S fuse3\n\n# openSUSE:\nsudo zypper install fuse3",
+        whyNeeded: "FUSE (Filesystem in Userspace) is a Linux kernel feature that allows Wormhole to create mountable filesystems without requiring root privileges for every operation.",
+        securityNote: "FUSE is a core Linux technology, included in the kernel since 2005. It's used by countless applications including SSHFS, NTFS-3G, and cloud storage tools. Installing it via your package manager is completely safe.",
+        steps: [
+          "Open a terminal",
+          "Run the command for your distribution (see above)",
+          "Enter your password when prompted",
+          "No restart required",
+        ],
+        canAutoInstall: true,
       },
       {
         id: "fuse-group",
@@ -155,6 +234,16 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
         platform: "linux",
         helpText: "Your user needs to be in the 'fuse' group to mount filesystems without sudo.",
         installCommand: "sudo usermod -aG fuse $USER && newgrp fuse",
+        whyNeeded: "Linux uses groups to manage permissions. The 'fuse' group grants permission to mount user-space filesystems. This avoids needing sudo for every mount operation.",
+        securityNote: "Adding yourself to the 'fuse' group is a standard Linux administration task. It only grants permission to create FUSE mounts - it doesn't give elevated privileges elsewhere.",
+        steps: [
+          "Open a terminal",
+          "Run: sudo usermod -aG fuse $USER",
+          "Enter your password",
+          "Run: newgrp fuse (or log out and back in)",
+          "The change persists across reboots",
+        ],
+        canAutoInstall: true,
       },
     ];
 
@@ -225,7 +314,8 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
 
         case "windows-firewall":
         case "fuse-group":
-          // These are runtime checks, assume passed for now
+        case "smartscreen":
+          // These are runtime checks or user acknowledgment, assume passed for now
           return true;
 
         default:
@@ -233,6 +323,30 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
       }
     } catch {
       return false;
+    }
+  };
+
+  // Auto-install handler (for systems with package managers)
+  const handleAutoInstall = async (check: SystemCheck) => {
+    if (!check.canAutoInstall || !check.installCommand) return;
+
+    setIsAutoInstalling(check.id);
+
+    try {
+      // For now, just copy the command - in future we could run it via shell
+      await copyToClipboard(check.installCommand.split('\n')[0]);
+      setCopiedCommand(check.installCommand);
+
+      // Open terminal with the command
+      if (platform === "macos") {
+        // On macOS, we can try to open Terminal with the command
+        const cmd = check.installCommand.split('\n')[0];
+        await open(`terminal://run?cmd=${encodeURIComponent(cmd)}`);
+      }
+    } catch (e) {
+      console.error("Auto-install failed:", e);
+    } finally {
+      setIsAutoInstalling(null);
     }
   };
 
@@ -267,7 +381,6 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
       await open(url);
     } catch (e) {
       console.error("Failed to open URL:", e);
-      // Fallback to window.open
       window.open(url, "_blank");
     }
   };
@@ -281,10 +394,10 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
 
       <h2 className="text-2xl font-bold text-white mb-2">Welcome to Wormhole</h2>
       <p className="text-zinc-400 text-center max-w-md mb-8">
-        Share folders instantly between computers. No cloud, no uploads, just direct connections.
+        Share folders instantly between computers. No cloud, no uploads, just direct encrypted connections.
       </p>
 
-      <div className="grid grid-cols-3 gap-4 w-full max-w-md">
+      <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-8">
         <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-center">
           <Wifi className="w-6 h-6 text-violet-400 mx-auto mb-2" />
           <p className="text-xs text-zinc-300 font-medium">Direct P2P</p>
@@ -301,10 +414,24 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
           <p className="text-[10px] text-zinc-500">You control access</p>
         </div>
       </div>
+
+      {/* Quick setup note */}
+      <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 max-w-md">
+        <div className="flex gap-3">
+          <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-blue-300 font-medium">Quick Setup Required</p>
+            <p className="text-xs text-blue-200/70 mt-1">
+              Wormhole needs a small system component to show remote folders as local drives.
+              We'll guide you through the 2-minute setup on the next screen.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
-  // Step 2: Requirements
+  // Step 2: Requirements with detailed guides
   const renderRequirements = () => {
     const failedChecks = checks.filter(c => c.status === "failed");
     const passedChecks = checks.filter(c => c.status === "passed");
@@ -356,23 +483,98 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                       {check.required && check.status !== "passed" && (
                         <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Required</Badge>
                       )}
+                      {check.status !== "pending" && check.status !== "checking" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 px-1.5 text-[10px] text-zinc-500 hover:text-white"
+                          onClick={() => setExpandedCheck(expandedCheck === check.id ? null : check.id)}
+                        >
+                          {expandedCheck === check.id ? "Hide details" : "Show details"}
+                        </Button>
+                      )}
                     </div>
                     <p className="text-xs text-zinc-500 mt-0.5">{check.description}</p>
 
+                    {/* Expanded details for any check */}
+                    {expandedCheck === check.id && check.status === "passed" && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <p className="text-xs text-green-300">{check.whyNeeded}</p>
+                      </div>
+                    )}
+
                     {/* Show help for failed checks */}
-                    {check.status === "failed" && (
-                      <div className="mt-2 p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                        <p className="text-xs text-zinc-300 mb-2">{check.helpText}</p>
+                    {(check.status === "failed" || expandedCheck === check.id) && check.status !== "passed" && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 space-y-3">
+                        {/* Why it's needed */}
+                        {check.whyNeeded && (
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 mb-1">
+                              <Info className="w-3 h-3" />
+                              Why is this needed?
+                            </div>
+                            <p className="text-xs text-zinc-300">{check.whyNeeded}</p>
+                          </div>
+                        )}
+
+                        {/* Security note */}
+                        {check.securityNote && (
+                          <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
+                            <div className="flex items-center gap-1.5 text-[10px] text-green-400 mb-1">
+                              <ShieldCheck className="w-3 h-3" />
+                              Security Note
+                            </div>
+                            <p className="text-xs text-green-300/90">{check.securityNote}</p>
+                          </div>
+                        )}
+
+                        {/* Step-by-step instructions */}
+                        {check.steps && check.steps.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 mb-2">
+                              <MonitorSmartphone className="w-3 h-3" />
+                              Step-by-step guide:
+                            </div>
+                            <ol className="space-y-1.5">
+                              {check.steps.map((step, i) => (
+                                <li key={i} className="flex gap-2 text-xs text-zinc-300">
+                                  <span className="flex-shrink-0 w-4 h-4 rounded-full bg-violet-600/30 text-violet-300 flex items-center justify-center text-[10px]">
+                                    {i + 1}
+                                  </span>
+                                  <span>{step}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
 
                         {/* Install command */}
                         {check.installCommand && (
-                          <div className="mb-2">
-                            <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 mb-1">
-                              <Terminal className="w-3 h-3" />
-                              Install command:
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+                                <Terminal className="w-3 h-3" />
+                                Install command:
+                              </div>
+                              {check.canAutoInstall && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 px-2 text-[10px] text-violet-400 hover:text-violet-300 gap-1"
+                                  onClick={() => handleAutoInstall(check)}
+                                  disabled={isAutoInstalling === check.id}
+                                >
+                                  {isAutoInstalling === check.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Play className="w-3 h-3" />
+                                  )}
+                                  Copy & Run
+                                </Button>
+                              )}
                             </div>
                             <div className="relative">
-                              <pre className="text-xs text-violet-300 bg-zinc-900 rounded p-2 pr-8 overflow-x-auto font-mono">
+                              <pre className="text-xs text-violet-300 bg-zinc-900 rounded p-2 pr-8 overflow-x-auto font-mono whitespace-pre-wrap">
                                 {check.installCommand}
                               </pre>
                               <Button
@@ -434,7 +636,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
               <p className="text-xs text-zinc-400">
                 {allChecksPassed
                   ? "Your system is ready"
-                  : "Install the missing components above and click Re-check"}
+                  : "Follow the guides above, then click Re-check"}
               </p>
             </div>
           </div>
@@ -443,7 +645,135 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
     );
   };
 
-  // Step 3: Ready
+  // Step 3: Security Information
+  const renderSecurityInfo = () => (
+    <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+      <div className="max-w-lg mx-auto w-full space-y-4">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center mx-auto mb-4">
+            <ShieldCheck className="w-8 h-8 text-green-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-white">Understanding the Security Prompts</h3>
+          <p className="text-sm text-zinc-400 mt-2">
+            You may see security warnings during setup. Here's what they mean and why they appear.
+          </p>
+        </div>
+
+        {/* macOS Gatekeeper */}
+        {platform === "macos" && (
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="w-6 h-6 text-amber-400 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-white text-sm">macOS Gatekeeper Warning</h4>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    "Wormhole.app cannot be opened because it is from an unidentified developer"
+                  </p>
+                  <div className="mt-3 p-2 rounded bg-zinc-800/50">
+                    <p className="text-xs text-zinc-300 mb-2">
+                      <strong>Why this appears:</strong> Apple charges $99/year for developer certificates.
+                      We use ad-hoc signing which is secure but not recognized by Apple.
+                    </p>
+                    <p className="text-xs text-zinc-300 mb-2">
+                      <strong>Is it safe?</strong> Yes! Wormhole is open-source. You can verify the code
+                      yourself at github.com/byronwade/Wormhole
+                    </p>
+                    <p className="text-xs text-zinc-300">
+                      <strong>How to open:</strong> Right-click the app → Open → Click "Open" in the dialog
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Windows SmartScreen */}
+        {platform === "windows" && (
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="w-6 h-6 text-blue-400 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-white text-sm">Windows SmartScreen Warning</h4>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    "Windows protected your PC - Microsoft Defender SmartScreen prevented an unrecognized app from starting"
+                  </p>
+                  <div className="mt-3 p-2 rounded bg-zinc-800/50">
+                    <p className="text-xs text-zinc-300 mb-2">
+                      <strong>Why this appears:</strong> SmartScreen warns about apps that aren't commonly
+                      downloaded yet. Code signing certificates cost $200-400/year.
+                    </p>
+                    <p className="text-xs text-zinc-300 mb-2">
+                      <strong>Is it safe?</strong> Yes! Wormhole is open-source and the binaries are built
+                      automatically by GitHub Actions with full transparency.
+                    </p>
+                    <p className="text-xs text-zinc-300">
+                      <strong>How to proceed:</strong> Click "More info" → Click "Run anyway"
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* General security info */}
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <Folder className="w-6 h-6 text-violet-400 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-white text-sm">Your Data Stays Private</h4>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-zinc-300">
+                      <strong>No cloud servers</strong> - Files transfer directly between computers
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-zinc-300">
+                      <strong>End-to-end encryption</strong> - All data is encrypted using QUIC/TLS
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-zinc-300">
+                      <strong>Join code access</strong> - Only people with your code can connect
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-zinc-300">
+                      <strong>Open source</strong> - Full code available for review on GitHub
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Open source badge */}
+        <div className="flex items-center justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 border-zinc-700 text-zinc-400"
+            onClick={() => handleOpenUrl("https://github.com/byronwade/Wormhole")}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            View Source Code on GitHub
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 4: Ready
   const renderReady = () => (
     <div className="flex-1 flex flex-col items-center justify-center p-8">
       <div className="w-20 h-20 rounded-full bg-green-500/20 border-4 border-green-500 flex items-center justify-center mb-6">
@@ -487,6 +817,8 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
         return renderWelcome();
       case "requirements":
         return renderRequirements();
+      case "security":
+        return renderSecurityInfo();
       case "ready":
         return renderReady();
       default:
@@ -533,7 +865,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-12 h-0.5 mx-2 rounded-full transition-colors ${
+                    className={`w-8 h-0.5 mx-1 rounded-full transition-colors ${
                       index < currentStep ? "bg-violet-600" : "bg-zinc-800"
                     }`}
                   />

@@ -6,6 +6,7 @@ import {
   ConnectionHistoryItem,
   ShareStatus,
   ConnectionStatus,
+  ExpirationOption,
   loadHistory,
   saveHistory,
   generateId,
@@ -30,14 +31,14 @@ interface UseWormholeHistoryReturn {
   connections: ConnectionHistoryItem[];
 
   // Share operations
-  addShare: (path: string, joinCode: string, port: number, name?: string) => ShareHistoryItem;
+  addShare: (path: string, joinCode: string, port: number, name?: string, id?: string, expirationOption?: ExpirationOption, expiresAt?: number | null) => ShareHistoryItem;
   updateShare: (id: string, updates: Partial<ShareHistoryItem>) => void;
   removeShare: (id: string) => void;
   setShareStatus: (id: string, status: ShareStatus) => void;
   getActiveShare: () => ShareHistoryItem | undefined;
 
   // Connection operations
-  addConnection: (joinCode: string, mountPoint: string, name?: string) => ConnectionHistoryItem;
+  addConnection: (joinCode: string, mountPoint: string, name?: string, id?: string) => ConnectionHistoryItem;
   updateConnection: (id: string, updates: Partial<ConnectionHistoryItem>) => void;
   removeConnection: (id: string) => void;
   setConnectionStatus: (id: string, status: ConnectionStatus, errorMessage?: string) => void;
@@ -58,26 +59,38 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
   // Sync with backend on mount to get actual active states
   const syncWithBackend = useCallback(async () => {
     try {
-      // Get current host info from backend
-      const hostInfo = await invoke<{ share_path: string; port: number; join_code: string } | null>("get_host_info");
+      // Get all active hosts from backend (new multi-share API)
+      const activeHosts = await invoke<{ id: string; share_path: string; port: number; join_code: string }[]>("get_active_hosts");
 
-      // Get current mount info from backend
-      const mountInfo = await invoke<{ mount_point: string } | null>("get_mount_info");
+      // Get all active mounts from backend (new multi-connection API)
+      const activeMounts = await invoke<{ id: string; mount_point: string; join_code: string }[]>("get_active_mounts");
+
+      // Create sets for quick lookup
+      const activeHostPaths = new Set(activeHosts.map(h => h.share_path));
+      const activeMountPoints = new Set(activeMounts.map(m => m.mount_point));
 
       setHistory((prev) => {
         let updated = { ...prev };
 
         // Update share statuses based on backend state
         updated.shares = prev.shares.map((share) => {
-          if (hostInfo && share.path === hostInfo.share_path) {
-            return { ...share, status: "active" as const, lastActiveAt: Date.now() };
+          const isActive = activeHostPaths.has(share.path);
+          if (isActive) {
+            // Find the matching host info to update join code if needed
+            const hostInfo = activeHosts.find(h => h.share_path === share.path);
+            return {
+              ...share,
+              status: "active" as const,
+              lastActiveAt: Date.now(),
+              ...(hostInfo ? { joinCode: hostInfo.join_code, port: hostInfo.port } : {}),
+            };
           }
           return { ...share, status: "inactive" as const };
         });
 
         // Update connection statuses based on backend state
         updated.connections = prev.connections.map((conn) => {
-          if (mountInfo && conn.mountPoint === mountInfo.mount_point) {
+          if (activeMountPoints.has(conn.mountPoint)) {
             return { ...conn, status: "connected" as const, lastConnectedAt: Date.now() };
           }
           return { ...conn, status: "disconnected" as const };
@@ -97,12 +110,13 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
 
   // Share operations
   const addShare = useCallback(
-    (path: string, joinCode: string, port: number, name?: string): ShareHistoryItem => {
+    (path: string, joinCode: string, port: number, name?: string, id?: string, expirationOption?: ExpirationOption, expiresAt?: number | null): ShareHistoryItem => {
       const folderName = path.split("/").pop() || "Shared Folder";
       const displayName = name || folderName;
+      const shareId = id || generateId();
 
       const newShare: ShareHistoryItem = {
-        id: generateId(),
+        id: shareId,
         name: displayName,
         path,
         joinCode,
@@ -111,6 +125,8 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
         status: "active",
         createdAt: Date.now(),
         lastActiveAt: Date.now(),
+        expirationOption: expirationOption || "forever",
+        expiresAt: expiresAt ?? null,
       };
 
       setHistory((prev) => addShareToHistory(prev, newShare));
@@ -142,12 +158,12 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
 
   // Connection operations
   const addConnection = useCallback(
-    (joinCode: string, mountPoint: string, name?: string): ConnectionHistoryItem => {
+    (joinCode: string, mountPoint: string, name?: string, id?: string): ConnectionHistoryItem => {
       const mountName = mountPoint.split("/").pop() || "Remote Share";
       const displayName = name || `${joinCode} : ${mountName}`;
 
       const newConnection: ConnectionHistoryItem = {
-        id: generateId(),
+        id: id || generateId(),
         name: displayName,
         joinCode,
         mountPoint,
