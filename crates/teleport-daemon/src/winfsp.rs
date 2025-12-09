@@ -38,7 +38,7 @@ use winfsp::filesystem::{
     DirBuffer, DirInfo, DirMarker, FileInfo, FileSecurity, FileSystemContext, OpenFileInfo,
     VolumeInfo, WideNameInfo,
 };
-use winfsp::host::FileSystemHost;
+use winfsp::host::{FileSystemHost, VolumeParams};
 use winfsp::U16CStr;
 
 use teleport_core::{ChunkId, FileAttr, FileType, Inode, CHUNK_SIZE};
@@ -530,41 +530,47 @@ impl FileSystemContext for WormholeWinFS {
         // Create a DirBuffer to hold entries
         let dir_buffer = DirBuffer::new();
 
-        // Acquire the buffer for writing
-        if let Some(mut lock) = dir_buffer.acquire(marker.is_none(), None) {
-            // Add "." entry
-            let mut dot_info: DirInfo = DirInfo::new();
-            dot_info.file_info_mut().file_attributes = 0x10; // FILE_ATTRIBUTE_DIRECTORY
-            dot_info.set_name(".");
-            lock.write(&mut dot_info);
+        // Acquire the buffer for writing - acquire returns Result, not Option
+        match dir_buffer.acquire(marker.is_none(), None) {
+            Ok(mut lock) => {
+                // Add "." entry
+                let mut dot_info: DirInfo = DirInfo::new();
+                dot_info.file_info_mut().file_attributes = 0x10; // FILE_ATTRIBUTE_DIRECTORY
+                dot_info.set_name(".");
+                lock.write(&mut dot_info);
 
-            // Add ".." entry
-            let mut dotdot_info: DirInfo = DirInfo::new();
-            dotdot_info.file_info_mut().file_attributes = 0x10;
-            dotdot_info.set_name("..");
-            lock.write(&mut dotdot_info);
+                // Add ".." entry
+                let mut dotdot_info: DirInfo = DirInfo::new();
+                dotdot_info.file_info_mut().file_attributes = 0x10;
+                dotdot_info.set_name("..");
+                lock.write(&mut dotdot_info);
 
-            // Add actual entries
-            for entry in entries {
-                let mut dir_info: DirInfo = DirInfo::new();
+                // Add actual entries
+                for entry in entries {
+                    let mut dir_info: DirInfo = DirInfo::new();
 
-                // Get file info for this entry
-                match self.bridge.getattr(entry.inode) {
-                    Ok(attr) => {
-                        Self::attr_to_file_info(&attr, dir_info.file_info_mut());
+                    // Get file info for this entry
+                    match self.bridge.getattr(entry.inode) {
+                        Ok(attr) => {
+                            Self::attr_to_file_info(&attr, dir_info.file_info_mut());
+                        }
+                        Err(_) => {
+                            // Use basic info from entry
+                            dir_info.file_info_mut().file_attributes = match entry.file_type {
+                                FileType::Directory => 0x10,
+                                FileType::File => 0x80,
+                                FileType::Symlink => 0x400,
+                            };
+                        }
                     }
-                    Err(_) => {
-                        // Use basic info from entry
-                        dir_info.file_info_mut().file_attributes = match entry.file_type {
-                            FileType::Directory => 0x10,
-                            FileType::File => 0x80,
-                            FileType::Symlink => 0x400,
-                        };
-                    }
+
+                    dir_info.set_name(&entry.name);
+                    lock.write(&mut dir_info);
                 }
-
-                dir_info.set_name(&entry.name);
-                lock.write(&mut dir_info);
+            }
+            Err(e) => {
+                // Buffer acquisition failed
+                debug!("Failed to acquire dir buffer: {:?}", e);
             }
         }
 
@@ -747,7 +753,12 @@ pub fn mount_winfsp(
         WormholeWinFS::new(bridge)
     };
 
-    let mut host = FileSystemHost::new(fs)?;
+    // Create volume parameters
+    let mut params = VolumeParams::new();
+    params.filesystem_name("Wormhole");
+    params.prefix(mount_point);
+
+    let mut host = FileSystemHost::new(params, fs)?;
     host.mount(mount_point)?;
 
     Ok(host)

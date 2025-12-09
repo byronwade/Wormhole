@@ -1497,7 +1497,6 @@ fn metadata_to_attr(inode: Inode, meta: &fs::Metadata) -> FileAttr {
 #[cfg(windows)]
 fn metadata_to_attr(inode: Inode, meta: &fs::Metadata) -> FileAttr {
     use std::os::windows::fs::MetadataExt;
-    use std::time::UNIX_EPOCH;
 
     let file_type = if meta.is_dir() {
         FileType::Directory
