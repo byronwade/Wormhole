@@ -127,7 +127,7 @@ jobs:
         run: cargo build --release -p teleport-daemon -p teleport-signal
 
   # =============================================================================
-  # Build on Windows (no FUSE tests)
+  # Build on Windows (with WinFSP support)
   # =============================================================================
   test-windows:
     name: Test (Windows)
@@ -150,12 +150,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-test-
 
-      # Build signal server only (no FUSE on Windows without WinFSP)
-      - name: Build signal server
-        run: cargo build -p teleport-signal -p teleport-core
+      # Build all crates including teleport-daemon with WinFSP support
+      # The winfsp crate bundles the import library, so no system dependencies needed
+      - name: Build all crates
+        run: cargo build -p teleport-signal -p teleport-core -p teleport-daemon
 
       - name: Run core tests
         run: cargo test -p teleport-core
+
+      # Note: Daemon tests requiring WinFSP runtime are skipped in CI
+      # (WinFSP needs to be installed on the machine to run actual mount tests)
 
   # =============================================================================
   # Security audit

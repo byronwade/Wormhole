@@ -1,18 +1,18 @@
-//! Teleport Daemon - FUSE client and host server
+//! Teleport Daemon - Filesystem client and host server
 //!
 //! This crate provides:
-//! - FUSE filesystem implementation for mounting remote shares
+//! - Filesystem implementation for mounting remote shares (FUSE on Unix, WinFSP on Windows)
 //! - Host server for sharing local directories
 //! - QUIC-based networking layer
 //!
 //! # Architecture
 //!
-//! The key challenge is bridging sync FUSE callbacks with async networking:
+//! The key challenge is bridging sync filesystem callbacks with async networking:
 //!
 //! ```text
 //! ┌─────────────────────────────────────────────────────────────┐
-//! │                    FUSE Thread (sync)                       │
-//! │  fuser::Filesystem callbacks block until data available     │
+//! │              Filesystem Thread (sync)                       │
+//! │  FUSE/WinFSP callbacks block until data available           │
 //! └─────────────────────────────┬───────────────────────────────┘
 //!                               │ crossbeam-channel
 //!                               │ (bounded, backpressure)
@@ -26,22 +26,38 @@
 //! ```
 //!
 //! The bridge uses:
-//! - `crossbeam-channel` for FUSE → async requests
-//! - `oneshot` channels for async → FUSE responses
+//! - `crossbeam-channel` for filesystem → async requests
+//! - `oneshot` channels for async → filesystem responses
 //! - Bounded channels to prevent memory exhaustion
+//!
+//! # Platform Support
+//!
+//! - **Unix (Linux, macOS)**: Uses FUSE via the `fuser` crate
+//! - **Windows**: Uses WinFSP via the `winfsp` crate
 
+// Bridge module (platform-agnostic sync↔async bridge)
 pub mod bridge;
+
+// FUSE-related modules (Unix-only)
+#[cfg(unix)]
+pub mod fuse;
+#[cfg(unix)]
+pub mod multi_fuse;
+
+// WinFSP-related modules (Windows-only)
+#[cfg(windows)]
+pub mod winfsp;
+
+// Platform-independent modules
 pub mod cache;
 pub mod client;
 pub mod connection_manager;
 pub mod disk_cache;
-pub mod fuse;
 pub mod gc;
 pub mod global;
 pub mod governor;
 pub mod host;
 pub mod lock_manager;
-pub mod multi_fuse;
 pub mod multi_host;
 pub mod net;
 pub mod rate_limiter;
@@ -49,7 +65,20 @@ pub mod rendezvous;
 pub mod sync_engine;
 pub mod updater;
 
-pub use bridge::FuseAsyncBridge;
+// Bridge re-export (platform-agnostic)
+pub use bridge::{BridgeHandler, FuseAsyncBridge, FuseError, FuseRequest};
+
+// FUSE-related re-exports (Unix-only)
+#[cfg(unix)]
+pub use fuse::WormholeFS;
+#[cfg(unix)]
+pub use multi_fuse::{MountedShare, MultiShareFS};
+
+// WinFSP-related re-exports (Windows-only)
+#[cfg(windows)]
+pub use winfsp::{mount_winfsp, WormholeFileContext, WormholeWinFS};
+
+// Platform-independent re-exports
 pub use cache::{CacheManager, ChunkCache, HybridCacheManager, HybridChunkCache};
 pub use client::WormholeClient;
 pub use connection_manager::{
@@ -57,7 +86,6 @@ pub use connection_manager::{
     RegisteredShare,
 };
 pub use disk_cache::DiskCache;
-pub use fuse::WormholeFS;
 pub use gc::GarbageCollector;
 pub use global::{
     connect_global, start_host_global, GlobalEvent, GlobalHostConfig, GlobalHostError,
@@ -66,7 +94,6 @@ pub use global::{
 pub use governor::Governor;
 pub use host::WormholeHost;
 pub use lock_manager::{LockError, LockHold, LockManager, LockStatus};
-pub use multi_fuse::{MountedShare, MultiShareFS};
 pub use multi_host::{MultiHostConfig, MultiShareHost, SharedFolder};
 pub use rendezvous::{RendezvousClient, RendezvousError, RendezvousResult};
 pub use sync_engine::{DirtyChunk, FileLock, SyncEngine, SyncRunner, SyncStatus};

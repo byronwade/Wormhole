@@ -9,6 +9,9 @@ use std::sync::Arc;
 use tauri::{Emitter, Listener, Manager};
 use tracing::info;
 
+#[cfg(target_os = "macos")]
+use tauri::WebviewWindowExt;
+
 pub use commands::{AppState, ServiceEvent};
 
 /// Deep link event payload for join links
@@ -104,6 +107,28 @@ pub fn run() {
         ])
         .setup(|app| {
             info!("Wormhole app setup complete");
+
+            // Set window background color on macOS to eliminate white border
+            #[cfg(target_os = "macos")]
+            {
+                use cocoa::appkit::{NSColor, NSWindow};
+                use cocoa::base::id;
+
+                if let Some(window) = app.get_webview_window("main") {
+                    let ns_window = window.ns_window().unwrap() as id;
+                    unsafe {
+                        // Set background to match our app color (#0a0a0a)
+                        let bg_color = NSColor::colorWithRed_green_blue_alpha_(
+                            std::ptr::null_mut(),
+                            10.0 / 255.0,  // R
+                            10.0 / 255.0,  // G
+                            10.0 / 255.0,  // B
+                            1.0,           // A
+                        );
+                        ns_window.setBackgroundColor_(bg_color);
+                    }
+                }
+            }
 
             // Handle deep links
             #[cfg(desktop)]

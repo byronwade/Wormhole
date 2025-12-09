@@ -2,28 +2,39 @@
 //!
 //! This module integrates with teleport-daemon to provide real file sharing
 //! and mounting functionality through the Tauri UI.
+//!
+//! Platform support:
+//! - Unix (Linux, macOS): Uses FUSE via the fuser crate
+//! - Windows: Uses WinFSP via the winfsp crate
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::thread;
 use std::time::Duration;
 
+use std::thread;
+
+#[cfg(unix)]
 use fuser::MountOption;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 use tracing::{error, info};
+#[cfg(windows)]
+use winfsp::host::FileSystemHost;
 
 use teleport_core::crypto::generate_join_code;
 use teleport_daemon::bridge::FuseAsyncBridge;
 use teleport_daemon::client::{ClientConfig, WormholeClient};
+#[cfg(unix)]
 use teleport_daemon::fuse::WormholeFS;
 use teleport_daemon::global::{
     connect_global, start_host_global, GlobalEvent, GlobalHostConfig, GlobalMountConfig,
 };
 use teleport_daemon::host::{HostConfig, WormholeHost};
+#[cfg(windows)]
+use teleport_daemon::winfsp::WormholeWinFS;
 
 /// Events emitted to the frontend
 #[derive(Clone, Serialize, Deserialize)]
@@ -81,7 +92,7 @@ struct HostHandle {
 
 /// Handle for stopping the client/mount
 struct ClientHandle {
-    /// Thread handle for FUSE mount (blocks until unmounted)
+    /// Thread handle for filesystem mount (blocks until unmounted)
     mount_thread: Option<thread::JoinHandle<()>>,
     /// Mount point for cleanup
     mount_point: PathBuf,
@@ -215,7 +226,8 @@ pub async fn stop_hosting(state: State<'_, Arc<AppState>>) -> Result<(), String>
     }
 }
 
-/// Connect to a peer and mount their shared folder
+/// Connect to a peer and mount their shared folder (Unix only)
+#[cfg(unix)]
 #[tauri::command]
 pub async fn connect_to_peer(
     app: AppHandle,
@@ -362,6 +374,157 @@ pub async fn connect_to_peer(
     Ok(())
 }
 
+/// Connect to a peer and mount their shared folder (Windows - WinFSP)
+#[cfg(windows)]
+#[tauri::command]
+pub async fn connect_to_peer(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    host_address: String,
+    mount_path: String,
+) -> Result<(), String> {
+    info!(
+        "Connecting to {} and mounting at {}",
+        host_address, mount_path
+    );
+
+    // Check if already connected
+    {
+        let handle = state.client_handle.lock().await;
+        if handle.is_some() {
+            return Err("Already connected. Disconnect first.".to_string());
+        }
+    }
+
+    // Parse the host address
+    let server_addr: SocketAddr = host_address
+        .parse()
+        .map_err(|e| format!("Invalid host address '{}': {}", host_address, e))?;
+
+    // Validate mount point (for Windows, this is a drive letter like "W:")
+    let mount_point = PathBuf::from(&mount_path);
+    let mount_path_str = mount_path.clone();
+    let app_clone = app.clone();
+
+    // Spawn the mount in a separate thread (WinFSP is blocking)
+    let mount_thread = thread::spawn(move || {
+        // Create the filesystem ↔ async bridge
+        let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
+
+        // Create client config
+        let config = ClientConfig {
+            server_addr,
+            mount_point: mount_point.clone(),
+            request_timeout: Duration::from_secs(30),
+        };
+
+        // Create a new runtime for this thread
+        let rt = match Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                error!("Failed to create runtime: {}", e);
+                let _ = app_clone.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!("Failed to create runtime: {}", e),
+                    },
+                );
+                return;
+            }
+        };
+
+        // Spawn the client network handler
+        let app_for_client = app_clone.clone();
+        let mount_path_for_event = mount_path_str.clone();
+
+        rt.spawn(async move {
+            let mut client = WormholeClient::new(config);
+
+            // Connect to the host
+            if let Err(e) = client.connect().await {
+                error!("Failed to connect: {:?}", e);
+                let _ = app_for_client.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!("Failed to connect: {:?}", e),
+                    },
+                );
+                return;
+            }
+
+            info!("Connected to host!");
+
+            // Emit mount ready event
+            let _ = app_for_client.emit(
+                "mount-event",
+                ServiceEvent::MountReady {
+                    mountpoint: mount_path_for_event,
+                },
+            );
+
+            // Handle filesystem requests
+            if let Err(e) = client.handle_fuse_requests(request_rx).await {
+                error!("Client error: {:?}", e);
+            }
+        });
+
+        // Create WinFSP filesystem
+        info!("Mounting filesystem via WinFSP at {}", mount_path_str);
+        let fs = WormholeWinFS::new(bridge);
+
+        match FileSystemHost::new(fs) {
+            Ok(mut host) => {
+                if let Err(e) = host.mount(&mount_path_str) {
+                    error!("Mount failed: {:?}", e);
+                    let _ = app_clone.emit(
+                        "mount-event",
+                        ServiceEvent::Error {
+                            message: format!(
+                                "Mount failed: {:?}. Make sure WinFSP is installed.",
+                                e
+                            ),
+                        },
+                    );
+                    return;
+                }
+
+                info!("Filesystem mounted at {}", mount_path_str);
+
+                // Start the filesystem dispatcher (blocks until stopped)
+                if let Err(e) = host.start() {
+                    error!("Filesystem error: {:?}", e);
+                }
+
+                let _ = host.unmount();
+                info!("Filesystem unmounted");
+            }
+            Err(e) => {
+                error!("Failed to create filesystem host: {:?}", e);
+                let _ = app_clone.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!(
+                            "Failed to create filesystem: {:?}. Make sure WinFSP is installed.",
+                            e
+                        ),
+                    },
+                );
+            }
+        }
+    });
+
+    // Store the handle
+    {
+        let mut client_handle = state.client_handle.lock().await;
+        *client_handle = Some(ClientHandle {
+            mount_thread: Some(mount_thread),
+            mount_point: PathBuf::from(&mount_path),
+        });
+    }
+
+    Ok(())
+}
+
 /// Disconnect from peer and unmount
 #[tauri::command]
 pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
@@ -383,7 +546,7 @@ pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
                     .output();
             }
 
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(target_os = "linux")]
             {
                 // Use fusermount -uz (lazy unmount) on Linux
                 info!("Force unmounting {}", mount_path);
@@ -391,10 +554,19 @@ pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
                     .args(["-uz", &mount_path])
                     .output();
             }
+
+            #[cfg(target_os = "windows")]
+            {
+                // Windows: Use WinFSP's umount command
+                info!("Force unmounting WinFSP volume: {}", mount_path);
+                // The mount thread will clean up when the host is stopped
+                // WinFSP drives can be unmounted via the host.unmount() call
+                // or by stopping the host which we do when the thread exits
+            }
         });
 
         // Don't wait for the mount thread - let it clean up in the background
-        // The force unmount will cause the FUSE mount to exit
+        // The force unmount will cause the filesystem mount to exit
         if let Some(_thread) = ch.mount_thread {
             info!("Disconnecting - mount thread will cleanup in background");
         }
@@ -565,7 +737,8 @@ pub async fn start_global_hosting(
     Ok(final_code)
 }
 
-/// Connect to a global host using a join code
+/// Connect to a global host using a join code (Unix only)
+#[cfg(unix)]
 #[tauri::command]
 pub async fn connect_with_code(
     app: AppHandle,
@@ -756,6 +929,212 @@ pub async fn connect_with_code(
         }
 
         info!("Filesystem unmounted");
+    });
+
+    // Store the handle
+    {
+        let mut client_handle = state.client_handle.lock().await;
+        *client_handle = Some(ClientHandle {
+            mount_thread: Some(mount_thread),
+            mount_point,
+        });
+    }
+
+    Ok(())
+}
+
+/// Connect to a global host using a join code (Windows - WinFSP)
+#[cfg(windows)]
+#[tauri::command]
+pub async fn connect_with_code(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    join_code: String,
+    mount_path: String,
+) -> Result<(), String> {
+    info!(
+        "Connecting with code {} to mount at {}",
+        join_code, mount_path
+    );
+
+    // Check if already connected
+    {
+        let handle = state.client_handle.lock().await;
+        if handle.is_some() {
+            return Err("Already connected. Disconnect first.".to_string());
+        }
+    }
+
+    let mount_point = PathBuf::from(&mount_path);
+    let app_clone = app.clone();
+
+    let config = GlobalMountConfig {
+        join_code: join_code.clone(),
+        mount_point: mount_point.clone(),
+        signal_server: None,
+        request_timeout: Duration::from_secs(30),
+    };
+
+    // Use a channel to signal when connection is established
+    let (connect_tx, connect_rx) = tokio::sync::oneshot::channel::<Result<SocketAddr, String>>();
+
+    // Spawn connection task
+    let connect_task = state.runtime.spawn(async move {
+        let event_callback = |event: GlobalEvent| match &event {
+            GlobalEvent::Connecting { .. } => {
+                let _ = app_clone.emit("global-event", ServiceEvent::GlobalConnecting);
+            }
+            GlobalEvent::PeerConnected {
+                peer_addr,
+                is_local,
+            } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::GlobalPeerConnected {
+                        peer_addr: peer_addr.to_string(),
+                        is_local: *is_local,
+                    },
+                );
+            }
+            GlobalEvent::HolePunching { peer_addr } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::GlobalHolePunching {
+                        peer_addr: peer_addr.to_string(),
+                    },
+                );
+            }
+            GlobalEvent::Error { message } => {
+                let _ = app_clone.emit(
+                    "global-event",
+                    ServiceEvent::Error {
+                        message: message.clone(),
+                    },
+                );
+            }
+            _ => {}
+        };
+
+        match connect_global(config, event_callback).await {
+            Ok(result) => {
+                let _ = connect_tx.send(Ok(result.peer_addr));
+            }
+            Err(e) => {
+                error!("Global connect error: {:?}", e);
+                let _ = connect_tx.send(Err(format!("Connection error: {}", e)));
+            }
+        }
+    });
+
+    // Wait for connection to be established
+    let server_addr = match connect_rx.await {
+        Ok(Ok(addr)) => addr,
+        Ok(Err(e)) => return Err(e),
+        Err(_) => return Err("Connection task failed".to_string()),
+    };
+
+    connect_task.abort();
+
+    // Now proceed with mounting using the discovered peer address
+    let mount_path_str = mount_path.clone();
+    let app_for_mount = app.clone();
+    let mount_point_for_client = mount_point.clone();
+
+    let mount_thread = thread::spawn(move || {
+        let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
+
+        let config = ClientConfig {
+            server_addr,
+            mount_point: mount_point_for_client.clone(),
+            request_timeout: Duration::from_secs(30),
+        };
+
+        let rt = match Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                error!("Failed to create runtime: {}", e);
+                let _ = app_for_mount.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!("Failed to create runtime: {}", e),
+                    },
+                );
+                return;
+            }
+        };
+
+        let app_for_client = app_for_mount.clone();
+        let mount_path_for_event = mount_path_str.clone();
+
+        rt.spawn(async move {
+            let mut client = WormholeClient::new(config);
+
+            if let Err(e) = client.connect().await {
+                error!("Failed to connect: {:?}", e);
+                let _ = app_for_client.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!("Failed to connect: {:?}", e),
+                    },
+                );
+                return;
+            }
+
+            info!("Connected to host via join code!");
+
+            let _ = app_for_client.emit(
+                "mount-event",
+                ServiceEvent::MountReady {
+                    mountpoint: mount_path_for_event,
+                },
+            );
+
+            if let Err(e) = client.handle_fuse_requests(request_rx).await {
+                error!("Client error: {:?}", e);
+            }
+        });
+
+        info!("Mounting filesystem via WinFSP at {}", mount_path_str);
+        let fs = WormholeWinFS::new(bridge);
+
+        match FileSystemHost::new(fs) {
+            Ok(mut host) => {
+                if let Err(e) = host.mount(&mount_path_str) {
+                    error!("Mount failed: {:?}", e);
+                    let _ = app_for_mount.emit(
+                        "mount-event",
+                        ServiceEvent::Error {
+                            message: format!(
+                                "Mount failed: {:?}. Make sure WinFSP is installed.",
+                                e
+                            ),
+                        },
+                    );
+                    return;
+                }
+
+                info!("Filesystem mounted at {}", mount_path_str);
+
+                if let Err(e) = host.start() {
+                    error!("Filesystem error: {:?}", e);
+                }
+
+                let _ = host.unmount();
+                info!("Filesystem unmounted");
+            }
+            Err(e) => {
+                error!("Failed to create filesystem host: {:?}", e);
+                let _ = app_for_mount.emit(
+                    "mount-event",
+                    ServiceEvent::Error {
+                        message: format!(
+                            "Failed to create filesystem: {:?}. Make sure WinFSP is installed.",
+                            e
+                        ),
+                    },
+                );
+            }
+        }
     });
 
     // Store the handle

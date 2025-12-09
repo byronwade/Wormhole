@@ -1335,9 +1335,15 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex bg-[#0a0a0a] text-white select-none overflow-hidden">
-      {/* Layout */}
-      <div className="flex w-full h-full">
+    <div className="h-screen flex flex-col bg-[#0a0a0a] text-white select-none overflow-hidden">
+      {/* Draggable title bar region for macOS */}
+      <div
+        data-tauri-drag-region
+        className="h-8 w-full flex-shrink-0 absolute top-0 left-0 right-0 z-50"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      />
+      {/* Layout - pt-8 accounts for macOS traffic lights in overlay mode */}
+      <div className="flex flex-1 min-h-0 pt-8">
         {/* Left Sidebar */}
         <Sidebar
           activeView={activeView}

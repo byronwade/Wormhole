@@ -180,19 +180,25 @@ jobs:
 
   # =============================================================================
   # Build macOS binaries
+  # Note: We use separate runners for each architecture because cross-compilation
+  # with fuser/FUSE doesn't work (pkg-config can't find cross-compiled FUSE libs)
   # =============================================================================
   build-macos:
     name: Build macOS (${{ matrix.target }})
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     needs: create-release
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Use Intel runner for Intel build (native compilation)
           - target: x86_64-apple-darwin
             artifact: wormhole-macos-x86_64
+            os: macos-13
+          # Use Apple Silicon runner for ARM build (native compilation)
           - target: aarch64-apple-darwin
             artifact: wormhole-macos-aarch64
+            os: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -254,6 +260,9 @@ jobs:
 
   # =============================================================================
   # Build Windows binaries
+  # Windows uses WinFSP for filesystem mounting (equivalent to FUSE on Unix).
+  # The winfsp crate bundles the import library, so WinFSP doesn't need to be
+  # installed for building. Users will need WinFSP installed to run wormhole-mount.
   # =============================================================================
   build-windows:
     name: Build Windows (x86_64)
@@ -263,31 +272,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install WinFSP
-        shell: powershell
-        run: |
-          # Download and install WinFSP for FUSE support
-          $winfspUrl = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi"
-          Invoke-WebRequest -Uri $winfspUrl -OutFile winfsp.msi
-          Start-Process msiexec.exe -Wait -ArgumentList '/i winfsp.msi /quiet /norestart'
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build release
-        run: |
-          # Build signal server (always works)
-          cargo build --release -p teleport-signal
-          # Try to build daemon (may fail without full WinFSP SDK)
-          cargo build --release -p teleport-daemon 2>$null || echo "Daemon build skipped (WinFSP SDK not available)"
         shell: bash
+        run: |
+          # Build signal server
+          cargo build --release -p teleport-signal
+          # Build daemon (with WinFSP support for filesystem mounting)
+          cargo build --release -p teleport-daemon
 
       - name: Package binaries
         shell: bash
         run: |
           mkdir -p dist
           cp target/release/wormhole-signal.exe dist/
-          # Include daemon if it was built
+          # Include daemon binaries (wormhole.exe and wormhole-mount.exe)
           if [ -f target/release/wormhole.exe ]; then
             cp target/release/wormhole.exe dist/
           fi
@@ -300,17 +301,23 @@ jobs:
           # Wormhole for Windows
 
           ## Requirements
-          - WinFSP: https://winfsp.dev/rel/
+          - **WinFSP** (for mounting): Download from https://winfsp.dev/rel/
 
-          ## Installation
-          1. Install WinFSP from https://winfsp.dev/rel/
-          2. Extract this archive
-          3. Add the extracted folder to your PATH, or run from this directory
+          ## What's Included
+          - `wormhole.exe` - Main CLI (host folders, manage connections)
+          - `wormhole-mount.exe` - Mount remote shares via WinFSP
+          - `wormhole-signal.exe` - Signal server for NAT traversal
 
           ## Usage
           ```
+          # Host a folder (generates join code)
           wormhole.exe host C:\Users\You\Projects\my-folder
-          wormhole.exe mount WORM-XXXX-YYYY C:\mnt\remote
+
+          # Mount a remote share (requires WinFSP)
+          wormhole-mount.exe 192.168.1.100:4433 W:
+
+          # Signal server for NAT traversal
+          wormhole-signal.exe --port 8080
           ```
           EOF
 
@@ -326,6 +333,8 @@ jobs:
 
   # =============================================================================
   # Build Tauri desktop app (optional - if apps/desktop exists)
+  # Note: Windows desktop build is included but mount functionality is limited
+  # (FUSE mounting not yet supported on Windows)
   # =============================================================================
   build-desktop:
     name: Build Desktop App (${{ matrix.platform }})

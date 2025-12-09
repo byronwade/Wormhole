@@ -51,7 +51,6 @@
   font-weight: 400;
 
   color: rgba(255, 255, 255, 0.87);
-  background-color: #0a0a0f;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -63,9 +62,20 @@
   box-sizing: border-box;
 }
 
+html {
+  background: transparent;
+}
+
 body {
   margin: 0;
   min-width: 320px;
+  min-height: 100vh;
+  background: #0a0a0a;
+}
+
+/* Root element should also have matching background */
+#root {
+  background: #0a0a0a;
   min-height: 100vh;
 }
 

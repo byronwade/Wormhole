@@ -1,14 +1,14 @@
-//! FUSE ↔ Async Bridge
+//! Filesystem ↔ Async Bridge
 //!
 //! This module solves the fundamental impedance mismatch between:
-//! - FUSE: sync callbacks that must block until data is ready
+//! - Filesystem drivers (FUSE/WinFSP): sync callbacks that must block until data is ready
 //! - Networking: async I/O that must not block the runtime
 //!
 //! # Design
 //!
 //! ```text
-//! FUSE Thread                    Tokio Runtime
-//! ───────────                    ─────────────
+//! FS Thread (FUSE/WinFSP)         Tokio Runtime
+//! ───────────────────            ─────────────
 //!     │                               │
 //!     │  FuseRequest + oneshot::Sender │
 //!     ├──────────────────────────────►│
@@ -19,11 +19,17 @@
 //!     │                               │
 //! ```
 //!
+//! # Platform Support
+//!
+//! This bridge is platform-agnostic and works with:
+//! - Unix: fuser (FUSE) - see fuse.rs
+//! - Windows: winfsp (WinFSP) - see winfsp.rs
+//!
 //! # Deadlock Prevention
 //!
 //! 1. Bounded request channel (backpressure, not unbounded growth)
 //! 2. Timeout on all blocking operations
-//! 3. Separate runtime from FUSE thread
+//! 3. Separate runtime from filesystem thread
 //! 4. No locks held across await points
 
 use crossbeam_channel::{bounded, Receiver, Sender, TrySendError};
@@ -170,7 +176,8 @@ pub enum FuseError {
 }
 
 impl FuseError {
-    /// Convert to libc errno
+    /// Convert to libc errno (Unix)
+    #[cfg(unix)]
     pub fn to_errno(&self) -> i32 {
         match self {
             FuseError::NotFound => libc::ENOENT,
@@ -182,6 +189,35 @@ impl FuseError {
             FuseError::LockConflict(_) => libc::EAGAIN,
             FuseError::LockRequired => libc::ENOLCK,
             FuseError::ReadOnly => libc::EROFS,
+        }
+    }
+
+    /// Convert to NTSTATUS code (Windows)
+    /// These map to WinFSP's expected status codes
+    #[cfg(windows)]
+    pub fn to_ntstatus(&self) -> i32 {
+        // Windows NTSTATUS codes (from ntstatus.h)
+        // These are the codes WinFSP expects
+        const STATUS_OBJECT_NAME_NOT_FOUND: i32 = 0xC0000034_u32 as i32;
+        const STATUS_ACCESS_DENIED: i32 = 0xC0000022_u32 as i32;
+        const STATUS_UNEXPECTED_IO_ERROR: i32 = 0xC00000E9_u32 as i32;
+        const STATUS_TIMEOUT: i32 = 0x00000102_u32 as i32;
+        const STATUS_CANCELLED: i32 = 0xC0000120_u32 as i32;
+        const STATUS_INTERNAL_ERROR: i32 = 0xC00000E5_u32 as i32;
+        const STATUS_FILE_LOCK_CONFLICT: i32 = 0xC0000054_u32 as i32;
+        const STATUS_LOCK_NOT_GRANTED: i32 = 0xC0000055_u32 as i32;
+        const STATUS_MEDIA_WRITE_PROTECTED: i32 = 0xC00000A2_u32 as i32;
+
+        match self {
+            FuseError::NotFound => STATUS_OBJECT_NAME_NOT_FOUND,
+            FuseError::PermissionDenied => STATUS_ACCESS_DENIED,
+            FuseError::IoError(_) => STATUS_UNEXPECTED_IO_ERROR,
+            FuseError::Timeout => STATUS_TIMEOUT,
+            FuseError::Shutdown => STATUS_CANCELLED,
+            FuseError::Internal(_) => STATUS_INTERNAL_ERROR,
+            FuseError::LockConflict(_) => STATUS_FILE_LOCK_CONFLICT,
+            FuseError::LockRequired => STATUS_LOCK_NOT_GRANTED,
+            FuseError::ReadOnly => STATUS_MEDIA_WRITE_PROTECTED,
         }
     }
 }
@@ -587,10 +623,25 @@ mod tests {
         assert!(matches!(request, FuseRequest::Shutdown));
     }
 
+    #[cfg(unix)]
     #[test]
     fn test_fuse_error_errno() {
         assert_eq!(FuseError::NotFound.to_errno(), libc::ENOENT);
         assert_eq!(FuseError::PermissionDenied.to_errno(), libc::EACCES);
         assert_eq!(FuseError::Timeout.to_errno(), libc::ETIMEDOUT);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_fuse_error_ntstatus() {
+        // Verify Windows NTSTATUS codes are generated correctly
+        assert_eq!(
+            FuseError::NotFound.to_ntstatus(),
+            0xC0000034_u32 as i32 // STATUS_OBJECT_NAME_NOT_FOUND
+        );
+        assert_eq!(
+            FuseError::PermissionDenied.to_ntstatus(),
+            0xC0000022_u32 as i32 // STATUS_ACCESS_DENIED
+        );
     }
 }

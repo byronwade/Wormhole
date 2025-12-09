@@ -18,10 +18,12 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
-        "transparent": false,
+        "transparent": true,
+        "titleBarStyle": "overlay",
         "center": true,
         "minWidth": 900,
-        "minHeight": 600
+        "minHeight": 600,
+        "hiddenTitle": true
       }
     ],
     "trayIcon": {
@@ -38,6 +40,9 @@
       "desktop": {
         "schemes": ["wormhole"]
       }
+    },
+    "shell": {
+      "open": true
     }
   },
   "bundle": {
@@ -73,11 +78,6 @@
       "deb": {
         "depends": ["libfuse3-dev"]
       }
-    }
-  },
-  "plugins": {
-    "shell": {
-      "open": true
     }
   }
 }

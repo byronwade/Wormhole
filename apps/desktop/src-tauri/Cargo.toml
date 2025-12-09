@@ -28,9 +28,23 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 teleport-daemon = { path = "../../../crates/teleport-daemon" }
 teleport-core = { path = "../../../crates/teleport-core" }
 
-# FUSE for mounting - use workspace version to match teleport-daemon
-fuser = { workspace = true }
+# Utilities
 hostname = "0.4"
+
+# FUSE for mounting (Unix only - Linux, macOS)
+[target.'cfg(unix)'.dependencies]
+fuser = { workspace = true }
+
+# WinFSP for mounting (Windows only)
+[target.'cfg(windows)'.dependencies]
+winfsp = { workspace = true }
+
+[target.'cfg(windows)'.build-dependencies]
+winfsp = { workspace = true }
+
+# macOS-specific dependencies for window customization
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
 
 [features]
 default = ["custom-protocol"]

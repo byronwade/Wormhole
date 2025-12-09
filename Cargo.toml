@@ -22,8 +22,15 @@ tokio = { version = "1.35", features = ["full", "sync", "rt-multi-thread"] }
 quinn = "0.11"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 
-# FUSE filesystem
+# FUSE filesystem (Unix-only)
+# Note: fuser is only available on Unix systems (Linux, macOS)
+# Windows uses WinFSP instead
 fuser = "0.14"
+
+# WinFSP filesystem (Windows-only)
+# Note: winfsp provides Windows filesystem support similar to FUSE
+# Licensed under GPL-3.0 with FLOSS exception (compatible with MIT/Apache-2.0)
+winfsp = "0.12"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
