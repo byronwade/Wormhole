@@ -12,6 +12,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Application branding
+  APP_NAME: Wormhole
+  APP_AUTHOR: Wormhole Team
 
 permissions:
   contents: write
@@ -47,57 +50,53 @@ jobs:
           body: |
             ## Wormhole v${{ steps.get_version.outputs.version }}
 
-            A peer-to-peer distributed filesystem that mounts remote directories locally via QUIC transport.
+            A peer-to-peer distributed filesystem that mounts remote directories locally via encrypted QUIC transport. Share folders instantly with join codes - no cloud uploads required.
 
             ### Downloads
 
+            #### Desktop Application (GUI)
+            | Platform | Download |
+            |----------|----------|
+            | **Windows** | `Wormhole_${{ steps.get_version.outputs.version }}_x64-setup.exe` or `.msi` |
+            | **macOS** (Universal) | `Wormhole_${{ steps.get_version.outputs.version }}_universal.dmg` |
+            | **macOS** (Apple Silicon) | `Wormhole_${{ steps.get_version.outputs.version }}_aarch64.dmg` |
+            | **macOS** (Intel) | `Wormhole_${{ steps.get_version.outputs.version }}_x64.dmg` |
+            | **Linux** | `Wormhole_${{ steps.get_version.outputs.version }}_amd64.deb` or `.AppImage` |
+
+            #### Command Line Tools
             | Platform | Architecture | Download |
             |----------|--------------|----------|
-            | **Windows** | x86_64 | `wormhole-windows-x86_64.zip` |
-            | **macOS** | Apple Silicon | `wormhole-macos-aarch64.tar.gz` |
-            | **macOS** | Intel | `wormhole-macos-x86_64.tar.gz` |
-            | **Linux** | x86_64 | `wormhole-linux-x86_64.tar.gz` |
-            | **Linux** | ARM64 | `wormhole-linux-aarch64.tar.gz` |
+            | **Windows** | x86_64 | `Wormhole-${{ steps.get_version.outputs.version }}-windows-x64.zip` |
+            | **macOS** | Apple Silicon | `Wormhole-${{ steps.get_version.outputs.version }}-macos-arm64.tar.gz` |
+            | **macOS** | Intel | `Wormhole-${{ steps.get_version.outputs.version }}-macos-x64.tar.gz` |
+            | **Linux** | x86_64 | `Wormhole-${{ steps.get_version.outputs.version }}-linux-x64.tar.gz` |
+            | **Linux** | ARM64 | `Wormhole-${{ steps.get_version.outputs.version }}-linux-arm64.tar.gz` |
 
-            ### Installation
+            ### Requirements
 
-            #### macOS (Apple Silicon)
-            ```bash
-            # Requires macFUSE: brew install --cask macfuse
-            curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/wormhole-macos-aarch64.tar.gz | tar xz
-            sudo mv wormhole wormhole-mount wormhole-signal /usr/local/bin/
-            ```
-
-            #### macOS (Intel)
-            ```bash
-            # Requires macFUSE: brew install --cask macfuse
-            curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/wormhole-macos-x86_64.tar.gz | tar xz
-            sudo mv wormhole wormhole-mount wormhole-signal /usr/local/bin/
-            ```
-
-            #### Linux (x86_64)
-            ```bash
-            # Requires FUSE: sudo apt install fuse3
-            curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/wormhole-linux-x86_64.tar.gz | tar xz
-            sudo mv wormhole wormhole-mount wormhole-signal /usr/local/bin/
-            ```
-
-            #### Windows
-            ```powershell
-            # Requires WinFSP: https://winfsp.dev/rel/
-            # Download and extract wormhole-windows-x86_64.zip
-            # Add to PATH or run from extracted directory
-            ```
+            | Platform | Requirement |
+            |----------|-------------|
+            | **Windows** | [WinFSP](https://winfsp.dev/rel/) for filesystem mounting |
+            | **macOS** | [macFUSE](https://osxfuse.github.io/) via `brew install --cask macfuse` |
+            | **Linux** | FUSE3 via `sudo apt install fuse3` or equivalent |
 
             ### Quick Start
 
             ```bash
-            # Host a folder (generates join code)
+            # Host a folder (generates a join code)
             wormhole host ~/Projects/my-folder
 
-            # Mount on another machine
+            # On another machine, mount with the join code
             wormhole mount WORM-XXXX-YYYY ~/mnt/remote
+
+            # Files are now accessible at ~/mnt/remote!
             ```
+
+            ### Security
+
+            - All file transfers use end-to-end encrypted QUIC connections
+            - Files never touch third-party servers
+            - Join codes use PAKE (Password-Authenticated Key Exchange) for secure pairing
 
             ### Changelog
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
@@ -108,10 +107,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
-  # Build Linux binaries
+  # Build Linux CLI binaries
   # =============================================================================
   build-linux:
-    name: Build Linux (${{ matrix.target }})
+    name: Build Linux CLI (${{ matrix.target }})
     runs-on: ubuntu-latest
     needs: create-release
     strategy:
@@ -119,9 +118,11 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
-            artifact: wormhole-linux-x86_64
+            artifact: Wormhole-${{ needs.create-release.outputs.version }}-linux-x64
+            arch: x64
           - target: aarch64-unknown-linux-gnu
-            artifact: wormhole-linux-aarch64
+            artifact: Wormhole-${{ needs.create-release.outputs.version }}-linux-arm64
+            arch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -135,9 +136,6 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          # Install aarch64 FUSE dev package
-          sudo dpkg --add-architecture arm64
-          sudo apt-get update || true
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
@@ -156,7 +154,10 @@ jobs:
 
       - name: Package binaries
         run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
           mkdir -p dist
+
+          # Copy binaries
           if [ -f target/${{ matrix.target }}/release/wormhole ]; then
             cp target/${{ matrix.target }}/release/wormhole dist/
           fi
@@ -164,40 +165,64 @@ jobs:
             cp target/${{ matrix.target }}/release/wormhole-mount dist/
           fi
           cp target/${{ matrix.target }}/release/wormhole-signal dist/
-          echo "# Wormhole v${{ needs.create-release.outputs.version }}" > dist/README.md
-          echo "" >> dist/README.md
-          echo "## Installation" >> dist/README.md
-          echo "sudo mv wormhole* /usr/local/bin/" >> dist/README.md
-          cd dist && tar -czvf ../${{ matrix.artifact }}.tar.gz *
+
+          # Create README
+          cat > dist/README.md << EOF
+          # Wormhole v${VERSION}
+
+          Peer-to-peer distributed filesystem for instant folder sharing.
+
+          ## Requirements
+          - FUSE3: \`sudo apt install fuse3\` (or equivalent for your distro)
+
+          ## Installation
+          \`\`\`bash
+          sudo mv wormhole wormhole-mount wormhole-signal /usr/local/bin/
+          sudo chmod +x /usr/local/bin/wormhole*
+          \`\`\`
+
+          ## Quick Start
+          \`\`\`bash
+          # Host a folder
+          wormhole host ~/my-folder
+
+          # Mount on another machine
+          wormhole mount WORM-XXXX-YYYY ~/mnt/remote
+          \`\`\`
+
+          ## More Info
+          https://github.com/${{ github.repository }}
+          EOF
+
+          # Create LICENSE file
+          cp LICENSE dist/ 2>/dev/null || echo "MIT OR Apache-2.0" > dist/LICENSE
+
+          cd dist && tar -czvf ../Wormhole-${VERSION}-linux-${{ matrix.arch }}.tar.gz *
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: ${{ matrix.artifact }}.tar.gz
+          files: Wormhole-${{ needs.create-release.outputs.version }}-linux-${{ matrix.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
-  # Build macOS binaries
-  # Note: We use separate runners for each architecture because cross-compilation
-  # with fuser/FUSE doesn't work (pkg-config can't find cross-compiled FUSE libs)
+  # Build macOS CLI binaries (native compilation for each arch)
   # =============================================================================
   build-macos:
-    name: Build macOS (${{ matrix.target }})
+    name: Build macOS CLI (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     needs: create-release
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Use Intel runner for Intel build (native compilation)
           - target: x86_64-apple-darwin
-            artifact: wormhole-macos-x86_64
+            arch: x64
             os: macos-13
-          # Use Apple Silicon runner for ARM build (native compilation)
           - target: aarch64-apple-darwin
-            artifact: wormhole-macos-aarch64
+            arch: arm64
             os: macos-latest
 
     steps:
@@ -206,7 +231,6 @@ jobs:
       - name: Install macFUSE
         run: |
           brew install --cask macfuse || true
-          # macFUSE may require a reboot, but we can still build
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -218,54 +242,83 @@ jobs:
         env:
           MACOSX_DEPLOYMENT_TARGET: "10.15"
 
+      - name: Code sign binaries (ad-hoc)
+        run: |
+          # Ad-hoc signing for distribution without Apple Developer ID
+          codesign --force --deep --sign - target/${{ matrix.target }}/release/wormhole || true
+          codesign --force --deep --sign - target/${{ matrix.target }}/release/wormhole-mount || true
+          codesign --force --deep --sign - target/${{ matrix.target }}/release/wormhole-signal || true
+
       - name: Package binaries
         run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
           mkdir -p dist
+
           cp target/${{ matrix.target }}/release/wormhole dist/
           cp target/${{ matrix.target }}/release/wormhole-mount dist/ || true
           cp target/${{ matrix.target }}/release/wormhole-signal dist/
 
           # Create install script
-          cat > dist/install.sh << 'EOF'
+          cat > dist/install.sh << 'SCRIPT'
           #!/bin/bash
           set -e
           echo "Installing Wormhole..."
           sudo mkdir -p /usr/local/bin
-          sudo cp wormhole wormhole-mount wormhole-signal /usr/local/bin/ 2>/dev/null || \
-            sudo cp wormhole wormhole-signal /usr/local/bin/
-          sudo chmod +x /usr/local/bin/wormhole*
+          for bin in wormhole wormhole-mount wormhole-signal; do
+            if [ -f "$bin" ]; then
+              sudo cp "$bin" /usr/local/bin/
+              sudo chmod +x "/usr/local/bin/$bin"
+            fi
+          done
           echo "Installed to /usr/local/bin/"
           echo ""
+          echo "Requirements: macFUSE - brew install --cask macfuse"
+          echo ""
           echo "Verify with: wormhole --version"
-          EOF
+          SCRIPT
           chmod +x dist/install.sh
 
-          echo "# Wormhole v${{ needs.create-release.outputs.version }}" > dist/README.md
-          echo "" >> dist/README.md
-          echo "## Requirements" >> dist/README.md
-          echo "- macFUSE: brew install --cask macfuse" >> dist/README.md
-          echo "" >> dist/README.md
-          echo "## Installation" >> dist/README.md
-          echo "./install.sh" >> dist/README.md
+          # Create README
+          cat > dist/README.md << EOF
+          # Wormhole v${VERSION}
 
-          cd dist && tar -czvf ../${{ matrix.artifact }}.tar.gz *
+          Peer-to-peer distributed filesystem for instant folder sharing.
+
+          ## Requirements
+          - macFUSE: \`brew install --cask macfuse\`
+
+          ## Installation
+          \`\`\`bash
+          ./install.sh
+          \`\`\`
+
+          ## Quick Start
+          \`\`\`bash
+          # Host a folder
+          wormhole host ~/my-folder
+
+          # Mount on another machine
+          wormhole mount WORM-XXXX-YYYY ~/mnt/remote
+          \`\`\`
+          EOF
+
+          cp LICENSE dist/ 2>/dev/null || echo "MIT OR Apache-2.0" > dist/LICENSE
+
+          cd dist && tar -czvf ../Wormhole-${VERSION}-macos-${{ matrix.arch }}.tar.gz *
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: ${{ matrix.artifact }}.tar.gz
+          files: Wormhole-${{ needs.create-release.outputs.version }}-macos-${{ matrix.arch }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
-  # Build Windows binaries
-  # Windows uses WinFSP for filesystem mounting (equivalent to FUSE on Unix).
-  # The winfsp crate bundles the import library, so WinFSP doesn't need to be
-  # installed for building. Users will need WinFSP installed to run wormhole-mount.
+  # Build Windows CLI binaries
   # =============================================================================
   build-windows:
-    name: Build Windows (x86_64)
+    name: Build Windows CLI (x64)
     runs-on: windows-latest
     needs: create-release
 
@@ -278,17 +331,16 @@ jobs:
       - name: Build release
         shell: bash
         run: |
-          # Build signal server
           cargo build --release -p teleport-signal
-          # Build daemon (with WinFSP support for filesystem mounting)
           cargo build --release -p teleport-daemon
 
       - name: Package binaries
         shell: bash
         run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
           mkdir -p dist
+
           cp target/release/wormhole-signal.exe dist/
-          # Include daemon binaries (wormhole.exe and wormhole-mount.exe)
           if [ -f target/release/wormhole.exe ]; then
             cp target/release/wormhole.exe dist/
           fi
@@ -300,41 +352,43 @@ jobs:
           cat > dist/README.md << 'EOF'
           # Wormhole for Windows
 
+          Peer-to-peer distributed filesystem for instant folder sharing.
+
           ## Requirements
-          - **WinFSP** (for mounting): Download from https://winfsp.dev/rel/
+          - WinFSP: Download from https://winfsp.dev/rel/
 
           ## What's Included
-          - `wormhole.exe` - Main CLI (host folders, manage connections)
-          - `wormhole-mount.exe` - Mount remote shares via WinFSP
-          - `wormhole-signal.exe` - Signal server for NAT traversal
+          - wormhole.exe - Main CLI (host folders, manage connections)
+          - wormhole-mount.exe - Mount remote shares via WinFSP
+          - wormhole-signal.exe - Signal server for NAT traversal
 
-          ## Usage
+          ## Quick Start
           ```
-          # Host a folder (generates join code)
+          # Host a folder
           wormhole.exe host C:\Users\You\Projects\my-folder
 
-          # Mount a remote share (requires WinFSP)
+          # Mount a remote share
           wormhole-mount.exe 192.168.1.100:4433 W:
-
-          # Signal server for NAT traversal
-          wormhole-signal.exe --port 8080
           ```
+
+          ## More Info
+          https://github.com/byronwade/Wormhole
           EOF
 
-          cd dist && 7z a -tzip ../wormhole-windows-x86_64.zip *
+          echo "MIT OR Apache-2.0" > dist/LICENSE.txt
+
+          cd dist && 7z a -tzip ../Wormhole-${VERSION}-windows-x64.zip *
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: wormhole-windows-x86_64.zip
+          files: Wormhole-${{ needs.create-release.outputs.version }}-windows-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
-  # Build Tauri desktop app (optional - if apps/desktop exists)
-  # Note: Windows desktop build is included but mount functionality is limited
-  # (FUSE mounting not yet supported on Windows)
+  # Build Desktop Application (Tauri)
   # =============================================================================
   build-desktop:
     name: Build Desktop App (${{ matrix.platform }})
@@ -346,8 +400,10 @@ jobs:
         include:
           - platform: linux
             os: ubuntu-22.04
-          - platform: macos
+          - platform: macos-arm64
             os: macos-latest
+          - platform: macos-x64
+            os: macos-13
           - platform: windows
             os: windows-latest
 
@@ -371,7 +427,7 @@ jobs:
           sudo apt-get install -y libfuse3-dev pkg-config libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install macFUSE (macOS)
-        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'macos'
+        if: steps.check_desktop.outputs.exists == 'true' && startsWith(matrix.platform, 'macos')
         run: brew install --cask macfuse || true
 
       - name: Setup Node.js
@@ -393,20 +449,56 @@ jobs:
         working-directory: apps/desktop
         run: pnpm install
 
-      - name: Build Tauri app
-        if: steps.check_desktop.outputs.exists == 'true'
+      - name: Build Tauri app (Linux)
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'linux'
         working-directory: apps/desktop
         run: pnpm tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: Build Tauri app (macOS)
+        if: steps.check_desktop.outputs.exists == 'true' && startsWith(matrix.platform, 'macos')
+        working-directory: apps/desktop
+        run: pnpm tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Build Tauri app (Windows)
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'windows'
+        working-directory: apps/desktop
+        run: pnpm tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Rename and upload Linux .deb
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'linux'
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+          for f in apps/desktop/src-tauri/target/release/bundle/deb/*.deb; do
+            if [ -f "$f" ]; then
+              # Rename to consistent format
+              newname="Wormhole_${VERSION}_amd64.deb"
+              cp "$f" "$newname"
+              echo "ASSET_PATH=$newname" >> $GITHUB_ENV
+            fi
+          done
+        shell: bash
+
       - name: Upload Linux .deb
         if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'linux'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
-          files: apps/desktop/src-tauri/target/release/bundle/deb/*.deb
+          files: Wormhole_${{ needs.create-release.outputs.version }}_amd64.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -420,7 +512,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload macOS .dmg
-        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'macos'
+        if: steps.check_desktop.outputs.exists == 'true' && startsWith(matrix.platform, 'macos')
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
@@ -437,6 +529,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload Windows .exe (NSIS)
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'windows'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # =============================================================================
   # Generate checksums and publish release
   # =============================================================================
@@ -444,6 +545,8 @@ jobs:
     name: Finalize Release
     runs-on: ubuntu-latest
     needs: [create-release, build-linux, build-macos, build-windows]
+    # Don't require desktop build to succeed (it may not exist)
+    if: always() && needs.create-release.result == 'success'
     steps:
       - name: Download all release assets
         uses: robinraju/release-downloader@v1
@@ -455,7 +558,17 @@ jobs:
       - name: Generate checksums
         run: |
           cd assets
-          sha256sum * > SHA256SUMS.txt || true
+          echo "# Wormhole v${{ needs.create-release.outputs.version }} - SHA256 Checksums" > SHA256SUMS.txt
+          echo "" >> SHA256SUMS.txt
+          echo "Verify downloads with: sha256sum -c SHA256SUMS.txt" >> SHA256SUMS.txt
+          echo "" >> SHA256SUMS.txt
+          for f in *; do
+            if [ -f "$f" ] && [ "$f" != "SHA256SUMS.txt" ]; then
+              sha256sum "$f" >> SHA256SUMS.txt
+            fi
+          done
+          echo ""
+          echo "=== SHA256 Checksums ==="
           cat SHA256SUMS.txt
 
       - name: Upload checksums

@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Wormhole",
   "version": "0.1.0",
-  "identifier": "com.wormhole.app",
+  "identifier": "io.wormhole.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:5173",
@@ -32,7 +32,7 @@
       "menuOnLeftClick": false
     },
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'"
     }
   },
   "plugins": {
@@ -56,27 +56,39 @@
       "icons/icon.ico"
     ],
     "category": "Utility",
-    "shortDescription": "Mount remote folders locally",
-    "longDescription": "Wormhole lets you share folders with others using simple join codes. Recipients can mount shared folders as local drives - no cloud uploads required.",
+    "shortDescription": "Mount remote folders locally via P2P",
+    "longDescription": "Wormhole is a peer-to-peer distributed filesystem that lets you share folders with others using simple join codes. Recipients can mount shared folders as local drives - files are accessed directly over encrypted QUIC connections without cloud uploads.",
+    "publisher": "Wormhole Team",
+    "copyright": "Copyright 2024 Wormhole Team",
     "macOS": {
       "entitlements": null,
       "exceptionDomain": null,
       "frameworks": [],
       "providerShortName": null,
-      "signingIdentity": null,
-      "minimumSystemVersion": "10.15"
+      "signingIdentity": "-",
+      "minimumSystemVersion": "10.15",
+      "hardenedRuntime": true
     },
     "windows": {
       "certificateThumbprint": null,
-      "digestAlgorithm": null,
-      "timestampUrl": null
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      }
     },
     "linux": {
       "appimage": {
         "bundleMediaFramework": false
       },
       "deb": {
-        "depends": ["libfuse3-dev"]
+        "depends": ["libfuse3-3"],
+        "section": "utils",
+        "priority": "optional"
+      },
+      "rpm": {
+        "release": "1"
       }
     }
   }

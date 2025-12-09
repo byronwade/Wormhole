@@ -2,6 +2,53 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
+import { open } from "@tauri-apps/plugin-dialog";
+import {
+  Files,
+  Upload,
+  Download,
+  Folder,
+  File,
+  Settings,
+  Search,
+  ChevronRight,
+  Home,
+  Clock,
+  X,
+  Check,
+  Copy,
+  Loader2,
+  AlertCircle,
+  FileText,
+  Image,
+  Film,
+  Music,
+  Archive,
+  Code,
+  Star,
+  Users,
+  FolderUp,
+  Share2,
+  Link,
+  Trash2,
+  Play,
+  RefreshCw,
+} from "lucide-react";
+import { SetupWizard } from "@/components/SetupWizard";
+import { useWormholeHistory } from "@/hooks/useWormholeHistory";
+import type { ShareHistoryItem, ConnectionHistoryItem, ShareStatus, ConnectionStatus } from "@/types/history";
+
+// shadcn components
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 // Wormhole base URL for share links
 const WORMHOLE_BASE_URL = "https://wormhole.dev";
@@ -58,55 +105,6 @@ function formatJoinCode(normalized: string): string {
 function makeShareLink(joinCode: string): string {
   return `${WORMHOLE_BASE_URL}/j/${joinCode}`;
 }
-import { open } from "@tauri-apps/plugin-dialog";
-import {
-  Files,
-  Upload,
-  Download,
-  Folder,
-  File,
-  Settings,
-  Grid,
-  List,
-  Search,
-  ChevronRight,
-  Home,
-  Clock,
-  X,
-  Check,
-  Copy,
-  Loader2,
-  AlertCircle,
-  FileText,
-  Image,
-  Film,
-  Music,
-  Archive,
-  Code,
-  HardDrive,
-  Star,
-  Users,
-  FolderUp,
-  Trash2,
-  Share2,
-  Link,
-} from "lucide-react";
-import { SetupWizard } from "@/components/SetupWizard";
-
-// shadcn components
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ViewMode = "list" | "grid";
 type NavigationView =
@@ -136,15 +134,6 @@ interface FileEntry {
   modified?: number;
 }
 
-interface Connection {
-  name: string;
-  path: string;
-  type: "host" | "client";
-  joinCode?: string;
-  shareLink?: string;
-  remoteAddress?: string;
-}
-
 // Helper to format file sizes
 function formatSize(bytes: number): string {
   if (bytes === 0) return "—";
@@ -165,6 +154,21 @@ function formatDate(timestamp?: number): string {
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
   return date.toLocaleDateString();
+}
+
+// Format relative time for history items (milliseconds)
+function formatRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString();
 }
 
 // Helper to get file icon based on extension
@@ -197,186 +201,338 @@ function getFileIcon(name: string, isDir: boolean, className = "w-5 h-5") {
   return <File className={`${className} text-zinc-500`} />;
 }
 
-// Helper to get hostname
-async function getHostname(): Promise<string> {
-  try {
-    const ips = await invoke<string[]>("get_local_ip");
-    return ips[0] || "localhost";
-  } catch {
-    return "localhost";
-  }
+
+// Status Badge Component
+function StatusBadge({ status }: { status: ShareStatus | ConnectionStatus }) {
+  const config: Record<string, { bg: string; text: string; label: string; pulse: boolean }> = {
+    active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active", pulse: true },
+    connected: { bg: "bg-green-500/20", text: "text-green-400", label: "Connected", pulse: true },
+    paused: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Paused", pulse: false },
+    connecting: { bg: "bg-blue-500/20", text: "text-blue-400", label: "Connecting", pulse: true },
+    inactive: { bg: "bg-zinc-500/20", text: "text-zinc-400", label: "Inactive", pulse: false },
+    disconnected: { bg: "bg-zinc-500/20", text: "text-zinc-400", label: "Disconnected", pulse: false },
+    error: { bg: "bg-red-500/20", text: "text-red-400", label: "Error", pulse: false },
+  };
+
+  const c = config[status] || config.inactive;
+
+  return (
+    <Badge className={`${c.bg} ${c.text} border-transparent text-xs`}>
+      {c.pulse && <div className={`w-1.5 h-1.5 rounded-full ${c.text.replace('text-', 'bg-')} animate-pulse mr-1.5`} />}
+      {c.label}
+    </Badge>
+  );
+}
+
+// Share Card Component
+function ShareCard({
+  share,
+  onResume,
+  onStop,
+  onDelete,
+  onBrowse,
+}: {
+  share: ShareHistoryItem;
+  onResume: () => void;
+  onStop: () => void;
+  onDelete: () => void;
+  onBrowse: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const isActive = share.status === "active";
+  const folderName = share.path.split("/").pop() || "Shared Folder";
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(share.shareLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="bg-zinc-800/50 rounded-xl p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          isActive ? "bg-violet-500/20" : "bg-zinc-700/50"
+        }`}>
+          <FolderUp className={`w-5 h-5 ${isActive ? "text-violet-400" : "text-zinc-500"}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-white truncate">{folderName}</h3>
+            <StatusBadge status={share.status} />
+          </div>
+          <p className="text-xs text-zinc-500 truncate">{share.path}</p>
+        </div>
+      </div>
+
+      {/* Share Link */}
+      {isActive && (
+        <div className="flex items-center gap-2 bg-zinc-900/50 rounded-lg p-2">
+          <Link className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+          <code className="flex-1 text-xs font-mono text-zinc-300 truncate">{share.shareLink}</code>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={copyLink}
+            className="h-6 w-6 hover:bg-zinc-700"
+          >
+            {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+          </Button>
+        </div>
+      )}
+
+      {/* Info Row */}
+      <div className="flex items-center gap-4 text-xs text-zinc-500">
+        <span>Code: <code className="text-zinc-400">{share.joinCode}</code></span>
+        <span>Port: <code className="text-zinc-400">{share.port}</code></span>
+        <span className="ml-auto">{formatRelativeTime(share.lastActiveAt)}</span>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 pt-1">
+        {isActive ? (
+          <>
+            <Button
+              size="sm"
+              onClick={onBrowse}
+              className="flex-1 h-8 bg-violet-600 hover:bg-violet-700"
+            >
+              <Folder className="w-3.5 h-3.5 mr-1.5" />
+              Browse
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onStop}
+              className="h-8 border-zinc-700 hover:bg-zinc-700"
+            >
+              Stop
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              onClick={onResume}
+              className="flex-1 h-8 bg-violet-600 hover:bg-violet-700"
+            >
+              <Play className="w-3.5 h-3.5 mr-1.5" />
+              Resume
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDelete}
+              className="h-8 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Connection Card Component
+function ConnectionCard({
+  connection,
+  onReconnect,
+  onDisconnect,
+  onRemove,
+  onBrowse,
+}: {
+  connection: ConnectionHistoryItem;
+  onReconnect: () => void;
+  onDisconnect: () => void;
+  onRemove: () => void;
+  onBrowse: () => void;
+}) {
+  const isConnected = connection.status === "connected";
+  const isConnecting = connection.status === "connecting";
+  const mountName = connection.mountPoint.split("/").pop() || "Remote Share";
+
+  return (
+    <div className="bg-zinc-800/50 rounded-xl p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          isConnected ? "bg-green-500/20" : "bg-zinc-700/50"
+        }`}>
+          <Users className={`w-5 h-5 ${isConnected ? "text-green-400" : "text-zinc-500"}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-white truncate">{mountName}</h3>
+            <StatusBadge status={connection.status} />
+          </div>
+          <p className="text-xs text-zinc-500 truncate">
+            Code: <code className="text-zinc-400">{connection.joinCode}</code>
+          </p>
+        </div>
+      </div>
+
+      {/* Mount Point */}
+      {isConnected && (
+        <div className="flex items-center gap-2 bg-zinc-900/50 rounded-lg p-2">
+          <Folder className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+          <span className="flex-1 text-xs text-zinc-300 truncate">{connection.mountPoint}</span>
+        </div>
+      )}
+
+      {/* Error message */}
+      {connection.status === "error" && connection.errorMessage && (
+        <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
+          {connection.errorMessage}
+        </p>
+      )}
+
+      {/* Info Row */}
+      <div className="flex items-center gap-4 text-xs text-zinc-500">
+        <span>{formatRelativeTime(connection.lastConnectedAt)}</span>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 pt-1">
+        {isConnected ? (
+          <>
+            <Button
+              size="sm"
+              onClick={onBrowse}
+              className="flex-1 h-8 bg-violet-600 hover:bg-violet-700"
+            >
+              <Folder className="w-3.5 h-3.5 mr-1.5" />
+              Browse
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onDisconnect}
+              className="h-8 border-zinc-700 hover:bg-zinc-700"
+            >
+              Disconnect
+            </Button>
+          </>
+        ) : isConnecting ? (
+          <Button size="sm" disabled className="flex-1 h-8">
+            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            Connecting...
+          </Button>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              onClick={onReconnect}
+              className="flex-1 h-8 bg-violet-600 hover:bg-violet-700"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Reconnect
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onRemove}
+              className="h-8 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // Left Sidebar Component
 function Sidebar({
   activeView,
   onViewChange,
-  hostConnection,
-  clientConnection,
-  activeConnectionType,
-  onSelectConnection,
-  onDeleteConnection,
+  shareCount,
+  connectionCount,
 }: {
   activeView: NavigationView;
   onViewChange: (view: NavigationView) => void;
-  hostConnection: Connection | null;
-  clientConnection: Connection | null;
-  activeConnectionType: "host" | "client" | null;
-  onSelectConnection: (type: "host" | "client") => void;
-  onDeleteConnection: (type: "host" | "client") => void;
+  shareCount: number;
+  connectionCount: number;
 }) {
   const mainNavItems = [
-    { id: "all-files" as NavigationView, icon: Files, label: "All Files" },
-    {
-      id: "shared-with-me" as NavigationView,
-      icon: Users,
-      label: "Shared with Me",
-    },
-    { id: "my-shares" as NavigationView, icon: FolderUp, label: "My Shares" },
-    { id: "recent" as NavigationView, icon: Clock, label: "Recent" },
+    { id: "all-files" as NavigationView, icon: Files, label: "All Files", count: 0 },
+    { id: "shared-with-me" as NavigationView, icon: Users, label: "Shared with Me", count: connectionCount },
+    { id: "my-shares" as NavigationView, icon: FolderUp, label: "My Shares", count: shareCount },
+    { id: "recent" as NavigationView, icon: Clock, label: "Recent", count: 0 },
   ];
 
   const collectionItems = [
     { id: "favorites" as NavigationView, icon: Star, label: "Favorites" },
   ];
 
-  const connections = [
-    ...(hostConnection ? [{ ...hostConnection, type: "host" as const }] : []),
-    ...(clientConnection ? [{ ...clientConnection, type: "client" as const }] : []),
-  ];
-
   return (
-    <div className="w-56 bg-zinc-900 border-r border-zinc-800 flex flex-col py-4">
+    <div className="w-52 bg-zinc-900 flex flex-col py-4">
       {/* Logo & Brand */}
-      <div className="px-4 mb-8">
+      <div className="px-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-violet-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Share2 className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Share2 className="w-4 h-4 text-white" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold text-white">Wormhole</span>
-            <Badge className="w-fit bg-amber-500/20 text-amber-400 border-amber-500/40 text-[10px] px-1.5 py-0">
-              ALPHA
-            </Badge>
-          </div>
+          <span className="text-base font-bold text-white">Wormhole</span>
         </div>
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className="flex-1 px-3 space-y-0.5">
         {mainNavItems.map((item) => (
           <Button
             key={item.id}
             onClick={() => onViewChange(item.id)}
             variant="ghost"
-            className={`w-full justify-start gap-3 ${
+            className={`w-full justify-start gap-3 h-9 ${
               activeView === item.id
                 ? "bg-violet-500/15 text-violet-400"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800"
             }`}
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            <span>{item.label}</span>
+            <item.icon className="w-4 h-4 flex-shrink-0" />
+            <span className="text-sm flex-1 text-left">{item.label}</span>
+            {item.count > 0 && (
+              <span className="text-xs bg-zinc-700/50 px-1.5 py-0.5 rounded">{item.count}</span>
+            )}
           </Button>
         ))}
 
-        {/* Active Connections Section */}
-        {connections.length > 0 && (
-          <div className="pt-6">
-            <div className="px-3 py-2">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                Active Connections
-              </span>
-            </div>
-            <ScrollArea className="max-h-64">
-              {connections.map((connection) => (
-                <div
-                  key={connection.type}
-                  className={`group px-3 py-2 rounded-lg transition-all mb-1 ${
-                    activeConnectionType === connection.type
-                      ? "bg-violet-500/15 text-violet-400"
-                      : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 justify-start p-0 h-auto hover:bg-transparent"
-                      onClick={() => onSelectConnection(connection.type)}
-                    >
-                      <HardDrive className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="text-xs truncate">{connection.name}</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => onDeleteConnection(connection.type)}
-                    >
-                      <Trash2 className="w-3 h-3 text-red-400" />
-                    </Button>
-                  </div>
-                  {/* Show share link for host connections */}
-                  {connection.type === "host" && connection.shareLink && (
-                    <div className="mt-1 ml-6">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(connection.shareLink || "");
-                        }}
-                        className="text-[10px] text-zinc-500 hover:text-violet-400 truncate block max-w-full text-left transition-colors"
-                        title="Click to copy share link"
-                      >
-                        <Link className="w-3 h-3 inline mr-1" />
-                        {connection.shareLink.replace("https://", "")}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </ScrollArea>
-          </div>
-        )}
-
-        {/* Collections Section */}
-        <div className="pt-6">
-          <div className="px-3 py-2">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              My Collections
-            </span>
-          </div>
+        {/* Favorites */}
+        <div className="pt-4">
           {collectionItems.map((item) => (
             <Button
               key={item.id}
               onClick={() => onViewChange(item.id)}
               variant="ghost"
-              className={`w-full justify-start gap-3 ${
+              className={`w-full justify-start gap-3 h-9 ${
                 activeView === item.id
                   ? "bg-violet-500/15 text-violet-400"
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800"
               }`}
             >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              <span>{item.label}</span>
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <span className="text-sm">{item.label}</span>
             </Button>
           ))}
         </div>
       </nav>
 
       {/* Bottom Section */}
-      <div className="px-3 space-y-1 pt-4 border-t border-zinc-800">
+      <div className="px-3">
         <Button
           onClick={() => onViewChange("settings")}
           variant="ghost"
-          className={`w-full justify-start gap-3 ${
+          className={`w-full justify-start gap-3 h-9 ${
             activeView === "settings"
               ? "bg-violet-500/15 text-violet-400"
               : "text-zinc-400 hover:text-white hover:bg-zinc-800"
           }`}
         >
-          <Settings className="w-5 h-5 flex-shrink-0" />
-          <span>Settings</span>
+          <Settings className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm">Settings</span>
         </Button>
       </div>
     </div>
@@ -397,7 +553,6 @@ function FileBrowser({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  const [_focusedIndex, _setFocusedIndex] = useState(0);
 
   const loadDirectory = useCallback(async (path: string) => {
     setLoading(true);
@@ -448,35 +603,30 @@ function FileBrowser({
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  useEffect(() => {
-    _setFocusedIndex(0);
-  }, [filteredFiles.length]);
-
   return (
-    <div className="flex-1 flex flex-col bg-[#0a0a0a] min-h-0">
+    <div className="flex-1 flex flex-col bg-zinc-900 min-h-0">
       {/* Top Bar */}
-      <div className="h-14 border-b border-zinc-800 flex items-center px-6 gap-4 flex-shrink-0">
+      <div className="h-12 flex items-center px-5 gap-3 flex-shrink-0">
         {/* Breadcrumbs */}
-        <div className="flex-1 flex items-center gap-2 text-sm overflow-x-auto">
+        <div className="flex items-center gap-1 text-sm">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => loadDirectory(rootPath)}
-            className="text-zinc-400 hover:text-white"
+            className="text-zinc-400 hover:text-white h-7 px-2"
           >
-            <Home className="w-4 h-4 mr-1.5" />
-            Home
+            <Home className="w-3.5 h-3.5" />
           </Button>
           {pathParts.map((part, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            <div key={i} className="flex items-center">
+              <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() =>
                   loadDirectory(rootPath + "/" + pathParts.slice(0, i + 1).join("/"))
                 }
-                className="text-zinc-400 hover:text-white"
+                className="text-zinc-400 hover:text-white h-7 px-2 text-sm"
               >
                 {part}
               </Button>
@@ -484,15 +634,17 @@ function FileBrowser({
           ))}
         </div>
 
+        <div className="flex-1" />
+
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
           <Input
             type="text"
-            placeholder="Search files..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64 h-9 bg-zinc-900 border-zinc-700 pl-9 text-white placeholder:text-zinc-500"
+            className="w-48 h-8 bg-zinc-800 border-0 pl-8 text-sm text-white placeholder:text-zinc-500 rounded-md"
           />
         </div>
       </div>
@@ -517,20 +669,20 @@ function FileBrowser({
           </div>
         ) : viewMode === "list" ? (
           <div>
-            <div className="sticky top-0 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-zinc-800 px-6 py-2 grid grid-cols-[1fr_120px_100px] gap-4 text-xs text-zinc-500 font-medium">
+            <div className="sticky top-0 bg-zinc-900 px-5 py-2 grid grid-cols-[1fr_100px_80px] gap-4 text-xs text-zinc-500">
               <div>Name</div>
               <div>Modified</div>
               <div className="text-right">Size</div>
             </div>
-            <div className="px-6 py-2">
+            <div className="px-5 py-1">
               {currentPath !== rootPath && (
                 <Button
                   variant="ghost"
                   onClick={goUp}
-                  className="w-full grid grid-cols-[1fr_120px_100px] gap-4 items-center justify-start h-auto py-2.5 hover:bg-zinc-900"
+                  className="w-full grid grid-cols-[1fr_100px_80px] gap-4 items-center justify-start h-auto py-2 hover:bg-zinc-800/50 rounded-md"
                 >
-                  <div className="flex items-center gap-3">
-                    <Folder className="w-5 h-5 text-zinc-500" />
+                  <div className="flex items-center gap-2.5">
+                    <Folder className="w-4 h-4 text-zinc-500" />
                     <span className="text-sm text-zinc-400">..</span>
                   </div>
                 </Button>
@@ -541,22 +693,22 @@ function FileBrowser({
                   variant="ghost"
                   onClick={() => handleFileClick(file, false)}
                   onDoubleClick={() => handleFileClick(file, true)}
-                  className={`w-full grid grid-cols-[1fr_120px_100px] gap-4 items-center justify-start h-auto py-2.5 ${
+                  className={`w-full grid grid-cols-[1fr_100px_80px] gap-4 items-center justify-start h-auto py-2 rounded-md ${
                     selectedFiles.has(file.path)
                       ? "bg-violet-500/20 hover:bg-violet-500/30"
-                      : "hover:bg-zinc-900"
+                      : "hover:bg-zinc-800/50"
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     {getFileIcon(file.name, file.is_dir)}
                     <span className="text-sm text-zinc-300 truncate">
                       {file.name}
                     </span>
                   </div>
-                  <div className="text-sm text-zinc-500">
+                  <div className="text-xs text-zinc-500">
                     {formatDate(file.modified)}
                   </div>
-                  <div className="text-sm text-zinc-500 text-right">
+                  <div className="text-xs text-zinc-500 text-right">
                     {file.is_dir ? "—" : formatSize(file.size)}
                   </div>
                 </Button>
@@ -603,10 +755,9 @@ function FileBrowser({
       </div>
 
       {/* Bottom Status Bar */}
-      <div className="h-10 border-t border-zinc-800 flex items-center justify-between px-6 text-xs text-zinc-500 flex-shrink-0">
+      <div className="h-8 flex items-center justify-between px-5 text-xs text-zinc-500 flex-shrink-0">
         <span>
           {filteredFiles.length} {filteredFiles.length === 1 ? "item" : "items"}
-          {selectedFiles.size > 0 && ` • ${selectedFiles.size} selected`}
         </span>
       </div>
     </div>
@@ -617,25 +768,19 @@ function FileBrowser({
 function ShareDialog({
   isOpen,
   onClose,
-  onConnectionCreated,
+  onShareCreated,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConnectionCreated: (connection: Connection) => void;
+  onShareCreated: (path: string, joinCode: string, port: number) => void;
 }) {
   const [sharePath, setSharePath] = useState("");
-  const [port, setPort] = useState(4433);
+  const [port] = useState(4433);
   const [joinCode, setJoinCode] = useState("");
   const [hostIpAddress, setHostIpAddress] = useState<string>("");
   const [isHosting, setIsHosting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [hostname, setHostname] = useState("localhost");
-
-  useEffect(() => {
-    getHostname().then(setHostname);
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -653,17 +798,9 @@ function ShareDialog({
           setIsHosting(true);
           if (data.share_path) {
             setSharePath(data.share_path);
-            const folderName = data.share_path.split("/").pop() || "Shared Folder";
-            const newConnection: Connection = {
-              name: `${hostname} : ${folderName}`,
-              path: data.share_path,
-              type: "host",
-              joinCode: code,
-              shareLink: code ? makeShareLink(code) : undefined,
-            };
-            onConnectionCreated(newConnection);
+            onShareCreated(data.share_path, code, data.port || port);
           }
-          setStatusMessage(`Sharing ${data.share_path}`);
+          setStatusMessage("");
         } else if (data.type === "Error") {
           setStatusMessage(`Error: ${data.message}`);
         }
@@ -677,13 +814,13 @@ function ShareDialog({
         unlistenHost();
       }
     };
-  }, [isOpen, onConnectionCreated, hostname]);
+  }, [isOpen, onShareCreated, port]);
 
-  const selectFolder = async (setter: (path: string) => void) => {
+  const selectFolder = async () => {
     try {
       const selected = await open({ directory: true, multiple: false });
       if (selected && typeof selected === "string") {
-        setter(selected);
+        setSharePath(selected);
       }
     } catch (e) {
       console.error("Failed to open folder dialog:", e);
@@ -726,152 +863,96 @@ function ShareDialog({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const copyJoinCode = () => {
-    navigator.clipboard.writeText(joinCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-800">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-white">
+          <DialogTitle className="text-lg text-white">
             {isHosting ? "Sharing Active" : "Share a Folder"}
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-sm text-zinc-400">
             {isHosting
               ? "Share this link with anyone you want to give access"
               : "Choose a folder to share with others"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
+        <div className="space-y-4 pt-2">
           {!isHosting ? (
             <>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {sharePath ? (
-                  <div>
-                    <Label className="text-zinc-400 mb-2">Selected Folder</Label>
-                    <div className="flex items-center gap-3 p-4 bg-zinc-800 rounded-xl border border-zinc-700">
-                      <Folder className="w-6 h-6 text-violet-400" />
-                      <span className="text-white flex-1 truncate">{sharePath}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSharePath("")}
-                        className="hover:bg-zinc-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
+                  <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
+                    <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                    <span className="text-sm text-white flex-1 truncate">{sharePath}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSharePath("")}
+                      className="h-6 w-6 hover:bg-zinc-700"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
                   </div>
                 ) : (
                   <Button
                     variant="outline"
-                    onClick={() => selectFolder(setSharePath)}
-                    className="w-full h-32 border-2 border-dashed border-zinc-700 hover:border-violet-500/50 bg-transparent"
+                    onClick={selectFolder}
+                    className="w-full h-24 border-2 border-dashed border-zinc-700/50 hover:border-violet-500/50 bg-transparent"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <Folder className="w-12 h-12 text-zinc-600" />
-                      <span className="text-zinc-400">Click to choose a folder</span>
+                      <Folder className="w-8 h-8 text-zinc-600" />
+                      <span className="text-sm text-zinc-400">Click to choose a folder</span>
                     </div>
                   </Button>
                 )}
-
-                {showAdvanced && (
-                  <div>
-                    <Label className="text-zinc-400 mb-2">Port (Advanced)</Label>
-                    <Input
-                      type="number"
-                      value={port}
-                      onChange={(e) => setPort(parseInt(e.target.value) || 4433)}
-                      className="bg-zinc-800 border-zinc-700 text-white"
-                    />
-                  </div>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="text-zinc-500 hover:text-zinc-300"
-                >
-                  {showAdvanced ? "Hide" : "Show"} Advanced Options
-                </Button>
               </div>
 
               <Button
                 onClick={handleStartHosting}
                 disabled={!sharePath}
-                className="w-full h-12 bg-violet-600 hover:bg-violet-700 text-white"
+                className="w-full h-10 bg-violet-600 hover:bg-violet-700 text-white"
               >
                 Start Sharing
               </Button>
             </>
           ) : (
             <>
-              <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-8">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 text-zinc-400">
-                    <Link className="w-4 h-4" />
-                    <Label>Share Link</Label>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 bg-zinc-800/50 rounded-lg p-4">
-                    <span className="text-lg font-mono text-white break-all">
-                      {shareLink}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={copyShareLink}
-                      className="bg-zinc-700 hover:bg-zinc-600 flex-shrink-0"
-                    >
-                      {copied ? (
-                        <Check className="w-5 h-5 text-green-400" />
-                      ) : (
-                        <Copy className="w-5 h-5" />
-                      )}
-                    </Button>
-                  </div>
-                  <div className="pt-4 border-t border-zinc-700/50">
-                    <div className="flex items-center justify-center gap-4 text-sm">
-                      <div className="text-zinc-500">
-                        Code: <span className="text-zinc-300 font-mono">{joinCode}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={copyJoinCode}
-                          className="ml-1 h-6 w-6 p-0 hover:bg-zinc-700"
-                        >
-                          <Copy className="w-3 h-3 text-zinc-500" />
-                        </Button>
-                      </div>
-                      {hostIpAddress && (
-                        <>
-                          <span className="text-zinc-700">|</span>
-                          <span className="text-zinc-500">
-                            LAN: <span className="text-zinc-300 font-mono">{hostIpAddress}:{port}</span>
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 bg-zinc-800 rounded-lg p-3">
+                  <code className="flex-1 text-sm font-mono text-white truncate">
+                    {shareLink}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyShareLink}
+                    className="h-8 px-3 bg-violet-600 hover:bg-violet-700 text-white"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-zinc-500">
+                  <span>Code: <code className="text-zinc-300">{joinCode}</code></span>
+                  {hostIpAddress && (
+                    <>
+                      <span className="text-zinc-700">•</span>
+                      <span>LAN: <code className="text-zinc-300">{hostIpAddress}:{port}</code></span>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-6">
-                <Label className="text-zinc-400 mb-3">Sharing</Label>
-                <div className="flex items-center gap-3">
-                  <Folder className="w-5 h-5 text-violet-400" />
-                  <span className="text-white truncate">{sharePath}</span>
-                </div>
+              <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
+                <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                <span className="text-sm text-zinc-300 truncate">{sharePath}</span>
               </div>
 
               <Button
                 onClick={handleStopHosting}
                 variant="destructive"
-                className="w-full"
+                className="w-full h-10"
               >
                 Stop Sharing
               </Button>
@@ -879,7 +960,7 @@ function ShareDialog({
           )}
 
           {statusMessage && (
-            <p className="text-sm text-zinc-400 text-center bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3">
+            <p className="text-sm text-zinc-400 text-center bg-zinc-800 rounded-xl px-4 py-3">
               {statusMessage}
             </p>
           )}
@@ -898,10 +979,13 @@ function ConnectDialog({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConnectionCreated: (connection: Connection) => void;
+  onConnectionCreated: (joinCode: string, mountPoint: string) => void;
   initialCode?: string | null;
 }) {
   const [hostAddress, setHostAddress] = useState("");
+  const [mountPath, setMountPath] = useState("");
+  const [isConnected, setIsConnected] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   // Set initial code when dialog opens with a code
   useEffect(() => {
@@ -909,9 +993,6 @@ function ConnectDialog({
       setHostAddress(initialCode);
     }
   }, [isOpen, initialCode]);
-  const [mountPath, setMountPath] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -928,14 +1009,8 @@ function ConnectDialog({
           setMountPath(data.mountpoint || "");
           setStatusMessage(`Mounted at ${data.mountpoint}`);
 
-          const mountName = data.mountpoint?.split("/").pop() || "Remote Share";
-          const newConnection: Connection = {
-            name: `${hostAddress} : ${mountName}`,
-            path: data.mountpoint || "",
-            type: "client",
-            remoteAddress: hostAddress,
-          };
-          onConnectionCreated(newConnection);
+          const extractedCode = extractJoinCode(hostAddress);
+          onConnectionCreated(extractedCode || hostAddress, data.mountpoint || "");
         } else if (data.type === "Error") {
           setIsConnected(false);
           setStatusMessage(`Error: ${data.message}`);
@@ -952,11 +1027,11 @@ function ConnectDialog({
     };
   }, [isOpen, hostAddress, onConnectionCreated]);
 
-  const selectFolder = async (setter: (path: string) => void) => {
+  const selectFolder = async () => {
     try {
       const selected = await open({ directory: true, multiple: false });
       if (selected && typeof selected === "string") {
-        setter(selected);
+        setMountPath(selected);
       }
     } catch (e) {
       console.error("Failed to open folder dialog:", e);
@@ -967,17 +1042,14 @@ function ConnectDialog({
     if (!hostAddress || !mountPath) return;
 
     try {
-      // Try to extract join code from URL or use as-is
       const extractedCode = extractJoinCode(hostAddress);
 
       if (extractedCode) {
-        // It's a valid join code or link
         await invoke("connect_with_code", {
           joinCode: extractedCode,
           mountPath,
         });
       } else if (hostAddress.includes(":") && !hostAddress.includes("://")) {
-        // It's an IP:port address
         await invoke("connect_to_peer", { hostAddress, mountPath });
       } else {
         setStatusMessage("Please enter a valid share link, join code, or address");
@@ -1000,107 +1072,85 @@ function ConnectDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-800">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-white">
-            {isConnected ? "Connected!" : "Connect to Shared Folder"}
+          <DialogTitle className="text-lg text-white">
+            {isConnected ? "Connected" : "Connect to Share"}
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-sm text-zinc-400">
             {isConnected
-              ? "The shared folder is now mounted and ready to use"
-              : "Paste a share link or enter a join code"}
+              ? "The shared folder is mounted and ready"
+              : "Paste a share link or join code"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
+        <div className="space-y-4 pt-2">
           {!isConnected ? (
             <>
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-zinc-400 mb-2">
-                    <div className="flex items-center gap-2">
-                      <Link className="w-4 h-4" />
-                      Share Link or Join Code
-                    </div>
-                  </Label>
-                  <Input
-                    type="text"
-                    value={hostAddress}
-                    onChange={(e) => setHostAddress(e.target.value)}
-                    placeholder="wormhole.dev/j/ABC-123 or ABC-123"
-                    className="bg-zinc-800 border-zinc-700 text-white text-center font-mono placeholder:text-zinc-600"
-                  />
-                  <p className="text-xs text-zinc-500 mt-2 text-center">
-                    Also accepts: IP address (192.168.1.100:4433)
-                  </p>
-                </div>
+              <div className="space-y-3">
+                <Input
+                  type="text"
+                  value={hostAddress}
+                  onChange={(e) => setHostAddress(e.target.value)}
+                  placeholder="Paste link or code..."
+                  className="bg-zinc-800 border-0 text-white text-center font-mono text-sm placeholder:text-zinc-500"
+                />
 
                 {mountPath ? (
-                  <div>
-                    <Label className="text-zinc-400 mb-2">Where to Mount</Label>
-                    <div className="flex items-center gap-3 p-4 bg-zinc-800 rounded-xl border border-zinc-700">
-                      <Folder className="w-6 h-6 text-violet-400" />
-                      <span className="text-white flex-1 truncate">{mountPath}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setMountPath("")}
-                        className="hover:bg-zinc-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <Label className="text-zinc-400 mb-2">Choose Mount Location</Label>
+                  <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
+                    <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                    <span className="text-sm text-white flex-1 truncate">{mountPath}</span>
                     <Button
-                      variant="outline"
-                      onClick={() => selectFolder(setMountPath)}
-                      className="w-full h-24 border-2 border-dashed border-zinc-700 hover:border-violet-500/50 bg-transparent"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setMountPath("")}
+                      className="h-6 w-6 hover:bg-zinc-700"
                     >
-                      <div className="flex flex-col items-center gap-2">
-                        <Folder className="w-8 h-8 text-zinc-600" />
-                        <span className="text-zinc-400">Click to choose location</span>
-                      </div>
+                      <X className="w-3 h-3" />
                     </Button>
                   </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={selectFolder}
+                    className="w-full h-20 border-2 border-dashed border-zinc-700/50 hover:border-violet-500/50 bg-transparent"
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <Folder className="w-6 h-6 text-zinc-600" />
+                      <span className="text-xs text-zinc-400">Choose mount location</span>
+                    </div>
+                  </Button>
                 )}
               </div>
 
               <Button
                 onClick={handleConnect}
                 disabled={!hostAddress || !mountPath}
-                className="w-full h-12 bg-violet-600 hover:bg-violet-700 text-white"
+                className="w-full h-10 bg-violet-600 hover:bg-violet-700 text-white"
               >
-                Connect Now
+                Connect
               </Button>
             </>
           ) : (
             <>
-              <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-6 space-y-4">
-                <div>
-                  <Label className="text-zinc-500 mb-2">Mounted At</Label>
-                  <div className="flex items-center gap-3">
-                    <Folder className="w-5 h-5 text-violet-400" />
-                    <span className="text-white font-mono">{mountPath}</span>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
+                  <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                  <span className="text-sm text-white truncate">{mountPath}</span>
                 </div>
-                <Separator className="bg-zinc-700" />
-                <div>
-                  <Label className="text-zinc-500 mb-2">Connected To</Label>
-                  <p className="text-zinc-300 font-mono text-sm">{hostAddress}</p>
+                <div className="text-xs text-zinc-500 px-1">
+                  Connected to: <code className="text-zinc-400">{hostAddress}</code>
                 </div>
               </div>
 
-              <Button onClick={handleDisconnect} variant="destructive" className="w-full">
+              <Button onClick={handleDisconnect} variant="destructive" className="w-full h-10">
                 Disconnect
               </Button>
             </>
           )}
 
           {statusMessage && (
-            <p className="text-sm text-zinc-400 text-center bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3">
+            <p className="text-sm text-zinc-400 text-center bg-zinc-800 rounded-xl px-4 py-3">
               {statusMessage}
             </p>
           )}
@@ -1113,7 +1163,7 @@ function ConnectDialog({
 // Settings Page Component
 function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
   return (
-    <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-zinc-900 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {/* About Section */}
@@ -1208,7 +1258,7 @@ const SETUP_COMPLETE_KEY = "wormhole_setup_complete";
 
 function App() {
   const [activeView, setActiveView] = useState<NavigationView>("all-files");
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode] = useState<ViewMode>("list");
   const [currentFolder, setCurrentFolder] = useState<string>("");
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(() => {
@@ -1217,16 +1267,24 @@ function App() {
   });
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
 
-  // Single host connection and single client connection
-  const [hostConnection, setHostConnection] = useState<Connection | null>(null);
-  const [clientConnection, setClientConnection] = useState<Connection | null>(null);
-  const [activeConnectionType, setActiveConnectionType] = useState<"host" | "client" | null>(null);
+  // Use the history hook
+  const {
+    shares,
+    connections,
+    addShare,
+    removeShare,
+    setShareStatus,
+    getActiveShare,
+    addConnection,
+    removeConnection,
+    setConnectionStatus,
+    getActiveConnection,
+  } = useWormholeHistory();
 
   // Handle deep link events
   useEffect(() => {
     const setupDeepLink = async () => {
       try {
-        // Listen for deep link events from Tauri
         const unlisten = await onOpenUrl((urls: string[]) => {
           for (const url of urls) {
             const code = extractJoinCode(url);
@@ -1272,62 +1330,80 @@ function App() {
     setShowSetupWizard(false);
   }, []);
 
-  const handleSelectFolder = async () => {
+  // Share operations
+  const handleShareCreated = useCallback((path: string, joinCode: string, port: number) => {
+    addShare(path, joinCode, port);
+    setCurrentFolder(path);
+    setActiveDialog(null);
+  }, [addShare]);
+
+  const handleStopShare = useCallback(async (shareId: string) => {
     try {
+      await invoke("stop_hosting");
+      setShareStatus(shareId, "inactive");
+    } catch (e) {
+      console.error("Failed to stop share:", e);
+    }
+  }, [setShareStatus]);
+
+  const handleResumeShare = useCallback(async (share: ShareHistoryItem) => {
+    try {
+      await invoke("start_hosting", { path: share.path, port: share.port });
+      setShareStatus(share.id, "active");
+      setCurrentFolder(share.path);
+    } catch (e) {
+      console.error("Failed to resume share:", e);
+    }
+  }, [setShareStatus]);
+
+  const handleDeleteShare = useCallback((shareId: string) => {
+    removeShare(shareId);
+  }, [removeShare]);
+
+  // Connection operations
+  const handleConnectionCreated = useCallback((joinCode: string, mountPoint: string) => {
+    const conn = addConnection(joinCode, mountPoint);
+    setConnectionStatus(conn.id, "connected");
+    setCurrentFolder(mountPoint);
+    setActiveDialog(null);
+  }, [addConnection, setConnectionStatus]);
+
+  const handleDisconnect = useCallback(async (connectionId: string) => {
+    try {
+      await invoke("disconnect");
+      setConnectionStatus(connectionId, "disconnected");
+    } catch (e) {
+      console.error("Failed to disconnect:", e);
+    }
+  }, [setConnectionStatus]);
+
+  const handleReconnect = useCallback(async (connection: ConnectionHistoryItem) => {
+    setConnectionStatus(connection.id, "connecting");
+    try {
+      // Need to select a mount path again
       const selected = await open({ directory: true, multiple: false });
       if (selected && typeof selected === "string") {
-        setCurrentFolder(selected);
-      }
-    } catch (e) {
-      console.error("Failed to select folder:", e);
-    }
-  };
-
-  const handleConnectionCreated = useCallback((connection: Connection) => {
-    if (connection.type === "host") {
-      setHostConnection(connection);
-      setActiveConnectionType("host");
-      setCurrentFolder(connection.path);
-    } else {
-      setClientConnection(connection);
-      setActiveConnectionType("client");
-      setCurrentFolder(connection.path);
-    }
-    setActiveDialog(null);
-  }, []);
-
-  const handleSelectConnection = useCallback((type: "host" | "client") => {
-    setActiveConnectionType(type);
-    const connection = type === "host" ? hostConnection : clientConnection;
-    if (connection) {
-      setCurrentFolder(connection.path);
-      setActiveView("all-files");
-    }
-  }, [hostConnection, clientConnection]);
-
-  const handleDeleteConnection = useCallback(async (type: "host" | "client") => {
-    try {
-      if (type === "host") {
-        await invoke("stop_hosting");
-        setHostConnection(null);
-        if (activeConnectionType === "host") {
-          setActiveConnectionType(clientConnection ? "client" : null);
-          setCurrentFolder(clientConnection?.path || "");
-        }
+        await invoke("connect_with_code", {
+          joinCode: connection.joinCode,
+          mountPath: selected,
+        });
+        // The mount-event listener will update the status
       } else {
-        await invoke("disconnect");
-        setClientConnection(null);
-        if (activeConnectionType === "client") {
-          setActiveConnectionType(hostConnection ? "host" : null);
-          setCurrentFolder(hostConnection?.path || "");
-        }
+        setConnectionStatus(connection.id, "disconnected");
       }
     } catch (e) {
-      console.error("Failed to delete connection:", e);
+      console.error("Failed to reconnect:", e);
+      setConnectionStatus(connection.id, "error", String(e));
     }
-  }, [activeConnectionType, hostConnection, clientConnection]);
+  }, [setConnectionStatus]);
 
-  const activeConnection = activeConnectionType === "host" ? hostConnection : clientConnection;
+  const handleRemoveConnection = useCallback((connectionId: string) => {
+    removeConnection(connectionId);
+  }, [removeConnection]);
+
+  // Get active items for determining if buttons should be disabled
+  const activeShare = getActiveShare();
+  const activeConnection = getActiveConnection();
 
   // Show setup wizard on first run
   if (showSetupWizard) {
@@ -1335,133 +1411,60 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a] text-white select-none overflow-hidden">
+    <div className="h-screen flex flex-col bg-zinc-900 text-white select-none overflow-hidden">
+      {/* Title bar background */}
+      <div className="h-8 w-full flex-shrink-0 bg-zinc-900 absolute top-0 left-0 right-0 z-40" />
       {/* Draggable title bar region for macOS */}
       <div
         data-tauri-drag-region
         className="h-8 w-full flex-shrink-0 absolute top-0 left-0 right-0 z-50"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       />
-      {/* Layout - pt-8 accounts for macOS traffic lights in overlay mode */}
+      {/* Layout */}
       <div className="flex flex-1 min-h-0 pt-8">
         {/* Left Sidebar */}
         <Sidebar
           activeView={activeView}
           onViewChange={setActiveView}
-          hostConnection={hostConnection}
-          clientConnection={clientConnection}
-          activeConnectionType={activeConnectionType}
-          onSelectConnection={handleSelectConnection}
-          onDeleteConnection={handleDeleteConnection}
+          shareCount={shares.length}
+          connectionCount={connections.length}
         />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Global Header */}
-          <div className="h-14 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 flex items-center justify-between px-6 flex-shrink-0">
-            <div className="flex items-center gap-4">
-              <h1 className="text-lg font-semibold text-white">
-                {activeView === "all-files" &&
-                  (activeConnection
-                    ? activeConnection.type === "host"
-                      ? "Shared Files"
-                      : "Remote Files"
-                    : "All Files")}
+          {/* Minimal Header - only show when not in file browser */}
+          {activeView !== "all-files" && (
+            <div className="h-12 flex items-center justify-between px-6 flex-shrink-0">
+              <h1 className="text-base font-medium text-white">
                 {activeView === "shared-with-me" && "Shared with Me"}
                 {activeView === "my-shares" && "My Shares"}
                 {activeView === "recent" && "Recent"}
                 {activeView === "favorites" && "Favorites"}
                 {activeView === "settings" && "Settings"}
               </h1>
-              {activeView === "all-files" && currentFolder && (
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleSelectFolder}
-                  className="text-zinc-500 hover:text-zinc-300"
-                >
-                  <Folder className="w-3.5 h-3.5 mr-1.5" />
-                  Change Folder
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Connection Badge & Copy Link */}
-              {activeConnection && (
-                <div className="flex items-center gap-2">
-                  <Badge
-                    className={`gap-2 ${
-                      activeConnection.type === "host"
-                        ? "bg-violet-500/20 text-violet-400 border-violet-500/40"
-                        : "bg-green-500/20 text-green-400 border-green-500/40"
-                    }`}
-                  >
-                    <div className="w-2 h-2 rounded-full animate-pulse bg-current" />
-                    {activeConnection.type === "host" ? "Sharing" : "Connected"}
-                  </Badge>
-                  {/* Copy Link Button for Host */}
-                  {activeConnection.type === "host" && activeConnection.shareLink && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        navigator.clipboard.writeText(activeConnection.shareLink || "");
-                      }}
-                      className="h-7 px-2 text-xs text-zinc-400 hover:text-violet-400 hover:bg-violet-500/10"
-                      title={activeConnection.shareLink}
-                    >
-                      <Link className="w-3 h-3 mr-1" />
-                      Copy Link
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* View Mode Toggle */}
-              {activeView === "all-files" && currentFolder && (
-                <div className="flex items-center gap-1 border-l border-zinc-800 pl-3">
-                  <Button
-                    variant={viewMode === "list" ? "secondary" : "ghost"}
-                    size="icon"
-                    onClick={() => setViewMode("list")}
-                    className={viewMode === "list" ? "bg-zinc-800" : ""}
-                  >
-                    <List className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
-                    size="icon"
-                    onClick={() => setViewMode("grid")}
-                    className={viewMode === "grid" ? "bg-zinc-800" : ""}
-                  >
-                    <Grid className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 border-l border-zinc-800 pl-3">
-                <Button
-                  variant="outline"
                   onClick={() => setActiveDialog("connect")}
-                  className="gap-2 border-zinc-700 hover:bg-zinc-800"
-                  disabled={!!clientConnection}
+                  className="text-zinc-400 hover:text-white"
+                  disabled={!!activeConnection}
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 mr-2" />
                   Connect
                 </Button>
                 <Button
+                  size="sm"
                   onClick={() => setActiveDialog("share")}
-                  className="gap-2 bg-violet-600 hover:bg-violet-700"
-                  disabled={!!hostConnection}
+                  className="bg-violet-600 hover:bg-violet-700"
+                  disabled={!!activeShare}
                 >
-                  <Upload className="w-4 h-4" />
-                  Share Folder
+                  <Upload className="w-4 h-4 mr-2" />
+                  Share
                 </Button>
               </div>
             </div>
-          </div>
+          )}
 
           {/* View Content */}
           {activeView === "all-files" && (
@@ -1482,7 +1485,7 @@ function App() {
                       <Button
                         onClick={() => setActiveDialog("connect")}
                         className="gap-2 bg-violet-600 hover:bg-violet-700"
-                        disabled={!!clientConnection}
+                        disabled={!!activeConnection}
                       >
                         <Download className="w-4 h-4" />
                         Connect to Share
@@ -1491,7 +1494,7 @@ function App() {
                         onClick={() => setActiveDialog("share")}
                         variant="outline"
                         className="gap-2 border-zinc-700 hover:bg-zinc-800"
-                        disabled={!!hostConnection}
+                        disabled={!!activeShare}
                       >
                         <Upload className="w-4 h-4" />
                         Share a Folder
@@ -1504,140 +1507,88 @@ function App() {
           )}
 
           {activeView === "shared-with-me" && (
-            <div className="flex-1 flex items-center justify-center">
-              {clientConnection ? (
-                <div className="max-w-lg w-full mx-4 space-y-6">
-                  {/* Active Connection Card */}
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                        <Users className="w-6 h-6 text-green-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">{clientConnection.name}</h3>
-                        <p className="text-sm text-zinc-500 truncate">Mounted at: {clientConnection.path}</p>
-                      </div>
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/40">
-                        <div className="w-2 h-2 rounded-full animate-pulse bg-green-400 mr-1.5" />
-                        Connected
-                      </Badge>
-                    </div>
-
-                    {/* Browse Files Button */}
-                    <Button
-                      className="w-full mt-6 bg-violet-600 hover:bg-violet-700"
-                      onClick={() => {
-                        setCurrentFolder(clientConnection.path);
+            <div className="flex-1 overflow-y-auto p-6">
+              {connections.length > 0 ? (
+                <div className="max-w-2xl mx-auto space-y-4">
+                  <p className="text-sm text-zinc-500 mb-4">
+                    {connections.length} connection{connections.length !== 1 ? "s" : ""} in history
+                  </p>
+                  {connections.map((conn) => (
+                    <ConnectionCard
+                      key={conn.id}
+                      connection={conn}
+                      onReconnect={() => handleReconnect(conn)}
+                      onDisconnect={() => handleDisconnect(conn.id)}
+                      onRemove={() => handleRemoveConnection(conn.id)}
+                      onBrowse={() => {
+                        setCurrentFolder(conn.mountPoint);
                         setActiveView("all-files");
                       }}
-                    >
-                      <Folder className="w-4 h-4 mr-2" />
-                      Browse Files
-                    </Button>
-
-                    {/* Disconnect Button */}
-                    <Button
-                      variant="destructive"
-                      className="w-full mt-2"
-                      onClick={() => handleDeleteConnection("client")}
-                    >
-                      Disconnect
-                    </Button>
-                  </div>
+                    />
+                  ))}
                 </div>
               ) : (
-                <div className="text-center max-w-md space-y-4">
-                  <Users className="w-16 h-16 mx-auto text-zinc-700" />
-                  <h2 className="text-xl font-semibold text-white">
-                    No Shared Files Yet
-                  </h2>
-                  <p className="text-zinc-500">
-                    Files that others share with you will appear here
-                  </p>
-                  <Button
-                    onClick={() => setActiveDialog("connect")}
-                    className="gap-2 bg-violet-600 hover:bg-violet-700"
-                  >
-                    <Download className="w-4 h-4" />
-                    Connect to Share
-                  </Button>
+                <div className="flex-1 flex items-center justify-center h-full">
+                  <div className="text-center max-w-md space-y-4">
+                    <Users className="w-16 h-16 mx-auto text-zinc-700" />
+                    <h2 className="text-xl font-semibold text-white">
+                      No Connections Yet
+                    </h2>
+                    <p className="text-zinc-500">
+                      Files that others share with you will appear here
+                    </p>
+                    <Button
+                      onClick={() => setActiveDialog("connect")}
+                      className="gap-2 bg-violet-600 hover:bg-violet-700"
+                    >
+                      <Download className="w-4 h-4" />
+                      Connect to Share
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
           {activeView === "my-shares" && (
-            <div className="flex-1 flex items-center justify-center">
-              {hostConnection ? (
-                <div className="max-w-lg w-full mx-4 space-y-6">
-                  {/* Active Share Card */}
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                        <FolderUp className="w-6 h-6 text-violet-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">{hostConnection.name}</h3>
-                        <p className="text-sm text-zinc-500 truncate">{hostConnection.path}</p>
-                      </div>
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/40">
-                        <div className="w-2 h-2 rounded-full animate-pulse bg-green-400 mr-1.5" />
-                        Active
-                      </Badge>
-                    </div>
-
-                    {/* Share Link */}
-                    {hostConnection.shareLink && (
-                      <div className="mt-6 p-4 bg-violet-500/10 border border-violet-500/30 rounded-lg">
-                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
-                          <Link className="w-4 h-4" />
-                          Share Link
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 text-sm font-mono text-white bg-zinc-800/50 px-3 py-2 rounded truncate">
-                            {hostConnection.shareLink}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => navigator.clipboard.writeText(hostConnection.shareLink || "")}
-                            className="bg-zinc-800 hover:bg-zinc-700 flex-shrink-0"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-2">
-                          Anyone with this link can access your shared folder
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Stop Sharing Button */}
-                    <Button
-                      variant="destructive"
-                      className="w-full mt-4"
-                      onClick={() => handleDeleteConnection("host")}
-                    >
-                      Stop Sharing
-                    </Button>
-                  </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {shares.length > 0 ? (
+                <div className="max-w-2xl mx-auto space-y-4">
+                  <p className="text-sm text-zinc-500 mb-4">
+                    {shares.length} share{shares.length !== 1 ? "s" : ""} in history
+                  </p>
+                  {shares.map((share) => (
+                    <ShareCard
+                      key={share.id}
+                      share={share}
+                      onResume={() => handleResumeShare(share)}
+                      onStop={() => handleStopShare(share.id)}
+                      onDelete={() => handleDeleteShare(share.id)}
+                      onBrowse={() => {
+                        setCurrentFolder(share.path);
+                        setActiveView("all-files");
+                      }}
+                    />
+                  ))}
                 </div>
               ) : (
-                <div className="text-center max-w-md space-y-4">
-                  <FolderUp className="w-16 h-16 mx-auto text-zinc-700" />
-                  <h2 className="text-xl font-semibold text-white">
-                    No Active Shares
-                  </h2>
-                  <p className="text-zinc-500">
-                    Folders you're currently sharing will appear here
-                  </p>
-                  <Button
-                    onClick={() => setActiveDialog("share")}
-                    className="gap-2 bg-violet-600 hover:bg-violet-700"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Share a Folder
-                  </Button>
+                <div className="flex-1 flex items-center justify-center h-full">
+                  <div className="text-center max-w-md space-y-4">
+                    <FolderUp className="w-16 h-16 mx-auto text-zinc-700" />
+                    <h2 className="text-xl font-semibold text-white">
+                      No Shares Yet
+                    </h2>
+                    <p className="text-zinc-500">
+                      Folders you share will appear here
+                    </p>
+                    <Button
+                      onClick={() => setActiveDialog("share")}
+                      className="gap-2 bg-violet-600 hover:bg-violet-700"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Share a Folder
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1677,7 +1628,7 @@ function App() {
       <ShareDialog
         isOpen={activeDialog === "share"}
         onClose={() => setActiveDialog(null)}
-        onConnectionCreated={handleConnectionCreated}
+        onShareCreated={handleShareCreated}
       />
       <ConnectDialog
         isOpen={activeDialog === "connect"}

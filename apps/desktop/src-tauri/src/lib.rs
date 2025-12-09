@@ -99,6 +99,10 @@ pub fn run() {
             commands::list_directory,
             commands::get_host_info,
             commands::get_mount_info,
+            // File operations
+            commands::delete_path,
+            commands::open_file,
+            commands::reveal_in_explorer,
             // Setup wizard
             commands::check_fuse_installed,
         ])
@@ -118,9 +122,9 @@ pub fn run() {
                         #[allow(deprecated)]
                         let ns_window = ns_win as id;
                         unsafe {
-                            // Set background to match our app color (#0a0a0a)
+                            // Set background to match zinc-900 (#18181b) for the titlebar area
                             #[allow(deprecated)]
-                            let color: id = msg_send![class!(NSColor), colorWithRed:10.0/255.0_f64 green:10.0/255.0_f64 blue:10.0/255.0_f64 alpha:1.0_f64];
+                            let color: id = msg_send![class!(NSColor), colorWithRed:24.0/255.0_f64 green:24.0/255.0_f64 blue:27.0/255.0_f64 alpha:1.0_f64];
                             let _: () = msg_send![ns_window, setBackgroundColor: color];
 
                             // Make titlebar transparent and blend with content
@@ -132,9 +136,7 @@ pub fn run() {
                             // Remove titlebar separator (the thin line below the title bar)
                             let _: () = msg_send![ns_window, setTitlebarSeparatorStyle: 0_i64]; // NSTitlebarSeparatorStyleNone = 0
 
-                            // Disable the window shadow to see if that's the issue
-                            let _: () = msg_send![ns_window, setHasShadow: false];
-                            // Re-enable it - we just want to reset any weird state
+                            // Re-enable shadow for proper window appearance
                             let _: () = msg_send![ns_window, setHasShadow: true];
 
                             // Get the content view and set its background

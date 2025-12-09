@@ -1291,6 +1291,103 @@ pub async fn get_mount_info(state: State<'_, Arc<AppState>>) -> Result<Option<Mo
     }
 }
 
+/// Delete a file or folder
+#[tauri::command]
+pub fn delete_path(path: String) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+
+    if !path.exists() {
+        return Err(format!("Path does not exist: {}", path.display()));
+    }
+
+    if path.is_dir() {
+        std::fs::remove_dir_all(&path)
+            .map_err(|e| format!("Failed to delete folder: {}", e))?;
+    } else {
+        std::fs::remove_file(&path)
+            .map_err(|e| format!("Failed to delete file: {}", e))?;
+    }
+
+    info!("Deleted: {}", path.display());
+    Ok(())
+}
+
+/// Open a file with the default application
+#[tauri::command]
+pub fn open_file(path: String) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+
+    if !path.exists() {
+        return Err(format!("Path does not exist: {}", path.display()));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    info!("Opened: {}", path.display());
+    Ok(())
+}
+
+/// Reveal a file or folder in the native file explorer
+#[tauri::command]
+pub fn reveal_in_explorer(path: String) -> Result<(), String> {
+    let path = PathBuf::from(&path);
+
+    if !path.exists() {
+        return Err(format!("Path does not exist: {}", path.display()));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .args(["-R", &path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| format!("Failed to reveal in Finder: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .args(["/select,", &path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| format!("Failed to reveal in Explorer: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Try to use nautilus, thunar, or xdg-open as fallback
+        let parent = path.parent().unwrap_or(&path);
+        std::process::Command::new("xdg-open")
+            .arg(parent)
+            .spawn()
+            .map_err(|e| format!("Failed to reveal in file manager: {}", e))?;
+    }
+
+    info!("Revealed in explorer: {}", path.display());
+    Ok(())
+}
+
 /// Check if FUSE is installed on the system
 /// Returns true if FUSE (macFUSE, WinFSP, or libfuse) is available
 #[tauri::command]

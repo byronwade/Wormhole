@@ -503,7 +503,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden pt-8">
+    <div className="h-screen bg-zinc-900 flex flex-col overflow-hidden pt-8">
       {/* Draggable title bar region for macOS */}
       <div
         data-tauri-drag-region
