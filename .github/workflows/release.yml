@@ -141,7 +141,7 @@ jobs:
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -203,7 +203,7 @@ jobs:
           # macFUSE may require a reboot, but we can still build
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -272,7 +272,7 @@ jobs:
           Start-Process msiexec.exe -Wait -ArgumentList '/i winfsp.msi /quiet /norestart'
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build release
         run: |
@@ -377,7 +377,7 @@ jobs:
 
       - name: Install Rust toolchain
         if: steps.check_desktop.outputs.exists == 'true'
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install frontend dependencies
         if: steps.check_desktop.outputs.exists == 'true'
