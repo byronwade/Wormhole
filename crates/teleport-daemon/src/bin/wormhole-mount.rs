@@ -252,7 +252,7 @@ mod windows_impl {
     use teleport_daemon::client::{ClientConfig, WormholeClient};
     use teleport_daemon::winfsp::WormholeWinFS;
     use teleport_daemon::GarbageCollector;
-    use winfsp::host::FileSystemHost;
+    use winfsp::host::{FileSystemHost, VolumeParams};
 
     #[derive(Parser)]
     #[command(name = "wormhole-mount")]
@@ -362,7 +362,12 @@ mod windows_impl {
         // Mount WinFSP filesystem (this blocks the main thread)
         info!("Mounting filesystem via WinFSP...");
 
-        match FileSystemHost::new(fs) {
+        // Create volume parameters
+        let mut params = VolumeParams::new();
+        params.filesystem_name("Wormhole");
+        params.prefix(&cli.mount_point);
+
+        match FileSystemHost::new(params, fs) {
             Ok(mut host) => {
                 // Mount the filesystem
                 if let Err(e) = host.mount(&cli.mount_point) {
