@@ -18,10 +18,13 @@ type Tab = "host" | "connect";
 type Status = "idle" | "connecting" | "connected" | "error";
 
 interface ServiceEvent {
-  HostStarted?: { port: number; share_path: string; join_code: string };
-  ClientConnected?: { peer_addr: string };
-  MountReady?: { mountpoint: string };
-  Error?: { message: string };
+  type: "HostStarted" | "ClientConnected" | "MountReady" | "Error";
+  port?: number;
+  share_path?: string;
+  join_code?: string;
+  peer_addr?: string;
+  mountpoint?: string;
+  message?: string;
 }
 
 function App() {
@@ -48,26 +51,26 @@ function App() {
     const setupListeners = async () => {
       const unlistenHost = await listen<ServiceEvent>("host-event", (event) => {
         const data = event.payload;
-        if (data.HostStarted) {
-          setJoinCode(data.HostStarted.join_code);
+        if (data.type === "HostStarted") {
+          setJoinCode(data.join_code || "");
           setHostStatus("connected");
-          setStatusMessage(`Hosting ${data.HostStarted.share_path}`);
-        } else if (data.ClientConnected) {
-          setStatusMessage(`Client connected: ${data.ClientConnected.peer_addr}`);
-        } else if (data.Error) {
+          setStatusMessage(`Hosting ${data.share_path}`);
+        } else if (data.type === "ClientConnected") {
+          setStatusMessage(`Client connected: ${data.peer_addr}`);
+        } else if (data.type === "Error") {
           setHostStatus("error");
-          setStatusMessage(`Error: ${data.Error.message}`);
+          setStatusMessage(`Error: ${data.message}`);
         }
       });
 
       const unlistenMount = await listen<ServiceEvent>("mount-event", (event) => {
         const data = event.payload;
-        if (data.MountReady) {
+        if (data.type === "MountReady") {
           setConnectStatus("connected");
-          setStatusMessage(`Mounted at ${data.MountReady.mountpoint}`);
-        } else if (data.Error) {
+          setStatusMessage(`Mounted at ${data.mountpoint}`);
+        } else if (data.type === "Error") {
           setConnectStatus("error");
-          setStatusMessage(`Error: ${data.Error.message}`);
+          setStatusMessage(`Error: ${data.message}`);
         }
       });
 

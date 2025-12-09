@@ -27,6 +27,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 teleport-daemon = { path = "../../../crates/teleport-daemon" }
 teleport-core = { path = "../../../crates/teleport-core" }
 
+# FUSE for mounting - use workspace version to match teleport-daemon
+fuser = { workspace = true }
+hostname = "0.4"
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
