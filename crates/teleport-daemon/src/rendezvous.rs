@@ -445,10 +445,18 @@ fn select_best_address(
 }
 
 /// Generate a random peer ID
+///
+/// # Panics
+/// Panics if the system random number generator fails (extremely rare).
 fn generate_peer_id() -> String {
+    try_generate_peer_id().expect("RNG failed - system entropy source unavailable")
+}
+
+/// Try to generate a random peer ID, returning an error if RNG fails
+fn try_generate_peer_id() -> Result<String, getrandom::Error> {
     let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes).expect("RNG failed");
-    hex::encode(bytes)
+    getrandom::getrandom(&mut bytes)?;
+    Ok(hex::encode(bytes))
 }
 
 /// Attempt UDP hole punching to a peer

@@ -23,6 +23,7 @@ use tracing_subscriber::FmtSubscriber;
 use teleport_daemon::bridge::FuseAsyncBridge;
 use teleport_daemon::client::{ClientConfig, WormholeClient};
 use teleport_daemon::fuse::WormholeFS;
+use teleport_daemon::GarbageCollector;
 
 #[derive(Parser)]
 #[command(name = "wormhole-mount")]
@@ -105,6 +106,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         request_timeout: Duration::from_secs(30),
     };
 
+    // Create the WormholeFS first so we can get a reference to its disk cache for GC
+    let fs = WormholeFS::new(bridge);
+
+    // Get the disk cache for the garbage collector
+    let disk_cache = fs.disk_cache();
+
+    // Get the sync engine for background sync (Phase 7)
+    let sync_engine = fs.sync_engine();
+
     // Start tokio runtime in a separate thread for async networking
     let rt = Runtime::new()?;
 
@@ -124,6 +134,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             info!("Connected to host!");
 
+            // Start the garbage collector if we have a disk cache
+            if let Some(disk_cache) = disk_cache {
+                info!("Starting garbage collector for disk cache");
+                let gc = GarbageCollector::new(disk_cache);
+                tokio::spawn(async move {
+                    gc.run_loop().await;
+                });
+            }
+
+            // Start background sync for dirty chunks (Phase 7)
+            info!("Starting background sync for dirty chunks");
+            client.start_background_sync(sync_engine);
+
             // Handle FUSE requests
             if let Err(e) = client.handle_fuse_requests(request_rx_clone).await {
                 error!("Client error: {:?}", e);
@@ -133,8 +156,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Mount FUSE filesystem (this blocks the main thread)
     info!("Mounting filesystem...");
-
-    let fs = WormholeFS::new(bridge);
 
     let mut mount_options = vec![
         MountOption::FSName("wormhole".to_string()),

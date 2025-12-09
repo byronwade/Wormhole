@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::types::{ChunkId, DirEntry, FileAttr, Inode, LockToken, LockType};
+use crate::types::{ChunkId, DirEntry, FileAttr, Inode, LockToken, LockType, ShareId, ShareInfo};
 use crate::error::ErrorCode;
 
 /// All possible network messages
@@ -37,6 +37,22 @@ pub enum NetMessage {
     ReleaseLock(ReleaseRequest),
     ReleaseLockResponse(ReleaseResponse),
 
+    // File operations (Phase 7)
+    CreateFile(CreateFileRequest),
+    CreateFileResponse(CreateFileResponse),
+    DeleteFile(DeleteFileRequest),
+    DeleteFileResponse(DeleteFileResponse),
+    CreateDir(CreateDirRequest),
+    CreateDirResponse(CreateDirResponse),
+    DeleteDir(DeleteDirRequest),
+    DeleteDirResponse(DeleteDirResponse),
+    Rename(RenameRequest),
+    RenameResponse(RenameResponse),
+    Truncate(TruncateRequest),
+    TruncateResponse(TruncateResponse),
+    SetAttr(SetAttrRequest),
+    SetAttrResponse(SetAttrResponse),
+
     // Control
     Ping(PingMessage),
     Pong(PongMessage),
@@ -45,6 +61,10 @@ pub enum NetMessage {
 
     // Cache invalidation
     Invalidate(InvalidateMessage),
+
+    // Multi-share messages
+    ListShares(ListSharesRequest),
+    ListSharesResponse(ListSharesResponse),
 }
 
 // === Handshake Messages ===
@@ -160,6 +180,112 @@ pub struct ReleaseResponse {
     pub success: bool,
 }
 
+// === File Operation Messages (Phase 7) ===
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CreateFileRequest {
+    pub parent: Inode,
+    pub name: String,
+    pub mode: u32,
+    pub lock_token: Option<LockToken>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CreateFileResponse {
+    pub success: bool,
+    pub attr: Option<FileAttr>,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeleteFileRequest {
+    pub parent: Inode,
+    pub name: String,
+    pub lock_token: Option<LockToken>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeleteFileResponse {
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CreateDirRequest {
+    pub parent: Inode,
+    pub name: String,
+    pub mode: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CreateDirResponse {
+    pub success: bool,
+    pub attr: Option<FileAttr>,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeleteDirRequest {
+    pub parent: Inode,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeleteDirResponse {
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RenameRequest {
+    pub old_parent: Inode,
+    pub old_name: String,
+    pub new_parent: Inode,
+    pub new_name: String,
+    pub lock_token: Option<LockToken>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RenameResponse {
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TruncateRequest {
+    pub inode: Inode,
+    pub size: u64,
+    pub lock_token: Option<LockToken>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TruncateResponse {
+    pub success: bool,
+    pub new_attr: Option<FileAttr>,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SetAttrRequest {
+    pub inode: Inode,
+    /// New size (for truncate)
+    pub size: Option<u64>,
+    /// New mode (permissions)
+    pub mode: Option<u32>,
+    /// New modification time
+    pub mtime: Option<u64>,
+    /// New access time
+    pub atime: Option<u64>,
+    pub lock_token: Option<LockToken>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SetAttrResponse {
+    pub success: bool,
+    pub attr: Option<FileAttr>,
+    pub error: Option<String>,
+}
+
 // === Control Messages ===
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -208,6 +334,22 @@ pub enum InvalidateReason {
     Deleted,
     Renamed,
     AttributeChanged,
+}
+
+// === Multi-Share Messages ===
+
+/// Request to list available shares
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ListSharesRequest {
+    /// Optional filter by share ID (empty = list all)
+    pub filter_id: Option<ShareId>,
+}
+
+/// Response with available shares
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ListSharesResponse {
+    /// Available shares
+    pub shares: Vec<ShareInfo>,
 }
 
 // === Serialization ===

@@ -16,9 +16,18 @@ pub const JOIN_CODE_LENGTH: usize = 6;
 const JOIN_CODE_CHARS: &[u8] = b"23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 /// Generate a random join code (e.g., "ABC-123")
+///
+/// # Panics
+/// Panics if the system random number generator fails (extremely rare).
+/// Use `try_generate_join_code` if you need to handle this case.
 pub fn generate_join_code() -> String {
+    try_generate_join_code().expect("RNG failed - system entropy source unavailable")
+}
+
+/// Try to generate a random join code, returning an error if RNG fails
+pub fn try_generate_join_code() -> Result<String, getrandom::Error> {
     let mut bytes = [0u8; JOIN_CODE_LENGTH];
-    getrandom::getrandom(&mut bytes).expect("RNG failed");
+    getrandom::getrandom(&mut bytes)?;
 
     let code: String = bytes
         .iter()
@@ -26,7 +35,7 @@ pub fn generate_join_code() -> String {
         .collect();
 
     // Format as XXX-XXX
-    format!("{}-{}", &code[..3], &code[3..])
+    Ok(format!("{}-{}", &code[..3], &code[3..]))
 }
 
 /// Normalize a join code (remove dashes, uppercase)

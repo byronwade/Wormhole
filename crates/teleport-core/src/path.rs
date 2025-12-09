@@ -131,6 +131,44 @@ pub fn validate_filename(name: &str) -> Result<(), ProtocolError> {
     Ok(())
 }
 
+/// Validate that a path resolves to within the base directory, following symlinks.
+///
+/// This function should be called **after** a file exists check, to ensure that
+/// symlinks don't escape the base directory. It uses canonicalize() which follows
+/// all symlinks.
+///
+/// # Arguments
+/// * `base` - The base directory (must be absolute)
+/// * `path` - The path to check (can be absolute or relative to cwd)
+///
+/// # Returns
+/// * `Ok(PathBuf)` - The canonicalized path that is within base
+/// * `Err(ProtocolError)` - If the path escapes base or canonicalization fails
+///
+/// # Security
+/// This MUST be called before accessing file contents when symlinks could be present.
+/// Call after checking the file exists to avoid TOCTOU issues.
+pub fn safe_real_path(base: &Path, path: &Path) -> Result<PathBuf, ProtocolError> {
+    // Canonicalize base directory (should already exist)
+    let canonical_base = base.canonicalize().map_err(|e| {
+        ProtocolError::PathTraversal(format!("cannot canonicalize base: {}", e))
+    })?;
+
+    // Canonicalize the target path (follows all symlinks)
+    let canonical_path = path.canonicalize().map_err(|e| {
+        ProtocolError::PathTraversal(format!("cannot canonicalize path: {}", e))
+    })?;
+
+    // Verify the canonical path is within the canonical base
+    if !canonical_path.starts_with(&canonical_base) {
+        return Err(ProtocolError::PathTraversal(
+            "symlink escapes shared directory".into(),
+        ));
+    }
+
+    Ok(canonical_path)
+}
+
 /// Check if a path is safe (quick validation without full resolution)
 pub fn is_safe_path(relative: &str) -> bool {
     if relative.contains('\0') || relative.len() > MAX_PATH_LEN {
@@ -258,5 +296,61 @@ mod tests {
 
         let long_path = format!("{}/{}", "dir", "a".repeat(MAX_PATH_LEN));
         assert!(safe_path(&base(), &long_path).is_err());
+    }
+
+    #[test]
+    fn test_safe_real_path_with_existing_file() {
+        use std::fs;
+        use tempfile::tempdir;
+
+        let temp = tempdir().unwrap();
+        let base = temp.path();
+        let file_path = base.join("test.txt");
+        fs::write(&file_path, "test").unwrap();
+
+        // Normal file within base should succeed
+        let result = safe_real_path(base, &file_path);
+        assert!(result.is_ok());
+        assert!(result.unwrap().starts_with(base.canonicalize().unwrap()));
+    }
+
+    #[test]
+    fn test_safe_real_path_rejects_escaped_symlink() {
+        use std::os::unix::fs::symlink;
+        use tempfile::tempdir;
+
+        let temp = tempdir().unwrap();
+        let base = temp.path();
+        let outside = temp.path().parent().unwrap();
+
+        // Create a symlink inside base that points outside
+        let symlink_path = base.join("evil_link");
+        symlink(outside, &symlink_path).unwrap();
+
+        // Should reject symlink that escapes base
+        let result = safe_real_path(base, &symlink_path);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, ProtocolError::PathTraversal(_)));
+    }
+
+    #[test]
+    fn test_safe_real_path_accepts_internal_symlink() {
+        use std::fs;
+        use std::os::unix::fs::symlink;
+        use tempfile::tempdir;
+
+        let temp = tempdir().unwrap();
+        let base = temp.path();
+
+        // Create a file and a symlink to it within base
+        let file_path = base.join("real.txt");
+        fs::write(&file_path, "test").unwrap();
+        let symlink_path = base.join("link.txt");
+        symlink(&file_path, &symlink_path).unwrap();
+
+        // Internal symlink should succeed
+        let result = safe_real_path(base, &symlink_path);
+        assert!(result.is_ok());
     }
 }

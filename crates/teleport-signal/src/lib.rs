@@ -14,10 +14,12 @@
 pub mod server;
 pub mod messages;
 pub mod room;
+pub mod storage;
 
 pub use server::SignalServer;
 pub use messages::{SignalMessage, PeerInfo};
 pub use room::Room;
+pub use storage::{Storage, StorageError};
 
 /// Default WebSocket port
 pub const DEFAULT_PORT: u16 = 8080;

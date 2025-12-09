@@ -14,6 +14,8 @@ spake2 = { workspace = true }
 getrandom = { workspace = true }
 tracing = { workspace = true }
 libc = { workspace = true }
+toml = { workspace = true }
+directories = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -66,6 +66,82 @@ pub enum FuseRequest {
         reply: oneshot::Sender<Result<Vec<u8>, FuseError>>,
     },
 
+    /// Write file data (Phase 7)
+    Write {
+        inode: Inode,
+        offset: u64,
+        data: Vec<u8>,
+        reply: oneshot::Sender<Result<u32, FuseError>>,
+    },
+
+    /// Acquire a lock on a file (Phase 7)
+    AcquireLock {
+        inode: Inode,
+        exclusive: bool,
+        reply: oneshot::Sender<Result<(), FuseError>>,
+    },
+
+    /// Release a lock on a file (Phase 7)
+    ReleaseLock {
+        inode: Inode,
+        reply: oneshot::Sender<Result<(), FuseError>>,
+    },
+
+    /// Flush dirty data for a file (Phase 7)
+    Flush {
+        inode: Inode,
+        reply: oneshot::Sender<Result<(), FuseError>>,
+    },
+
+    /// Create a new file (Phase 7)
+    CreateFile {
+        parent: Inode,
+        name: String,
+        mode: u32,
+        reply: oneshot::Sender<Result<FileAttr, FuseError>>,
+    },
+
+    /// Delete a file (Phase 7)
+    DeleteFile {
+        parent: Inode,
+        name: String,
+        reply: oneshot::Sender<Result<(), FuseError>>,
+    },
+
+    /// Create a directory (Phase 7)
+    CreateDir {
+        parent: Inode,
+        name: String,
+        mode: u32,
+        reply: oneshot::Sender<Result<FileAttr, FuseError>>,
+    },
+
+    /// Delete a directory (Phase 7)
+    DeleteDir {
+        parent: Inode,
+        name: String,
+        reply: oneshot::Sender<Result<(), FuseError>>,
+    },
+
+    /// Rename a file or directory (Phase 7)
+    Rename {
+        old_parent: Inode,
+        old_name: String,
+        new_parent: Inode,
+        new_name: String,
+        reply: oneshot::Sender<Result<(), FuseError>>,
+    },
+
+    /// Set file attributes (Phase 7)
+    SetAttr {
+        inode: Inode,
+        size: Option<u64>,
+        mode: Option<u32>,
+        mtime: Option<u64>,
+        atime: Option<u64>,
+        reply: oneshot::Sender<Result<FileAttr, FuseError>>,
+    },
+
     /// Shutdown the bridge
     Shutdown,
 }
@@ -85,6 +161,12 @@ pub enum FuseError {
     Shutdown,
     /// Internal error
     Internal(String),
+    /// Lock conflict (Phase 7)
+    LockConflict(String),
+    /// Lock required but not held (Phase 7)
+    LockRequired,
+    /// Read-only filesystem
+    ReadOnly,
 }
 
 impl FuseError {
@@ -97,6 +179,9 @@ impl FuseError {
             FuseError::Timeout => libc::ETIMEDOUT,
             FuseError::Shutdown => libc::ESHUTDOWN,
             FuseError::Internal(_) => libc::EIO,
+            FuseError::LockConflict(_) => libc::EAGAIN,
+            FuseError::LockRequired => libc::ENOLCK,
+            FuseError::ReadOnly => libc::EROFS,
         }
     }
 }
@@ -186,6 +271,159 @@ impl FuseAsyncBridge {
         self.recv_response(reply_rx, &format!("read {} @ {} len {}", inode, offset, size))
     }
 
+    /// Write file data (blocking) - Phase 7
+    pub fn write(&self, inode: Inode, offset: u64, data: Vec<u8>) -> Result<u32, FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        let len = data.len();
+
+        self.send_request(FuseRequest::Write {
+            inode,
+            offset,
+            data,
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("write {} @ {} len {}", inode, offset, len))
+    }
+
+    /// Acquire a lock on a file (blocking) - Phase 7
+    pub fn acquire_lock(&self, inode: Inode, exclusive: bool) -> Result<(), FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::AcquireLock {
+            inode,
+            exclusive,
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("acquire_lock {} exclusive={}", inode, exclusive))
+    }
+
+    /// Release a lock on a file (blocking) - Phase 7
+    pub fn release_lock(&self, inode: Inode) -> Result<(), FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::ReleaseLock {
+            inode,
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("release_lock {}", inode))
+    }
+
+    /// Flush dirty data for a file (blocking) - Phase 7
+    pub fn flush(&self, inode: Inode) -> Result<(), FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::Flush {
+            inode,
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("flush {}", inode))
+    }
+
+    /// Create a new file (blocking) - Phase 7
+    pub fn create_file(&self, parent: Inode, name: String, mode: u32) -> Result<FileAttr, FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::CreateFile {
+            parent,
+            name: name.clone(),
+            mode,
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("create_file {} in {}", name, parent))
+    }
+
+    /// Delete a file (blocking) - Phase 7
+    pub fn delete_file(&self, parent: Inode, name: String) -> Result<(), FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::DeleteFile {
+            parent,
+            name: name.clone(),
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("delete_file {} in {}", name, parent))
+    }
+
+    /// Create a directory (blocking) - Phase 7
+    pub fn create_dir(&self, parent: Inode, name: String, mode: u32) -> Result<FileAttr, FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::CreateDir {
+            parent,
+            name: name.clone(),
+            mode,
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("create_dir {} in {}", name, parent))
+    }
+
+    /// Delete a directory (blocking) - Phase 7
+    pub fn delete_dir(&self, parent: Inode, name: String) -> Result<(), FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::DeleteDir {
+            parent,
+            name: name.clone(),
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("delete_dir {} in {}", name, parent))
+    }
+
+    /// Rename a file or directory (blocking) - Phase 7
+    pub fn rename(
+        &self,
+        old_parent: Inode,
+        old_name: String,
+        new_parent: Inode,
+        new_name: String,
+    ) -> Result<(), FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::Rename {
+            old_parent,
+            old_name: old_name.clone(),
+            new_parent,
+            new_name: new_name.clone(),
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(
+            reply_rx,
+            &format!("rename {}/{} -> {}/{}", old_parent, old_name, new_parent, new_name),
+        )
+    }
+
+    /// Set file attributes (blocking) - Phase 7
+    pub fn setattr(
+        &self,
+        inode: Inode,
+        size: Option<u64>,
+        mode: Option<u32>,
+        mtime: Option<u64>,
+        atime: Option<u64>,
+    ) -> Result<FileAttr, FuseError> {
+        let (reply_tx, reply_rx) = oneshot::channel();
+
+        self.send_request(FuseRequest::SetAttr {
+            inode,
+            size,
+            mode,
+            mtime,
+            atime,
+            reply: reply_tx,
+        })?;
+
+        self.recv_response(reply_rx, &format!("setattr {}", inode))
+    }
+
     /// Request shutdown
     pub fn shutdown(&self) {
         let _ = self.request_tx.try_send(FuseRequest::Shutdown);
@@ -195,21 +433,20 @@ impl FuseAsyncBridge {
     fn send_request(&self, request: FuseRequest) -> Result<(), FuseError> {
         match self.request_tx.try_send(request) {
             Ok(()) => Ok(()),
-            Err(TrySendError::Full(_)) => {
+            Err(TrySendError::Full(original_request)) => {
                 // Channel full - apply backpressure with timeout
-                warn!("bridge channel full, waiting...");
-                match self.request_tx.send_timeout(
-                    // Can't recover the request from TrySendError::Full in this pattern,
-                    // so we'll let this fail. In production, we'd restructure this.
-                    FuseRequest::Shutdown, // placeholder
-                    self.timeout,
-                ) {
-                    Ok(()) => {
-                        // We sent a shutdown by accident - this is a bug in error recovery
-                        // For POC, just return error
-                        Err(FuseError::Internal("backpressure recovery failed".into()))
+                // Recover the original request and retry with blocking send
+                warn!("bridge channel full, applying backpressure...");
+                match self.request_tx.send_timeout(original_request, self.timeout) {
+                    Ok(()) => Ok(()),
+                    Err(crossbeam_channel::SendTimeoutError::Timeout(_)) => {
+                        error!("bridge channel backpressure timeout");
+                        Err(FuseError::Timeout)
                     }
-                    Err(_) => Err(FuseError::Timeout),
+                    Err(crossbeam_channel::SendTimeoutError::Disconnected(_)) => {
+                        error!("bridge channel disconnected during backpressure");
+                        Err(FuseError::Shutdown)
+                    }
                 }
             }
             Err(TrySendError::Disconnected(_)) => {

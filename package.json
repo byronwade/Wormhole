@@ -1,0 +1,31 @@
+{
+  "name": "wormhole",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.23.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "clean": "turbo clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "typecheck": "turbo typecheck",
+    "desktop": "pnpm --filter @wormhole/desktop tauri dev",
+    "desktop:build": "pnpm --filter @wormhole/desktop tauri build",
+    "web": "pnpm --filter @wormhole/web dev",
+    "web:build": "pnpm --filter @wormhole/web build",
+    "rust:build": "cargo build --release -p teleport-daemon -p teleport-signal",
+    "rust:test": "cargo test"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "turbo": "^2.3.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.1.0",
+      "@types/react-dom": "19.1.0"
+    }
+  }
+}

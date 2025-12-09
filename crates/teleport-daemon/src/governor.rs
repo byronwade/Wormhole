@@ -3,13 +3,17 @@
 //! Detects sequential read patterns and generates prefetch targets
 //! to stay ahead of the application's reads.
 
-use std::collections::HashMap;
+use lru::LruCache;
+use std::num::NonZeroUsize;
 use teleport_core::{ChunkId, Inode};
 
 /// Prefetch configuration
 pub const PREFETCH_WINDOW: u64 = 5; // Prefetch up to 5 chunks ahead
 pub const SEQUENTIAL_THRESHOLD: u32 = 3; // Consecutive accesses to trigger prefetch
 pub const MAX_PREFETCH_CONCURRENT: usize = 4; // Max concurrent prefetch requests
+
+/// Maximum number of file states to track (LRU eviction beyond this limit)
+pub const MAX_FILE_STATES: usize = 10_000;
 
 /// Access direction for pattern detection
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,8 +46,8 @@ impl Default for FileAccessState {
 
 /// Streaming governor for sequential access detection and prefetch
 pub struct Governor {
-    /// Per-file access patterns indexed by inode
-    file_state: HashMap<Inode, FileAccessState>,
+    /// Per-file access patterns indexed by inode (LRU bounded)
+    file_state: LruCache<Inode, FileAccessState>,
     /// How many chunks ahead to prefetch
     prefetch_window: u64,
     /// How many sequential accesses before triggering prefetch
@@ -53,8 +57,14 @@ pub struct Governor {
 impl Governor {
     /// Create a new governor with default configuration
     pub fn new() -> Self {
+        Self::with_capacity(MAX_FILE_STATES)
+    }
+
+    /// Create a new governor with a custom capacity
+    pub fn with_capacity(capacity: usize) -> Self {
+        let cap = NonZeroUsize::new(capacity).unwrap_or(NonZeroUsize::new(MAX_FILE_STATES).unwrap());
         Self {
-            file_state: HashMap::new(),
+            file_state: LruCache::new(cap),
             prefetch_window: PREFETCH_WINDOW,
             sequential_threshold: SEQUENTIAL_THRESHOLD,
         }
@@ -62,8 +72,9 @@ impl Governor {
 
     /// Create a governor with custom configuration
     pub fn with_config(prefetch_window: u64, sequential_threshold: u32) -> Self {
+        let cap = NonZeroUsize::new(MAX_FILE_STATES).unwrap();
         Self {
-            file_state: HashMap::new(),
+            file_state: LruCache::new(cap),
             prefetch_window,
             sequential_threshold,
         }
@@ -74,14 +85,12 @@ impl Governor {
     /// Returns a list of ChunkIds that should be prefetched based on
     /// the detected access pattern.
     pub fn record_access(&mut self, chunk_id: &ChunkId) -> Vec<ChunkId> {
-        let state = self
-            .file_state
-            .entry(chunk_id.inode)
-            .or_insert_with(|| FileAccessState {
-                last_chunk: chunk_id.index,
-                sequential_streak: 0,
-                direction: AccessDirection::Random,
-            });
+        // Use get_or_insert_mut to get or create the state (also promotes to MRU)
+        let state = self.file_state.get_or_insert_mut(chunk_id.inode, || FileAccessState {
+            last_chunk: chunk_id.index,
+            sequential_streak: 0,
+            direction: AccessDirection::Random,
+        });
 
         let diff = chunk_id.index as i64 - state.last_chunk as i64;
 
@@ -160,24 +169,28 @@ impl Governor {
     }
 
     /// Get current access direction for a file
+    ///
+    /// Note: This uses `peek` to avoid updating LRU order for read-only queries.
     pub fn get_direction(&self, inode: Inode) -> AccessDirection {
         self.file_state
-            .get(&inode)
+            .peek(&inode)
             .map(|s| s.direction)
             .unwrap_or(AccessDirection::Random)
     }
 
     /// Get sequential streak count for a file
+    ///
+    /// Note: This uses `peek` to avoid updating LRU order for read-only queries.
     pub fn get_streak(&self, inode: Inode) -> u32 {
         self.file_state
-            .get(&inode)
+            .peek(&inode)
             .map(|s| s.sequential_streak)
             .unwrap_or(0)
     }
 
     /// Clear state for a specific inode (e.g., on file close)
     pub fn clear_inode(&mut self, inode: Inode) {
-        self.file_state.remove(&inode);
+        self.file_state.pop(&inode);
     }
 
     /// Clear all state
@@ -341,5 +354,59 @@ mod tests {
 
         assert_eq!(gov.get_streak(1), 0);
         assert_eq!(gov.get_direction(1), AccessDirection::Random);
+    }
+
+    #[test]
+    fn test_lru_eviction() {
+        // Create a governor with capacity 3
+        let mut gov = Governor::with_capacity(3);
+
+        // Access 3 different inodes
+        gov.record_access(&ChunkId::new(1, 0));
+        gov.record_access(&ChunkId::new(2, 0));
+        gov.record_access(&ChunkId::new(3, 0));
+
+        // All three should be present
+        gov.record_access(&ChunkId::new(1, 1));
+        gov.record_access(&ChunkId::new(2, 1));
+        gov.record_access(&ChunkId::new(3, 1));
+
+        assert_eq!(gov.get_streak(1), 1);
+        assert_eq!(gov.get_streak(2), 1);
+        assert_eq!(gov.get_streak(3), 1);
+
+        // Add a 4th inode - should evict the LRU (inode 1)
+        gov.record_access(&ChunkId::new(4, 0));
+
+        // Inode 1 should have been evicted (streak reset to 0)
+        assert_eq!(gov.get_streak(1), 0);
+        // Inodes 2, 3, 4 should still be present
+        assert_eq!(gov.get_streak(2), 1);
+        assert_eq!(gov.get_streak(3), 1);
+        assert_eq!(gov.get_streak(4), 0);
+    }
+
+    #[test]
+    fn test_lru_access_promotes() {
+        // Create a governor with capacity 3
+        let mut gov = Governor::with_capacity(3);
+
+        // Access 3 different inodes in order 1, 2, 3
+        gov.record_access(&ChunkId::new(1, 0));
+        gov.record_access(&ChunkId::new(2, 0));
+        gov.record_access(&ChunkId::new(3, 0));
+
+        // Access inode 1 again to promote it to MRU
+        gov.record_access(&ChunkId::new(1, 1));
+
+        // Add a 4th inode - should evict inode 2 (LRU now)
+        gov.record_access(&ChunkId::new(4, 0));
+
+        // Inode 2 should have been evicted
+        assert_eq!(gov.get_streak(2), 0);
+        // Inodes 1, 3, 4 should still be present
+        assert_eq!(gov.get_streak(1), 1);
+        assert_eq!(gov.get_streak(3), 0);
+        assert_eq!(gov.get_streak(4), 0);
     }
 }

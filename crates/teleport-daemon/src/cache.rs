@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -18,6 +18,9 @@ use tracing::{debug, trace, warn};
 use teleport_core::{ChunkId, DirEntry, FileAttr, Inode, CHUNK_SIZE};
 
 use crate::disk_cache::DiskCache;
+
+/// Maximum concurrent disk write threads
+const MAX_DISK_WRITE_THREADS: usize = 4;
 
 /// Default chunk cache size: ~4000 chunks = ~500MB
 pub const DEFAULT_CHUNK_CACHE_ENTRIES: usize = 4000;
@@ -205,8 +208,12 @@ impl ChunkCache {
 
     /// Insert a chunk into cache
     pub fn insert(&self, chunk_id: ChunkId, data: Vec<u8>) {
+        self.insert_arc(chunk_id, Arc::new(data));
+    }
+
+    /// Insert a chunk into cache from an existing Arc (avoids clone)
+    pub fn insert_arc(&self, chunk_id: ChunkId, data: Arc<Vec<u8>>) {
         let data_len = data.len();
-        let data = Arc::new(data);
 
         let mut cache = self.cache.write();
         let mut current_bytes = self.current_bytes.write();
@@ -234,9 +241,12 @@ impl ChunkCache {
 
     /// Invalidate a specific chunk
     pub fn invalidate(&self, chunk_id: &ChunkId) {
+        // Acquire both locks up-front to ensure atomic update
+        // Lock ordering: cache first, then current_bytes (consistent with insert)
         let mut cache = self.cache.write();
+        let mut current_bytes = self.current_bytes.write();
         if let Some(entry) = cache.pop(chunk_id) {
-            *self.current_bytes.write() -= entry.len();
+            *current_bytes = current_bytes.saturating_sub(entry.len());
         }
     }
 
@@ -295,8 +305,8 @@ pub struct HybridChunkCache {
     ram_cache: ChunkCache,
     /// L2: Disk cache (slower, larger)
     disk_cache: Option<Arc<DiskCache>>,
-    /// Statistics
-    stats: HybridCacheStats,
+    /// Statistics (Arc for sharing with disk write threads)
+    stats: Arc<HybridCacheStats>,
 }
 
 /// Statistics for hybrid cache
@@ -305,6 +315,10 @@ pub struct HybridCacheStats {
     disk_hits: AtomicU64,
     misses: AtomicU64,
     disk_writes: AtomicU64,
+    /// Current number of active disk write threads
+    active_disk_threads: AtomicUsize,
+    /// Number of disk writes dropped due to thread limit
+    dropped_writes: AtomicU64,
 }
 
 impl Default for HybridCacheStats {
@@ -314,6 +328,8 @@ impl Default for HybridCacheStats {
             disk_hits: AtomicU64::new(0),
             misses: AtomicU64::new(0),
             disk_writes: AtomicU64::new(0),
+            active_disk_threads: AtomicUsize::new(0),
+            dropped_writes: AtomicU64::new(0),
         }
     }
 }
@@ -339,7 +355,7 @@ impl HybridChunkCache {
         Self {
             ram_cache: ChunkCache::with_capacity(ram_capacity),
             disk_cache,
-            stats: HybridCacheStats::default(),
+            stats: Arc::new(HybridCacheStats::default()),
         }
     }
 
@@ -348,7 +364,7 @@ impl HybridChunkCache {
         Self {
             ram_cache: ChunkCache::with_capacity(ram_capacity),
             disk_cache: Some(disk_cache),
-            stats: HybridCacheStats::default(),
+            stats: Arc::new(HybridCacheStats::default()),
         }
     }
 
@@ -357,7 +373,7 @@ impl HybridChunkCache {
         Self {
             ram_cache: ChunkCache::with_capacity(ram_capacity),
             disk_cache: None,
-            stats: HybridCacheStats::default(),
+            stats: Arc::new(HybridCacheStats::default()),
         }
     }
 
@@ -382,9 +398,10 @@ impl HybridChunkCache {
                     self.stats.disk_hits.fetch_add(1, Ordering::Relaxed);
                     trace!("hybrid_cache: Disk hit for {:?}, promoting to RAM", chunk_id);
 
-                    // Promote to RAM
+                    // Promote to RAM cache - wrap in Arc once and share it
+                    // This avoids cloning the full Vec<u8> data
                     let arc_data = Arc::new(data);
-                    self.ram_cache.insert(*chunk_id, (*arc_data).clone());
+                    self.ram_cache.insert_arc(*chunk_id, arc_data.clone());
 
                     return Some(arc_data);
                 }
@@ -418,28 +435,46 @@ impl HybridChunkCache {
     }
 
     /// Insert into both RAM and disk (async disk write)
+    ///
+    /// Disk writes are bounded to MAX_DISK_WRITE_THREADS concurrent operations.
+    /// If the limit is reached, the disk write is dropped (RAM still updated).
     pub fn insert(&self, chunk_id: ChunkId, data: Vec<u8>) {
         // Insert into RAM immediately
         self.ram_cache.insert(chunk_id, data.clone());
 
-        // Async write to disk (fire and forget)
+        // Async write to disk (bounded fire and forget)
         if let Some(ref disk_cache) = self.disk_cache {
+            // Check if we can spawn a new thread (bounded concurrency)
+            let current = self.stats.active_disk_threads.load(Ordering::Relaxed);
+            if current >= MAX_DISK_WRITE_THREADS {
+                // Drop the disk write if at capacity - RAM still has it
+                self.stats.dropped_writes.fetch_add(1, Ordering::Relaxed);
+                trace!(
+                    "hybrid_cache: Disk write dropped for {:?} (at thread limit {})",
+                    chunk_id,
+                    MAX_DISK_WRITE_THREADS
+                );
+                return;
+            }
+
+            // Increment active count (may slightly overshoot due to race, but bounded)
+            self.stats.active_disk_threads.fetch_add(1, Ordering::Relaxed);
+            self.stats.disk_writes.fetch_add(1, Ordering::Relaxed);
+
             let disk_cache = disk_cache.clone();
-            let stats_ref = &self.stats;
-            let disk_writes = stats_ref.disk_writes.load(Ordering::Relaxed);
+            let stats = self.stats.clone();
 
             std::thread::spawn(move || {
+                // Perform the write
                 if let Err(e) = disk_cache.write(chunk_id, &data) {
                     warn!("hybrid_cache: Disk write error for {:?}: {}", chunk_id, e);
                 } else {
-                    // Note: We can't easily update stats from a spawned thread
-                    // In production, we'd use Arc<AtomicU64> for stats
                     trace!("hybrid_cache: Disk write complete for {:?}", chunk_id);
                 }
-                let _ = disk_writes; // Silence unused warning
-            });
 
-            self.stats.disk_writes.fetch_add(1, Ordering::Relaxed);
+                // Decrement active count (stats is Arc, so this is safe)
+                stats.active_disk_threads.fetch_sub(1, Ordering::Relaxed);
+            });
         }
     }
 

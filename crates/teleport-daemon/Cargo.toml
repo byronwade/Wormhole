@@ -46,7 +46,9 @@ getrandom = { workspace = true }
 hostname = { workspace = true }
 rcgen = { workspace = true }
 clap = { workspace = true }
+clap_complete = "4.4"
 tracing-subscriber = { workspace = true }
+rustc_version_runtime = "0.3"
 
 # Phase 4: Disk cache
 directories = { workspace = true }
@@ -58,6 +60,11 @@ tokio-tungstenite = { workspace = true }
 futures-util = { workspace = true }
 serde_json = { workspace = true }
 url = "2.5"
+
+# Update checker
+reqwest = { workspace = true }
+semver = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

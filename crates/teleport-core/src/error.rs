@@ -70,6 +70,7 @@ pub enum ErrorCode {
     LockNotHeld = 300,
     LockExpired = 301,
     LockConflict = 302,
+    LockRequired = 303,
 
     // Connection errors (400-499)
     SessionExpired = 400,
@@ -113,6 +114,7 @@ impl ErrorCode {
             ErrorCode::LockNotHeld => libc::ENOLCK,
             ErrorCode::LockExpired => libc::ENOLCK,
             ErrorCode::LockConflict => libc::EAGAIN,
+            ErrorCode::LockRequired => libc::ENOLCK,
             ErrorCode::Timeout => libc::ETIMEDOUT,
             ErrorCode::RateLimited => libc::EAGAIN,
             _ => libc::EIO,

@@ -4,7 +4,7 @@ members = [
     "crates/teleport-core",
     "crates/teleport-daemon",
     "crates/teleport-signal",
-    "apps/teleport-ui/src-tauri",
+    "apps/desktop/src-tauri",
 ]
 
 [workspace.package]
@@ -67,7 +67,16 @@ hostname = "0.4"
 hex = "0.4"
 
 # CLI
-clap = { version = "4.4", features = ["derive"] }
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# HTTP client for updates
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "json"] }
+
+# Version comparison
+semver = "1.0"
+
+# Date/time
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 
 # Testing
 tempfile = "3.10"

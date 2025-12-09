@@ -3,15 +3,17 @@
 //! This crate contains the foundational types used across all Wormhole components.
 //! It has no dependencies on networking or filesystem code.
 
-pub mod protocol;
-pub mod types;
+pub mod config;
 pub mod crypto;
 pub mod error;
 pub mod path;
+pub mod protocol;
+pub mod types;
 
+pub use config::{Config, CacheConfig, ClientConfig, HostConfig, NetworkConfig, SignalConfig};
+pub use error::*;
 pub use protocol::*;
 pub use types::*;
-pub use error::*;
 
 /// Chunk size in bytes (128 KB)
 pub const CHUNK_SIZE: usize = 128 * 1024;

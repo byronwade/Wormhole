@@ -151,11 +151,20 @@ impl DiskCache {
         hasher.update(chunk_id.index.to_le_bytes());
         let hash = hex::encode(hasher.finalize());
 
+        // SHA256 produces 32 bytes = 64 hex characters, so indexing is safe
+        // Debug assertion to catch any future changes to the hashing algorithm
+        debug_assert!(
+            hash.len() >= 4,
+            "Hash too short: expected at least 4 chars, got {}",
+            hash.len()
+        );
+
         // Two-level directory structure to avoid too many files in one dir
         // e.g., ab/cd/ef123456...
-        let dir1 = &hash[0..2];
-        let dir2 = &hash[2..4];
-        let filename = &hash[4..];
+        // Use get() with fallback to handle theoretical edge cases safely
+        let dir1 = hash.get(0..2).unwrap_or("00");
+        let dir2 = hash.get(2..4).unwrap_or("00");
+        let filename = hash.get(4..).unwrap_or(&hash);
 
         self.cache_dir.join(dir1).join(dir2).join(filename)
     }
@@ -192,7 +201,7 @@ impl DiskCache {
 
         // Update index
         {
-            let mut index = self.index.write().unwrap();
+            let mut index = self.index.write().map_err(|_| DiskCacheError::LockPoisoned)?;
             if let Some(old_entry) = index.insert(
                 chunk_id,
                 DiskCacheEntry {
@@ -220,7 +229,7 @@ impl DiskCache {
     /// Read chunk from disk cache
     pub fn read(&self, chunk_id: &ChunkId) -> Result<Option<Vec<u8>>, DiskCacheError> {
         let entry = {
-            let index = self.index.read().unwrap();
+            let index = self.index.read().map_err(|_| DiskCacheError::LockPoisoned)?;
             index.get(chunk_id).cloned()
         };
 
@@ -234,7 +243,7 @@ impl DiskCache {
 
             // Update access time
             {
-                let mut index = self.index.write().unwrap();
+                let mut index = self.index.write().map_err(|_| DiskCacheError::LockPoisoned)?;
                 if let Some(e) = index.get_mut(chunk_id) {
                     e.last_accessed = SystemTime::now();
                 }
@@ -254,7 +263,7 @@ impl DiskCache {
 
     /// Check if chunk exists in disk cache
     pub fn contains(&self, chunk_id: &ChunkId) -> bool {
-        self.index.read().unwrap().contains_key(chunk_id)
+        self.index.read().map(|index| index.contains_key(chunk_id)).unwrap_or(false)
     }
 
     /// Get total size of cached data
@@ -264,13 +273,13 @@ impl DiskCache {
 
     /// Get number of cached entries
     pub fn entry_count(&self) -> usize {
-        self.index.read().unwrap().len()
+        self.index.read().map(|index| index.len()).unwrap_or(0)
     }
 
     /// Remove a chunk from disk cache
     pub fn remove(&self, chunk_id: &ChunkId) -> Result<bool, DiskCacheError> {
         let entry = {
-            let mut index = self.index.write().unwrap();
+            let mut index = self.index.write().map_err(|_| DiskCacheError::LockPoisoned)?;
             index.remove(chunk_id)
         };
 
@@ -288,7 +297,9 @@ impl DiskCache {
 
     /// Get all entries sorted by last access time (oldest first) for GC
     pub fn entries_by_access_time(&self) -> Vec<(ChunkId, DiskCacheEntry)> {
-        let index = self.index.read().unwrap();
+        let Ok(index) = self.index.read() else {
+            return Vec::new();
+        };
         let mut entries: Vec<_> = index.iter().map(|(k, v)| (*k, v.clone())).collect();
         entries.sort_by_key(|(_, entry)| entry.last_accessed);
         entries
@@ -297,7 +308,7 @@ impl DiskCache {
     /// Clear all cached data
     pub fn clear(&self) -> Result<(), DiskCacheError> {
         let entries: Vec<_> = {
-            let index = self.index.read().unwrap();
+            let index = self.index.read().map_err(|_| DiskCacheError::LockPoisoned)?;
             index.keys().cloned().collect()
         };
 
@@ -316,6 +327,8 @@ pub enum DiskCacheError {
     NoCacheDir,
     /// IO error
     Io(String),
+    /// Lock was poisoned (indicates a panic occurred while holding the lock)
+    LockPoisoned,
 }
 
 impl std::fmt::Display for DiskCacheError {
@@ -323,6 +336,7 @@ impl std::fmt::Display for DiskCacheError {
         match self {
             DiskCacheError::NoCacheDir => write!(f, "Could not determine cache directory"),
             DiskCacheError::Io(e) => write!(f, "IO error: {}", e),
+            DiskCacheError::LockPoisoned => write!(f, "Lock poisoned: a thread panicked while holding the lock"),
         }
     }
 }

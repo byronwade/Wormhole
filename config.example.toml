@@ -1,0 +1,65 @@
+# Wormhole Configuration File
+# Copy this file to one of these locations:
+# - macOS: ~/Library/Application Support/wormhole/config.toml
+# - Linux: ~/.config/wormhole/config.toml
+# - Windows: %APPDATA%/wormhole/config.toml
+
+[host]
+# Default QUIC port for hosting shares
+port = 4433
+# Bind address (0.0.0.0 for all interfaces)
+bind = "0.0.0.0"
+# Allow clients to write to shared folders
+writable = false
+# Auto-generate TLS certificates if missing
+auto_cert = true
+
+[client]
+# Default mount point (optional, can specify on command line)
+# mount_point = "/mnt/wormhole"
+# Number of chunks to prefetch during sequential reads
+read_ahead_chunks = 4
+# How long file attributes are cached (seconds)
+attr_ttl_secs = 1
+# How long directory listings are cached (seconds)
+dir_ttl_secs = 1
+# How often to sync dirty chunks to host (seconds)
+sync_interval_secs = 1
+
+[cache]
+# Maximum disk cache size in bytes (default 10GB)
+max_disk_bytes = 10737418240
+# Maximum RAM cache size in bytes (default 512MB)
+max_ram_bytes = 536870912
+# Custom cache directory (uses system cache dir if not set)
+# cache_dir = "/path/to/cache"
+# How long to keep cached chunks (seconds)
+chunk_ttl_secs = 3600
+# How often to run garbage collection (seconds)
+gc_interval_secs = 60
+
+[signal]
+# Signal server WebSocket port
+port = 8080
+# Bind address
+bind = "0.0.0.0"
+# SQLite database for persistence (in-memory if not set)
+# db_path = "/var/lib/wormhole/signal.db"
+# How long before idle rooms are cleaned up (seconds)
+room_idle_timeout_secs = 300
+# Maximum peers per room
+max_peers_per_room = 10
+# Public URL for clients to connect to
+# public_url = "wss://signal.example.com:8080"
+
+[network]
+# Connection timeout (seconds)
+connect_timeout_secs = 10
+# Request timeout (seconds)
+request_timeout_secs = 30
+# Keep-alive interval (seconds)
+keepalive_secs = 15
+# Maximum concurrent streams per QUIC connection
+max_streams = 100
+# Enable 0-RTT (faster reconnects, slightly less secure)
+enable_0rtt = false

@@ -5,16 +5,21 @@
 //! # Usage
 //!
 //! ```bash
+//! # In-memory mode (default)
 //! wormhole-signal --port 8080
+//!
+//! # With SQLite persistence
+//! wormhole-signal --port 8080 --db /var/lib/wormhole/signal.db
 //! ```
 
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use clap::Parser;
 use tracing::{info, Level};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-use teleport_signal::{SignalServer, DEFAULT_PORT};
+use teleport_signal::{SignalServer, Storage, DEFAULT_PORT};
 
 #[derive(Parser, Debug)]
 #[command(name = "wormhole-signal")]
@@ -28,6 +33,10 @@ struct Args {
     /// Bind address
     #[arg(short, long, default_value = "0.0.0.0")]
     bind: String,
+
+    /// SQLite database path for persistence (optional, uses in-memory if not specified)
+    #[arg(short, long)]
+    db: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -48,6 +57,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Starting Wormhole Signal Server");
     info!("Listening on {}", addr);
+
+    // Initialize storage if database path provided
+    let storage = if let Some(db_path) = &args.db {
+        // Create parent directory if it doesn't exist
+        if let Some(parent) = db_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        info!("Using SQLite persistence: {:?}", db_path);
+        Some(Storage::open(db_path)?)
+    } else {
+        info!("Using in-memory storage (no persistence)");
+        None
+    };
+
+    // Log storage stats on startup
+    if let Some(ref store) = storage {
+        let room_count = store.room_count().unwrap_or(0);
+        let peer_count = store.total_peer_count().unwrap_or(0);
+        info!("Loaded {} rooms with {} peers from database", room_count, peer_count);
+    }
 
     let server = SignalServer::new();
     server.serve(addr).await?;

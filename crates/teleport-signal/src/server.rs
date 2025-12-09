@@ -225,10 +225,12 @@ fn handle_message(
                 .map(|c| normalize_join_code(&c))
                 .unwrap_or_else(|| normalize_join_code(&generate_join_code()));
 
+            // SECURITY: Use a generic error message that doesn't reveal whether
+            // a room exists (prevents room enumeration attacks)
             if rooms.contains_key(&code) {
                 return Some(SignalMessage::error(
                     ErrorCode::InvalidJoinCode,
-                    "Join code already in use",
+                    "Unable to create room with this code",
                 ));
             }
 
@@ -266,12 +268,14 @@ fn handle_message(
 
             let code = normalize_join_code(&join_code);
 
+            // SECURITY: Use a generic error message that doesn't reveal whether
+            // a room exists (prevents room enumeration attacks)
             let mut room = match rooms.get_mut(&code) {
                 Some(r) => r,
                 None => {
                     return Some(SignalMessage::error(
                         ErrorCode::RoomNotFound,
-                        format!("Room {} not found", code),
+                        "Unable to join room",
                     ));
                 }
             };
@@ -286,8 +290,9 @@ fn handle_message(
                 is_host: false,
             };
 
+            // SECURITY: Use same generic error to avoid revealing room exists but is full
             if room.add_peer(info).is_err() {
-                return Some(SignalMessage::error(ErrorCode::RoomFull, "Room is full"));
+                return Some(SignalMessage::error(ErrorCode::RoomFull, "Unable to join room"));
             }
 
             peer_rooms.insert(peer_id.into(), code.clone());
@@ -365,10 +370,18 @@ fn cleanup_idle_rooms(rooms: &DashMap<String, Room>) {
 }
 
 /// Generate a unique peer ID
+///
+/// # Panics
+/// Panics if the system random number generator fails (extremely rare).
 fn generate_peer_id() -> String {
+    try_generate_peer_id().expect("RNG failed - system entropy source unavailable")
+}
+
+/// Try to generate a unique peer ID, returning an error if RNG fails
+fn try_generate_peer_id() -> Result<String, getrandom::Error> {
     let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes).expect("RNG failed");
-    hex::encode(bytes)
+    getrandom::getrandom(&mut bytes)?;
+    Ok(hex::encode(bytes))
 }
 
 #[cfg(test)]

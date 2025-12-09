@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Full-featured CLI with 20+ commands (host, mount, status, cache, config, peers, sync, signal, completions, version, ping, bench, init, unmount, list, history, access, watch, update, doctor)
+- GitHub-based update checker with caching
+- Doctor command for system health diagnostics
+- Shell completions for bash, zsh, fish, powershell, and elvish
+- Cross-platform installation scripts (install.sh, install.ps1, uninstall.sh)
+- GitHub Actions CI/CD pipeline (Linux, macOS, Windows)
+- Release automation workflow with binary artifacts
+- Dependabot configuration for automatic dependency updates
+- Issue templates and pull request templates
+- CODEOWNERS file
 - Initial project documentation
 - Architecture decision records (ADRs)
 - Protocol specification
@@ -17,19 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Marketing and brand documentation
 
 ### Changed
-- Nothing yet
+- Improved CLI output formatting and colors
+- Better structured logging with configurable verbosity levels
 
 ### Deprecated
-- Nothing yet
-
-### Removed
-- Nothing yet
+- `create_client_endpoint()` - use `create_client_endpoint_with_pinned_cert()` for production
 
 ### Fixed
-- Nothing yet
+- Resolved all compiler warnings
+- Fixed deprecated API usage patterns
+- Fixed unused import warnings
 
 ### Security
-- Nothing yet
+- Added certificate pinning support for QUIC connections
+- Deprecated insecure connection methods with clear warnings
 
 ---
 

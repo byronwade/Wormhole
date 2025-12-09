@@ -33,14 +33,21 @@
 pub mod bridge;
 pub mod cache;
 pub mod client;
+pub mod connection_manager;
 pub mod disk_cache;
 pub mod fuse;
 pub mod gc;
 pub mod global;
 pub mod governor;
 pub mod host;
+pub mod lock_manager;
+pub mod multi_fuse;
+pub mod multi_host;
 pub mod net;
+pub mod rate_limiter;
 pub mod rendezvous;
+pub mod sync_engine;
+pub mod updater;
 
 pub use bridge::FuseAsyncBridge;
 pub use cache::{CacheManager, ChunkCache, HybridCacheManager, HybridChunkCache};
@@ -50,7 +57,19 @@ pub use fuse::WormholeFS;
 pub use gc::GarbageCollector;
 pub use governor::Governor;
 pub use host::WormholeHost;
+pub use lock_manager::{LockManager, LockHold, LockStatus, LockError};
 pub use rendezvous::{RendezvousClient, RendezvousResult, RendezvousError};
+pub use sync_engine::{SyncEngine, SyncRunner, SyncStatus, DirtyChunk, FileLock};
+pub use connection_manager::{
+    ConnectionManager, ConnectionEvent, ConnectionError,
+    HostConnectionConfig, ReconnectConfig, RegisteredShare,
+};
+pub use multi_host::{
+    MultiShareHost, MultiHostConfig, SharedFolder,
+};
+pub use multi_fuse::{
+    MultiShareFS, MountedShare,
+};
 pub use global::{
     GlobalEvent, GlobalHostConfig, GlobalMountConfig,
     GlobalHostError, GlobalMountError,
