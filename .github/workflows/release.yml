@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.1)'
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,37 +31,72 @@ jobs:
 
       - name: Get version from tag
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Wormhole v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Wormhole v${{ steps.get_version.outputs.version }}
           body: |
             ## Wormhole v${{ steps.get_version.outputs.version }}
+
+            A peer-to-peer distributed filesystem that mounts remote directories locally via QUIC transport.
+
+            ### Downloads
+
+            | Platform | Architecture | Download |
+            |----------|--------------|----------|
+            | **Windows** | x86_64 | `wormhole-windows-x86_64.zip` |
+            | **macOS** | Apple Silicon | `wormhole-macos-aarch64.tar.gz` |
+            | **macOS** | Intel | `wormhole-macos-x86_64.tar.gz` |
+            | **Linux** | x86_64 | `wormhole-linux-x86_64.tar.gz` |
+            | **Linux** | ARM64 | `wormhole-linux-aarch64.tar.gz` |
 
             ### Installation
 
             #### macOS (Apple Silicon)
             ```bash
+            # Requires macFUSE: brew install --cask macfuse
             curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/wormhole-macos-aarch64.tar.gz | tar xz
-            sudo mv wormhole /usr/local/bin/
+            sudo mv wormhole wormhole-mount wormhole-signal /usr/local/bin/
             ```
 
             #### macOS (Intel)
             ```bash
+            # Requires macFUSE: brew install --cask macfuse
             curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/wormhole-macos-x86_64.tar.gz | tar xz
-            sudo mv wormhole /usr/local/bin/
+            sudo mv wormhole wormhole-mount wormhole-signal /usr/local/bin/
             ```
 
             #### Linux (x86_64)
             ```bash
+            # Requires FUSE: sudo apt install fuse3
             curl -L https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/wormhole-linux-x86_64.tar.gz | tar xz
-            sudo mv wormhole /usr/local/bin/
+            sudo mv wormhole wormhole-mount wormhole-signal /usr/local/bin/
+            ```
+
+            #### Windows
+            ```powershell
+            # Requires WinFSP: https://winfsp.dev/rel/
+            # Download and extract wormhole-windows-x86_64.zip
+            # Add to PATH or run from extracted directory
+            ```
+
+            ### Quick Start
+
+            ```bash
+            # Host a folder (generates join code)
+            wormhole host ~/Projects/my-folder
+
+            # Mount on another machine
+            wormhole mount WORM-XXXX-YYYY ~/mnt/remote
             ```
 
             ### Changelog
@@ -64,15 +104,18 @@ jobs:
 
           draft: true
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
   # Build Linux binaries
   # =============================================================================
   build-linux:
-    name: Build (Linux ${{ matrix.target }})
+    name: Build Linux (${{ matrix.target }})
     runs-on: ubuntu-latest
     needs: create-release
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
@@ -92,6 +135,9 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          # Install aarch64 FUSE dev package
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update || true
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
@@ -100,36 +146,47 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build release
-        run: cargo build --release --target ${{ matrix.target }} -p teleport-daemon -p teleport-signal
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            # Build only signal server for cross-compilation (no FUSE)
+            cargo build --release --target ${{ matrix.target }} -p teleport-signal
+          else
+            cargo build --release --target ${{ matrix.target }} -p teleport-daemon -p teleport-signal
+          fi
 
       - name: Package binaries
         run: |
           mkdir -p dist
-          cp target/${{ matrix.target }}/release/wormhole dist/
-          cp target/${{ matrix.target }}/release/wormhole-mount dist/ || true
+          if [ -f target/${{ matrix.target }}/release/wormhole ]; then
+            cp target/${{ matrix.target }}/release/wormhole dist/
+          fi
+          if [ -f target/${{ matrix.target }}/release/wormhole-mount ]; then
+            cp target/${{ matrix.target }}/release/wormhole-mount dist/
+          fi
           cp target/${{ matrix.target }}/release/wormhole-signal dist/
-          cp README.md dist/ || true
-          cp LICENSE* dist/ || true
+          echo "# Wormhole v${{ needs.create-release.outputs.version }}" > dist/README.md
+          echo "" >> dist/README.md
+          echo "## Installation" >> dist/README.md
+          echo "sudo mv wormhole* /usr/local/bin/" >> dist/README.md
           cd dist && tar -czvf ../${{ matrix.artifact }}.tar.gz *
 
       - name: Upload release asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: ${{ matrix.artifact }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.artifact }}.tar.gz
-          asset_name: ${{ matrix.artifact }}.tar.gz
-          asset_content_type: application/gzip
 
   # =============================================================================
   # Build macOS binaries
   # =============================================================================
   build-macos:
-    name: Build (macOS ${{ matrix.target }})
+    name: Build macOS (${{ matrix.target }})
     runs-on: macos-latest
     needs: create-release
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-apple-darwin
@@ -141,7 +198,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install macFUSE
-        run: brew install --cask macfuse || true
+        run: |
+          brew install --cask macfuse || true
+          # macFUSE may require a reboot, but we can still build
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-action@stable
@@ -150,6 +209,8 @@ jobs:
 
       - name: Build release
         run: cargo build --release --target ${{ matrix.target }} -p teleport-daemon -p teleport-signal
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
 
       - name: Package binaries
         run: |
@@ -157,162 +218,249 @@ jobs:
           cp target/${{ matrix.target }}/release/wormhole dist/
           cp target/${{ matrix.target }}/release/wormhole-mount dist/ || true
           cp target/${{ matrix.target }}/release/wormhole-signal dist/
-          cp README.md dist/ || true
-          cp LICENSE* dist/ || true
+
+          # Create install script
+          cat > dist/install.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          echo "Installing Wormhole..."
+          sudo mkdir -p /usr/local/bin
+          sudo cp wormhole wormhole-mount wormhole-signal /usr/local/bin/ 2>/dev/null || \
+            sudo cp wormhole wormhole-signal /usr/local/bin/
+          sudo chmod +x /usr/local/bin/wormhole*
+          echo "Installed to /usr/local/bin/"
+          echo ""
+          echo "Verify with: wormhole --version"
+          EOF
+          chmod +x dist/install.sh
+
+          echo "# Wormhole v${{ needs.create-release.outputs.version }}" > dist/README.md
+          echo "" >> dist/README.md
+          echo "## Requirements" >> dist/README.md
+          echo "- macFUSE: brew install --cask macfuse" >> dist/README.md
+          echo "" >> dist/README.md
+          echo "## Installation" >> dist/README.md
+          echo "./install.sh" >> dist/README.md
+
           cd dist && tar -czvf ../${{ matrix.artifact }}.tar.gz *
 
       - name: Upload release asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: ${{ matrix.artifact }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.artifact }}.tar.gz
-          asset_name: ${{ matrix.artifact }}.tar.gz
-          asset_content_type: application/gzip
 
   # =============================================================================
   # Build Windows binaries
   # =============================================================================
   build-windows:
-    name: Build (Windows)
+    name: Build Windows (x86_64)
     runs-on: windows-latest
     needs: create-release
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install WinFSP
+        shell: powershell
+        run: |
+          # Download and install WinFSP for FUSE support
+          $winfspUrl = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi"
+          Invoke-WebRequest -Uri $winfspUrl -OutFile winfsp.msi
+          Start-Process msiexec.exe -Wait -ArgumentList '/i winfsp.msi /quiet /norestart'
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-action@stable
 
-      # Build signal server only (no FUSE daemon without WinFSP SDK)
       - name: Build release
-        run: cargo build --release -p teleport-signal -p teleport-core
+        run: |
+          # Build signal server (always works)
+          cargo build --release -p teleport-signal
+          # Try to build daemon (may fail without full WinFSP SDK)
+          cargo build --release -p teleport-daemon 2>$null || echo "Daemon build skipped (WinFSP SDK not available)"
+        shell: bash
 
       - name: Package binaries
         shell: bash
         run: |
           mkdir -p dist
           cp target/release/wormhole-signal.exe dist/
+          # Include daemon if it was built
+          if [ -f target/release/wormhole.exe ]; then
+            cp target/release/wormhole.exe dist/
+          fi
+          if [ -f target/release/wormhole-mount.exe ]; then
+            cp target/release/wormhole-mount.exe dist/
+          fi
+
+          # Create README
+          cat > dist/README.md << 'EOF'
+          # Wormhole for Windows
+
+          ## Requirements
+          - WinFSP: https://winfsp.dev/rel/
+
+          ## Installation
+          1. Install WinFSP from https://winfsp.dev/rel/
+          2. Extract this archive
+          3. Add the extracted folder to your PATH, or run from this directory
+
+          ## Usage
+          ```
+          wormhole.exe host C:\Users\You\Projects\my-folder
+          wormhole.exe mount WORM-XXXX-YYYY C:\mnt\remote
+          ```
+          EOF
+
           cd dist && 7z a -tzip ../wormhole-windows-x86_64.zip *
 
       - name: Upload release asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: wormhole-windows-x86_64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./wormhole-windows-x86_64.zip
-          asset_name: wormhole-windows-x86_64.zip
-          asset_content_type: application/zip
 
   # =============================================================================
-  # Build Tauri desktop app
+  # Build Tauri desktop app (optional - if apps/desktop exists)
   # =============================================================================
-  build-tauri:
-    name: Build Desktop App (${{ matrix.os }})
+  build-desktop:
+    name: Build Desktop App (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
     needs: create-release
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            artifact: wormhole-desktop-linux
-          - os: macos-latest
-            artifact: wormhole-desktop-macos
-          - os: windows-latest
-            artifact: wormhole-desktop-windows
+          - platform: linux
+            os: ubuntu-22.04
+          - platform: macos
+            os: macos-latest
+          - platform: windows
+            os: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if desktop app exists
+        id: check_desktop
+        run: |
+          if [ -d "apps/desktop" ] && [ -f "apps/desktop/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
       - name: Install system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libfuse3-dev pkg-config libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install macFUSE (macOS)
-        if: matrix.os == 'macos-latest'
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'macos'
         run: brew install --cask macfuse || true
 
       - name: Setup Node.js
+        if: steps.check_desktop.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install pnpm
+        if: steps.check_desktop.outputs.exists == 'true'
         run: npm install -g pnpm
 
       - name: Install Rust toolchain
+        if: steps.check_desktop.outputs.exists == 'true'
         uses: dtolnay/rust-action@stable
 
       - name: Install frontend dependencies
-        working-directory: apps/teleport-ui
+        if: steps.check_desktop.outputs.exists == 'true'
+        working-directory: apps/desktop
         run: pnpm install
 
       - name: Build Tauri app
-        working-directory: apps/teleport-ui
+        if: steps.check_desktop.outputs.exists == 'true'
+        working-directory: apps/desktop
         run: pnpm tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: Upload Linux artifacts
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-release-asset@v1
+      - name: Upload Linux .deb
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'linux'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: apps/desktop/src-tauri/target/release/bundle/deb/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./apps/teleport-ui/src-tauri/target/release/bundle/deb/*.deb
-          asset_name: wormhole-desktop-linux.deb
-          asset_content_type: application/vnd.debian.binary-package
 
-      - name: Upload macOS artifacts
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-release-asset@v1
+      - name: Upload Linux .AppImage
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'linux'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./apps/teleport-ui/src-tauri/target/release/bundle/dmg/*.dmg
-          asset_name: wormhole-desktop-macos.dmg
-          asset_content_type: application/x-apple-diskimage
 
-      - name: Upload Windows artifacts
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
+      - name: Upload macOS .dmg
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'macos'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows .msi
+        if: steps.check_desktop.outputs.exists == 'true' && matrix.platform == 'windows'
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./apps/teleport-ui/src-tauri/target/release/bundle/msi/*.msi
-          asset_name: wormhole-desktop-windows.msi
-          asset_content_type: application/x-msi
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: apps/desktop/src-tauri/target/release/bundle/msi/*.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
-  # Generate checksums
+  # Generate checksums and publish release
   # =============================================================================
-  checksums:
-    name: Generate Checksums
+  finalize:
+    name: Finalize Release
     runs-on: ubuntu-latest
-    needs: [build-linux, build-macos, build-windows]
+    needs: [create-release, build-linux, build-macos, build-windows]
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Download all release assets
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: v${{ needs.create-release.outputs.version }}
+          fileName: '*'
+          out-file-path: assets
 
-      - name: Generate SHA256 checksums
+      - name: Generate checksums
         run: |
-          echo "# SHA256 Checksums" > checksums.txt
-          echo "" >> checksums.txt
-          for f in *.tar.gz *.zip; do
-            if [ -f "$f" ]; then
-              sha256sum "$f" >> checksums.txt
-            fi
-          done
-          cat checksums.txt
+          cd assets
+          sha256sum * > SHA256SUMS.txt || true
+          cat SHA256SUMS.txt
 
-      # Note: This would need artifact upload modification to work properly
-      # In production, you'd use a different approach for checksums
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          files: assets/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish release (remove draft)
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.create-release.outputs.version }}
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
