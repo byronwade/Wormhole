@@ -2007,7 +2007,7 @@ function App() {
     return completed !== "true";
   });
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
-  const [_localIp, setLocalIp] = useState<string>("");
+  const [localIp, setLocalIp] = useState<string>("");
 
   // Fetch local IP on mount
   useEffect(() => {
@@ -2426,6 +2426,28 @@ function App() {
 
           {activeView === "my-shares" && (
             <div className="flex-1 flex flex-col bg-zinc-900 min-h-0">
+              {/* Network Info Banner - show when there are active shares */}
+              {shares.some(s => s.status === "active") && (
+                <div className="mx-4 mt-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-4 h-4 text-violet-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-white">Your IP:</span>
+                        <code className="text-sm text-violet-400 bg-violet-500/20 px-2 py-0.5 rounded">
+                          {localIp || "Detecting..."}
+                        </code>
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Others can connect using the join code. On the same network, they connect directly to your IP.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {shares.length > 0 ? (
                 <>
                   {/* Share List */}
