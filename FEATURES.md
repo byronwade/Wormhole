@@ -264,7 +264,13 @@ log_file = "/var/log/wormhole.log"
 
 ---
 
-## 8. Development Phases
+## 8. Top Features Research
+
+For detailed analysis of proposed features and implementation priorities, see:
+- [Feature Research & Analysis](docs/development/feature-research-analysis.md) - Comprehensive evaluation of 10 proposed features
+- [Top Features Summary](docs/development/top-features-summary.md) - Executive summary of priority features
+
+## 9. Development Phases
 
 | Phase | Name | Status | Key Features |
 |-------|------|--------|--------------|

@@ -83,6 +83,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_drag::init())
         .manage(Arc::new(AppState::default()))
         .invoke_handler(tauri::generate_handler![
             // Legacy single-share commands (backwards compatible)
@@ -119,6 +120,10 @@ pub fn run() {
             commands::start_hosting_with_expiration,
             // Updates
             commands::check_for_updates,
+            // Phase 8: High-performance bulk export
+            commands::export_file,
+            commands::export_files_batch,
+            commands::get_drag_file_path,
         ])
         .setup(|app| {
             info!("Wormhole app setup complete");

@@ -6,7 +6,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::error::ErrorCode;
-use crate::types::{ChunkId, DirEntry, FileAttr, Inode, LockToken, LockType, ShareId, ShareInfo};
+use crate::types::{
+    ChunkId, ContentHash, DirEntry, FileAttr, FileManifest, Inode, LockToken, LockType, ShareId,
+    ShareInfo,
+};
 
 /// All possible network messages
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,6 +68,14 @@ pub enum NetMessage {
     // Multi-share messages
     ListShares(ListSharesRequest),
     ListSharesResponse(ListSharesResponse),
+
+    // Phase 8: Bulk transfer messages
+    ManifestRequest(ManifestRequestMsg),
+    ManifestResponse(ManifestResponseMsg),
+    MissingChunksRequest(MissingChunksRequestMsg),
+    MissingChunksResponse(MissingChunksResponseMsg),
+    BulkChunkRequest(BulkChunkRequestMsg),
+    BulkChunkResponse(BulkChunkResponseMsg),
 }
 
 // === Handshake Messages ===
@@ -350,6 +361,68 @@ pub struct ListSharesRequest {
 pub struct ListSharesResponse {
     /// Available shares
     pub shares: Vec<ShareInfo>,
+}
+
+// === Phase 8: Bulk Transfer Messages ===
+
+/// Request file manifest for dedup negotiation
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ManifestRequestMsg {
+    /// File inode to get manifest for
+    pub inode: Inode,
+    /// Total file size (for validation)
+    pub file_size: u64,
+}
+
+/// Response with file manifest (list of content hashes)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ManifestResponseMsg {
+    /// Complete manifest with content hashes
+    pub manifest: FileManifest,
+    /// Error if manifest couldn't be generated
+    pub error: Option<String>,
+}
+
+/// Request to identify missing chunks for dedup
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MissingChunksRequestMsg {
+    /// Manifest from sender to compare against local cache
+    pub manifest: FileManifest,
+}
+
+/// Response with hashes that need to be transferred
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MissingChunksResponseMsg {
+    /// Hashes that are NOT in the local cache
+    pub missing_hashes: Vec<ContentHash>,
+    /// Total bytes needed (sum of missing chunk sizes)
+    pub missing_bytes: u64,
+}
+
+/// Request a single bulk chunk by content hash
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BulkChunkRequestMsg {
+    /// Content hash of requested chunk
+    pub hash: ContentHash,
+    /// Transfer priority (higher = more urgent)
+    pub priority: u8,
+    /// Transfer ID for progress tracking
+    pub transfer_id: u64,
+}
+
+/// Response with bulk chunk data
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BulkChunkResponseMsg {
+    /// Content hash of this chunk
+    pub hash: ContentHash,
+    /// Chunk data (may be compressed)
+    pub data: Vec<u8>,
+    /// Whether data is zstd compressed
+    pub compressed: bool,
+    /// Original size (before compression)
+    pub original_size: u32,
+    /// Error if chunk couldn't be read
+    pub error: Option<String>,
 }
 
 // === Serialization ===

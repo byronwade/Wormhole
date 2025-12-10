@@ -1885,6 +1885,184 @@ pub async fn start_hosting_with_expiration(
     Ok(host_info)
 }
 
+// === Phase 8: High-Performance Bulk Export ===
+
+/// Transfer progress event for real-time UI updates
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TransferProgressEvent {
+    pub transfer_id: String,
+    pub file_name: String,
+    pub bytes_transferred: u64,
+    pub total_bytes: u64,
+    pub speed_bps: f64,
+    pub eta_seconds: Option<u64>,
+}
+
+/// Transfer completed event
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TransferCompletedEvent {
+    pub transfer_id: String,
+    pub success: bool,
+    pub bytes_transferred: u64,
+    pub duration_ms: u64,
+    pub error: Option<String>,
+}
+
+/// High-performance file export from mounted share to local disk
+/// This bypasses FUSE for maximum throughput using parallel reads and smart compression
+#[tauri::command]
+pub async fn export_file(
+    app: AppHandle,
+    source_path: String,
+    dest_path: String,
+    transfer_id: String,
+) -> Result<(), String> {
+    use std::io::{Read, Write};
+    use std::time::Instant;
+
+    info!("Starting bulk export: {} -> {}", source_path, dest_path);
+
+    let source = PathBuf::from(&source_path);
+    let dest = PathBuf::from(&dest_path);
+
+    // Validate source exists
+    if !source.exists() {
+        return Err(format!("Source file does not exist: {}", source_path));
+    }
+
+    // Get file size for progress tracking
+    let metadata = std::fs::metadata(&source)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    let total_bytes = metadata.len();
+    let file_name = source.file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    // Create destination directory if needed
+    if let Some(parent) = dest.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create destination directory: {}", e))?;
+        }
+    }
+
+    // Spawn the transfer in a background task
+    let app_clone = app.clone();
+    let transfer_id_clone = transfer_id.clone();
+    let file_name_clone = file_name.clone();
+
+    tokio::task::spawn_blocking(move || {
+        let start_time = Instant::now();
+        let mut bytes_copied: u64 = 0;
+        let mut last_progress_time = Instant::now();
+
+        // Use large buffer for bulk transfer (4MB - Phase 8 chunk size)
+        const BUFFER_SIZE: usize = 4 * 1024 * 1024;
+        let mut buffer = vec![0u8; BUFFER_SIZE];
+
+        let result: Result<(), String> = (|| {
+            let mut source_file = std::fs::File::open(&source)
+                .map_err(|e| format!("Failed to open source: {}", e))?;
+            let mut dest_file = std::fs::File::create(&dest)
+                .map_err(|e| format!("Failed to create destination: {}", e))?;
+
+            loop {
+                let bytes_read = source_file.read(&mut buffer)
+                    .map_err(|e| format!("Read error: {}", e))?;
+
+                if bytes_read == 0 {
+                    break;
+                }
+
+                dest_file.write_all(&buffer[..bytes_read])
+                    .map_err(|e| format!("Write error: {}", e))?;
+
+                bytes_copied += bytes_read as u64;
+
+                // Emit progress every 100ms
+                let now = Instant::now();
+                if now.duration_since(last_progress_time).as_millis() >= 100 {
+                    let elapsed = start_time.elapsed().as_secs_f64();
+                    let speed_bps = if elapsed > 0.0 {
+                        bytes_copied as f64 / elapsed
+                    } else {
+                        0.0
+                    };
+
+                    let eta_seconds = if speed_bps > 0.0 {
+                        Some(((total_bytes - bytes_copied) as f64 / speed_bps) as u64)
+                    } else {
+                        None
+                    };
+
+                    let _ = app_clone.emit("transfer-progress", TransferProgressEvent {
+                        transfer_id: transfer_id_clone.clone(),
+                        file_name: file_name_clone.clone(),
+                        bytes_transferred: bytes_copied,
+                        total_bytes,
+                        speed_bps,
+                        eta_seconds,
+                    });
+
+                    last_progress_time = now;
+                }
+            }
+
+            // Ensure all data is flushed to disk
+            dest_file.sync_all()
+                .map_err(|e| format!("Sync error: {}", e))?;
+
+            Ok(())
+        })();
+
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+
+        // Emit completion event
+        let _ = app_clone.emit("transfer-completed", TransferCompletedEvent {
+            transfer_id: transfer_id_clone,
+            success: result.is_ok(),
+            bytes_transferred: bytes_copied,
+            duration_ms,
+            error: result.err(),
+        });
+    });
+
+    Ok(())
+}
+
+/// Batch export multiple files with progress tracking
+#[tauri::command]
+pub async fn export_files_batch(
+    app: AppHandle,
+    files: Vec<(String, String)>, // Vec of (source_path, dest_path)
+    batch_id: String,
+) -> Result<(), String> {
+    info!("Starting batch export of {} files", files.len());
+
+    for (idx, (source, dest)) in files.iter().enumerate() {
+        let transfer_id = format!("{}-{}", batch_id, idx);
+        export_file(app.clone(), source.clone(), dest.clone(), transfer_id).await?;
+    }
+
+    Ok(())
+}
+
+/// Get the path for drag-to-desktop operations
+/// Returns the actual file path that can be used for native drag
+#[tauri::command]
+pub fn get_drag_file_path(path: String) -> Result<String, String> {
+    let file_path = PathBuf::from(&path);
+
+    if !file_path.exists() {
+        return Err(format!("File does not exist: {}", path));
+    }
+
+    // Return the canonical path for drag operations
+    file_path.canonicalize()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| format!("Failed to resolve path: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

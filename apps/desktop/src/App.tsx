@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { open } from "@tauri-apps/plugin-dialog";
+import { startDrag } from "@crabnebula/tauri-plugin-drag";
 import {
   Files,
   Upload,
@@ -40,6 +41,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { SetupWizard } from "@/components/SetupWizard";
+import { Homepage } from "@/components/Homepage";
+import { TransferPanel } from "@/components/TransferProgress";
 import { useWormholeHistory } from "@/hooks/useWormholeHistory";
 import { useFileIndex, type IndexEntry } from "@/hooks/useFileIndex";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
@@ -994,13 +997,29 @@ function FileBrowser({
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Handle native drag start for file export
+  const handleDragStart = async (e: React.DragEvent, file: FileEntry) => {
+    e.preventDefault();
+    // Start native drag with the file path
+    try {
+      await startDrag({
+        item: [file.path],
+        icon: file.path, // Use file itself as icon (system will generate preview)
+      });
+    } catch (err) {
+      console.error("Drag failed:", err);
+    }
+  };
+
   // Render a file item with context menu
   const renderFileItem = (file: FileEntry, isGridView: boolean) => {
     const isSelected = selectedFiles.has(file.path);
 
     const content = isGridView ? (
       <div
-        className={`flex flex-col items-center gap-2 p-4 h-auto rounded-md cursor-default ${
+        draggable
+        onDragStart={(e) => handleDragStart(e, file)}
+        className={`flex flex-col items-center gap-2 p-4 h-auto rounded-md cursor-grab active:cursor-grabbing ${
           isSelected
             ? "bg-emerald-500/20"
             : "hover:bg-zinc-800/50"
@@ -1020,7 +1039,9 @@ function FileBrowser({
       </div>
     ) : (
       <div
-        className={`w-full grid grid-cols-[1fr_100px_80px] gap-4 items-center h-auto py-2 px-2 rounded-md cursor-default ${
+        draggable
+        onDragStart={(e) => handleDragStart(e, file)}
+        className={`w-full grid grid-cols-[1fr_100px_80px] gap-4 items-center h-auto py-2 px-2 rounded-md cursor-grab active:cursor-grabbing ${
           isSelected
             ? "bg-emerald-500/20"
             : "hover:bg-zinc-800/50"
@@ -2731,30 +2752,39 @@ function App() {
                   }}
                 />
               ) : (
-                <AllFilesView
-                  shares={shares}
-                  connections={connections}
-                  searchQuery={globalSearchQuery}
-                  setSearchQuery={setGlobalSearchQuery}
-                  searchResults={searchResults}
-                  isIndexing={isIndexing}
-                  totalFiles={totalFiles}
-                  totalFolders={totalFolders}
-                  onRefreshIndex={refreshIndex}
-                  onBrowseShare={(path) => {
-                    const share = shares.find(s => s.path === path);
-                    setCurrentFolder(path);
-                    if (share) setCurrentFolderSource({ id: share.id, type: "share" });
-                  }}
-                  onBrowseConnection={(mountPoint) => {
-                    const conn = connections.find(c => c.mountPoint === mountPoint);
-                    setCurrentFolder(mountPoint);
-                    if (conn) setCurrentFolderSource({ id: conn.id, type: "connection" });
-                  }}
-                  onOpenShareDialog={() => setActiveDialog("share")}
-                  onOpenConnectDialog={() => setActiveDialog("connect")}
-                  mediaFilter={mediaFilter}
-                />
+                // Show Homepage when no active sources, otherwise show AllFilesView
+                shares.filter(s => s.status === "active").length === 0 &&
+                connections.filter(c => c.status === "connected").length === 0 ? (
+                  <Homepage
+                    onOpenShareDialog={() => setActiveDialog("share")}
+                    onOpenConnectDialog={() => setActiveDialog("connect")}
+                  />
+                ) : (
+                  <AllFilesView
+                    shares={shares}
+                    connections={connections}
+                    searchQuery={globalSearchQuery}
+                    setSearchQuery={setGlobalSearchQuery}
+                    searchResults={searchResults}
+                    isIndexing={isIndexing}
+                    totalFiles={totalFiles}
+                    totalFolders={totalFolders}
+                    onRefreshIndex={refreshIndex}
+                    onBrowseShare={(path) => {
+                      const share = shares.find(s => s.path === path);
+                      setCurrentFolder(path);
+                      if (share) setCurrentFolderSource({ id: share.id, type: "share" });
+                    }}
+                    onBrowseConnection={(mountPoint) => {
+                      const conn = connections.find(c => c.mountPoint === mountPoint);
+                      setCurrentFolder(mountPoint);
+                      if (conn) setCurrentFolderSource({ id: conn.id, type: "connection" });
+                    }}
+                    onOpenShareDialog={() => setActiveDialog("share")}
+                    onOpenConnectDialog={() => setActiveDialog("connect")}
+                    mediaFilter={mediaFilter}
+                  />
+                )
               )}
             </>
           )}
@@ -3178,6 +3208,9 @@ function App() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Transfer progress panel - shows active file transfers */}
+      <TransferPanel />
     </div>
   );
 }

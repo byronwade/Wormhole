@@ -49,9 +49,11 @@ pub mod multi_fuse;
 pub mod winfsp;
 
 // Platform-independent modules
+pub mod bulk_transfer;
 pub mod cache;
 pub mod client;
 pub mod connection_manager;
+pub mod dedup_index;
 pub mod disk_cache;
 pub mod gc;
 pub mod global;
@@ -62,6 +64,7 @@ pub mod multi_host;
 pub mod net;
 pub mod rate_limiter;
 pub mod rendezvous;
+pub mod stream_pool;
 pub mod sync_engine;
 pub mod updater;
 
@@ -81,6 +84,7 @@ pub use winfsp::{mount_winfsp, WormholeFileContext, WormholeWinFS};
 // Platform-independent re-exports
 pub use cache::{CacheManager, ChunkCache, HybridCacheManager, HybridChunkCache};
 pub use client::WormholeClient;
+pub use dedup_index::{ChunkLocation, DedupIndex, DedupStatsSnapshot};
 pub use connection_manager::{
     ConnectionError, ConnectionEvent, ConnectionManager, HostConnectionConfig, ReconnectConfig,
     RegisteredShare,
@@ -96,7 +100,15 @@ pub use host::WormholeHost;
 pub use lock_manager::{LockError, LockHold, LockManager, LockStatus};
 pub use multi_host::{MultiHostConfig, MultiShareHost, SharedFolder};
 pub use rendezvous::{RendezvousClient, RendezvousError, RendezvousResult};
+pub use stream_pool::{
+    PooledStream, StreamPool, StreamPoolConfig, StreamPoolStatsSnapshot, DEFAULT_STREAMS,
+    MAX_STREAMS, MIN_STREAMS,
+};
 pub use sync_engine::{DirtyChunk, FileLock, SyncEngine, SyncRunner, SyncStatus};
+pub use bulk_transfer::{
+    BulkTransferConfig, BulkTransferCoordinator, TransferProgress, TransferProgressTracker,
+    TransferResult, TransferStats, TransferStatsSnapshot,
+};
 
 /// Default mount options
 pub const DEFAULT_MOUNT_OPTIONS: &[&str] =

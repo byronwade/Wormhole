@@ -110,36 +110,36 @@ const wormholeFragmentShader = `
     localP.xy -= pathPos.xy;
     float ang = atan(localP.y, localP.x);
 
-    // === Warp Drive Tunnel - Black/White with Space Colors ===
+    // === Warp Drive Tunnel - Dark and Subtle ===
 
-    // Smooth gradient based on depth
-    float depthGlow = smoothstep(clipFar, 0.0, dist) * 0.7 + 0.1;
+    // Smooth gradient based on depth - darker overall
+    float depthGlow = smoothstep(clipFar, 0.0, dist) * 0.4 + 0.05;
 
-    // Streaking lines effect - warp drive feel
+    // Streaking lines effect - dimmed for subtlety
     float streaks = sin(ang * 30.0 + p.z * 8.0) * 0.5 + 0.5;
-    streaks = pow(streaks, 4.0) * 0.6;
+    streaks = pow(streaks, 5.0) * 0.3; // Higher power = sharper, lower multiplier = dimmer
 
-    // Subtle rings flying past
+    // Very subtle rings flying past
     float ringPhase = fract(p.z * 1.2);
-    float ringPattern = smoothstep(0.08, 0.0, abs(ringPhase - 0.5) - 0.42) * 0.25;
+    float ringPattern = smoothstep(0.08, 0.0, abs(ringPhase - 0.5) - 0.42) * 0.12;
 
-    // Base: mostly white streaks on black
+    // Base: dim streaks on near-black
     vec3 baseColor = vec3(streaks + ringPattern);
 
-    // Add subtle space colors - deep blue and purple hints
-    vec3 spaceBlue = vec3(0.1, 0.1, 0.18);    // Deep space blue
-    vec3 spacePurple = vec3(0.09, 0.08, 0.15); // Space purple
-    vec3 hunterGreen = vec3(0.208, 0.369, 0.231); // Hunter green accent
+    // Darker space colors
+    vec3 spaceBlue = vec3(0.04, 0.04, 0.08);    // Very deep space blue
+    vec3 spacePurple = vec3(0.03, 0.03, 0.06);  // Very deep space purple
+    vec3 hunterGreen = vec3(0.12, 0.22, 0.14);  // Dimmed hunter green accent
 
     // Mix in space colors based on angle and depth
     float colorMix = sin(ang * 2.0 + p.z * 0.3) * 0.5 + 0.5;
     vec3 spaceColor = mix(spaceBlue, spacePurple, colorMix);
 
-    // Add hunter green accent to bright areas
-    vec3 accentColor = hunterGreen * ringPattern * 2.0;
+    // Add subtle hunter green accent to bright areas
+    vec3 accentColor = hunterGreen * ringPattern * 1.2;
 
-    // Combine: white streaks with space color tint and green accents
-    vec3 tunnelColor = baseColor + spaceColor * 0.3 + accentColor;
+    // Combine: dim streaks with space color tint and subtle green accents
+    vec3 tunnelColor = baseColor + spaceColor * 0.2 + accentColor;
 
     // Intensity based on depth
     float intensity = depthGlow;
@@ -147,25 +147,25 @@ const wormholeFragmentShader = `
     // Final tunnel color with intensity
     vec3 col = tunnelColor * intensity;
 
-    // Lighting - subtle, mostly ambient
+    // Lighting - very subtle
     vec3 lightPos = camPos + forward * 2.0;
     vec3 lightDir = normalize(lightPos - p);
-    vec3 lightCol = vec3(1.0, 1.0, 1.0) * 0.6;
+    vec3 lightCol = vec3(1.0, 1.0, 1.0) * 0.4; // Dimmer light
 
     float len = length(lightPos - p);
-    float atten = min(1.0 / (0.2 * len * len), 1.0);
+    float atten = min(1.0 / (0.3 * len * len), 1.0); // Faster falloff
 
     float diff = max(dot(n, lightDir), 0.0);
-    float ambient = 1.0;
+    float ambient = 0.6; // Lower ambient
 
-    col = col * (diff * 0.4 + ambient) * lightCol * atten;
+    col = col * (diff * 0.3 + ambient) * lightCol * atten;
 
-    // Fresnel edge glow - white with hunter green tint
-    float fresnel = pow(1.0 - abs(dot(n, -rd)), 3.0);
-    col += (vec3(0.9) + hunterGreen * 0.3) * fresnel * 0.4;
+    // Fresnel edge glow - subtle with hint of hunter green
+    float fresnel = pow(1.0 - abs(dot(n, -rd)), 3.5);
+    col += (vec3(0.5) + hunterGreen * 0.2) * fresnel * 0.2;
 
-    // Distance fog - fade to black
-    float fog = 1.0 - exp(-dist * 0.1);
+    // Distance fog - stronger fade to black
+    float fog = 1.0 - exp(-dist * 0.15);
     col = mix(col, vec3(0.0), fog);
 
 
@@ -237,13 +237,13 @@ export default function WormholeScene() {
           WebkitBackdropFilter: "blur(1.5px)",
         }}
       />
-      {/* Gradient overlays for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-wormhole-off-black/70 via-transparent to-wormhole-off-black/80 pointer-events-none" />
-      {/* Radial gradient for vignette effect */}
+      {/* Gradient overlays for text readability - darker */}
+      <div className="absolute inset-0 bg-gradient-to-b from-wormhole-off-black/80 via-wormhole-off-black/30 to-wormhole-off-black/90 pointer-events-none" />
+      {/* Radial gradient for stronger vignette effect */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at center, transparent 0%, transparent 40%, rgba(13,13,13,0.5) 100%)",
+          background: "radial-gradient(ellipse at center, transparent 0%, transparent 30%, rgba(13,13,13,0.7) 100%)",
         }}
       />
     </div>

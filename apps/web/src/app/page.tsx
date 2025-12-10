@@ -38,6 +38,10 @@ import {
   ChevronDown,
   MessageSquare,
   Sparkles,
+  Heart,
+  BookOpen,
+  Menu,
+  ExternalLink,
 } from "lucide-react";
 import { useEffect, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
@@ -197,36 +201,98 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-wormhole-off-black">
-      {/* Navigation - AGENTS.md: proper landmark */}
-      <nav className="border-b border-white/10 sticky top-0 z-50 bg-wormhole-off-black/80 backdrop-blur-sm" aria-label="Main navigation">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3" aria-label="Wormhole Home">
-            <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center" aria-hidden="true">
-              <Share2 className="w-4 h-4 text-wormhole-off-white" />
+      {/* Navigation - Beautiful Modern Header */}
+      <nav className="fixed top-0 left-0 right-0 z-50" aria-label="Main navigation">
+        {/* Blur background */}
+        <div className="absolute inset-0 bg-wormhole-off-black/70 backdrop-blur-xl border-b border-white/5" />
+
+        <div className="relative max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 group" aria-label="Wormhole Home">
+              <div className="relative">
+                <div className="absolute inset-0 bg-wormhole-hunter/50 rounded-xl blur-lg group-hover:bg-wormhole-hunter/70 transition-colors" />
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-wormhole-hunter-light to-wormhole-hunter flex items-center justify-center shadow-lg shadow-wormhole-hunter/20" aria-hidden="true">
+                  <Share2 className="w-4.5 h-4.5 text-white" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-lg text-white">Wormhole</span>
+                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[10px] font-semibold px-1.5 py-0">
+                  ALPHA
+                </Badge>
+              </div>
+            </Link>
+
+            {/* Center Navigation */}
+            <div className="hidden lg:flex items-center">
+              <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-white/5 border border-white/5">
+                <a href="#use-cases" className="px-4 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all">
+                  Use Cases
+                </a>
+                <a href="#compare" className="px-4 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all">
+                  Compare
+                </a>
+                <a href="#how-it-works" className="px-4 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all">
+                  How it Works
+                </a>
+                <Link href="/docs" className="px-4 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
+                  Docs
+                </Link>
+                <a href="#faq" className="px-4 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all">
+                  FAQ
+                </a>
+              </div>
             </div>
-            <span className="font-bold text-lg text-wormhole-off-white">Wormhole</span>
-            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs font-medium">
-              ALPHA
-            </Badge>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#use-cases" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">Use Cases</a>
-            <a href="#compare" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">Compare</a>
-            <a href="#how-it-works" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">How it Works</a>
-            <a href="#faq" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">FAQ</a>
-            <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"} className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">Download</a>
-            <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-wormhole-off-white transition-colors" aria-label="View source on GitHub">
-              <Github className="w-5 h-5" aria-hidden="true" />
-            </a>
+
+            {/* Right Actions */}
+            <div className="flex items-center gap-3">
+              {/* Support/Sponsor Button */}
+              <a
+                href="https://github.com/sponsors/byronwade"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-pink-400 hover:text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 rounded-full transition-all"
+                aria-label="Sponsor on GitHub"
+              >
+                <Heart className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Sponsor</span>
+              </a>
+
+              {/* GitHub */}
+              <a
+                href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:flex w-9 h-9 items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/5 transition-all"
+                aria-label="View source on GitHub"
+              >
+                <Github className="w-4 h-4" aria-hidden="true" />
+              </a>
+
+              {/* Download Button */}
+              <Button size="sm" className="h-9 px-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white shadow-lg shadow-wormhole-hunter/20 hover:shadow-wormhole-hunter/30 transition-all" asChild>
+                <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"} className="flex items-center gap-2">
+                  {mounted && <PlatformIcon platform={platform} />}
+                  <span className="hidden sm:inline">{mounted ? platformLabels[platform] : "Download"}</span>
+                  <span className="sm:hidden">
+                    <Download className="w-4 h-4" aria-hidden="true" />
+                  </span>
+                </a>
+              </Button>
+
+              {/* Mobile Menu Button */}
+              <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/5 transition-all" aria-label="Open menu">
+                <Menu className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
           </div>
-          <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white" asChild>
-            <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"}>
-              {mounted && <PlatformIcon platform={platform} />}
-              <span className="ml-2">{mounted ? platformLabels[platform] : "Download"}</span>
-            </a>
-          </Button>
         </div>
       </nav>
+
+      {/* Spacer for fixed nav */}
+      <div className="h-16" />
 
       {/* Hero Section with 3D Background */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
@@ -1304,142 +1370,196 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Download Section */}
-      <section id="download" className="py-24 px-6 border-t border-zinc-800 bg-gradient-to-b from-zinc-900/50 to-[#0a0a0a]">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-            <span className="text-sm text-amber-400 font-medium">Alpha Release</span>
-          </div>
+      {/* Download CTA Section */}
+      <section id="download" className="relative py-32 px-6 border-t border-zinc-800/50 overflow-hidden">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-wormhole-hunter/5 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-wormhole-hunter/10 via-transparent to-transparent" />
 
-          <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
-            Ready to Stop Waiting?
+        <div className="relative max-w-3xl mx-auto text-center">
+          {/* Glowing orb decoration */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-wormhole-hunter/20 rounded-full blur-[100px] pointer-events-none" />
+
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-wormhole-off-white mb-6 tracking-tight">
+            Ready to start?
           </h2>
-          <p className="text-lg text-zinc-400 mb-4">
-            Download Wormhole and start sharing files instantly.
+          <p className="text-xl text-zinc-400 mb-10 max-w-xl mx-auto leading-relaxed">
+            Download Wormhole and share your first folder in under a minute. Free forever during alpha.
           </p>
 
-          {release && (
-            <p className="text-sm text-zinc-500 mb-8">
-              Version <span className="text-wormhole-hunter-light font-mono">{release.tag_name}</span>
-              {" • "}
-              <a href={release.html_url} target="_blank" rel="noopener noreferrer" className="text-wormhole-hunter-light hover:underline">
-                Release notes
-              </a>
-            </p>
-          )}
-
           {mounted && (
-            <div className="flex flex-col items-center gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
               <Button
                 size="lg"
-                className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white h-auto py-6 px-12 flex-col gap-2"
+                className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white h-14 px-8 text-lg shadow-lg shadow-wormhole-hunter/20 hover:shadow-wormhole-hunter/30 transition-all"
                 asChild
               >
-                <a href={getPlatformDownloadUrl(platform)}>
+                <a href={getPlatformDownloadUrl(platform)} className="flex items-center gap-3">
                   <PlatformIcon platform={platform} />
-                  <span className="font-medium text-lg">{platformLabels[platform]}</span>
-                  <span className="text-xs text-wormhole-hunter-light">
-                    {getPlatformAssetInfo(platform)?.size || (platform === 'mac' ? 'Intel & ARM' : platform === 'windows' ? 'Windows 10+' : 'x64 & ARM')}
-                  </span>
+                  <span>{platformLabels[platform]}</span>
+                  <ArrowRight className="w-5 h-5" aria-hidden="true" />
                 </a>
               </Button>
-              <a
-                href="#all-downloads"
-                className="text-sm text-zinc-500 hover:text-wormhole-off-white transition-colors"
-                onClick={(e) => {
-                  e.preventDefault();
-                  const el = document.getElementById('all-downloads');
-                  el?.scrollIntoView({ behavior: 'smooth' });
-                }}
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 px-8 text-lg border-zinc-700 text-zinc-300 hover:bg-zinc-800/50 hover:text-wormhole-off-white"
+                asChild
               >
-                Other platforms
-              </a>
+                <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+                  <Github className="w-5 h-5" aria-hidden="true" />
+                  <span>View Source</span>
+                </a>
+              </Button>
             </div>
           )}
 
-          {/* Hidden section for other platforms */}
-          <div id="all-downloads" className="grid sm:grid-cols-3 gap-4 max-w-xl mx-auto mb-8 pt-4 border-t border-zinc-800" role="group" aria-label="Download options for all platforms">
-            <p className="col-span-3 text-sm text-zinc-500 mb-2 text-center">All platforms</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto py-3 flex-col gap-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-              asChild
-            >
-              <a href="/download/macos">
-                <Apple className="w-5 h-5" aria-hidden="true" />
-                <span className="font-medium text-sm">macOS</span>
-              </a>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto py-3 flex-col gap-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-              asChild
-            >
-              <a href="/download/windows">
-                <Monitor className="w-5 h-5" aria-hidden="true" />
-                <span className="font-medium text-sm">Windows</span>
-              </a>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto py-3 flex-col gap-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-              asChild
-            >
-              <a href="/download/linux">
-                <Terminal className="w-5 h-5" aria-hidden="true" />
-                <span className="font-medium text-sm">Linux</span>
-              </a>
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-center gap-4 text-sm text-zinc-500">
-            <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-wormhole-off-white transition-colors">
-              <Github className="w-4 h-4" aria-hidden="true" />
-              All releases on GitHub
+          {/* Platform options */}
+          <div id="all-downloads" className="flex flex-wrap items-center justify-center gap-6 text-sm text-zinc-500" role="group" aria-label="Download options for all platforms">
+            <a href="/download/macos" className="flex items-center gap-2 hover:text-wormhole-off-white transition-colors">
+              <Apple className="w-4 h-4" aria-hidden="true" />
+              <span>macOS</span>
             </a>
+            <span className="text-zinc-700">•</span>
+            <a href="/download/windows" className="flex items-center gap-2 hover:text-wormhole-off-white transition-colors">
+              <Monitor className="w-4 h-4" aria-hidden="true" />
+              <span>Windows</span>
+            </a>
+            <span className="text-zinc-700">•</span>
+            <a href="/download/linux" className="flex items-center gap-2 hover:text-wormhole-off-white transition-colors">
+              <Terminal className="w-4 h-4" aria-hidden="true" />
+              <span>Linux</span>
+            </a>
+            {release && (
+              <>
+                <span className="text-zinc-700">•</span>
+                <span className="text-zinc-600">
+                  <span className="font-mono text-wormhole-hunter-light">{release.tag_name}</span>
+                </span>
+              </>
+            )}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800 py-12 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center">
-                <Share2 className="w-4 h-4 text-wormhole-off-white" />
+      <footer className="border-t border-zinc-800/50 bg-zinc-950/50">
+        <div className="max-w-6xl mx-auto px-6 py-16">
+          {/* Main footer content */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-12">
+            {/* Brand column */}
+            <div className="col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-wormhole-hunter flex items-center justify-center">
+                  <Share2 className="w-5 h-5 text-wormhole-off-white" aria-hidden="true" />
+                </div>
+                <span className="font-bold text-xl text-wormhole-off-white">Wormhole</span>
               </div>
-              <span className="font-bold text-wormhole-off-white">Wormhole</span>
-              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs">
-                ALPHA
-              </Badge>
+              <p className="text-zinc-500 mb-6 max-w-sm leading-relaxed text-sm">
+                Mount any folder from any computer. No cloud uploads, no waiting, no monthly fees. Just share a code and connect.
+              </p>
+              <div className="flex items-center gap-3">
+                <a
+                  href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-9 h-9 rounded-lg bg-zinc-800/50 hover:bg-zinc-700/50 flex items-center justify-center text-zinc-400 hover:text-wormhole-off-white transition-colors"
+                  aria-label="Wormhole on GitHub"
+                >
+                  <Github className="w-4 h-4" aria-hidden="true" />
+                </a>
+                <a
+                  href="https://twitter.com/wormholeapp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-9 h-9 rounded-lg bg-zinc-800/50 hover:bg-zinc-700/50 flex items-center justify-center text-zinc-400 hover:text-wormhole-off-white transition-colors"
+                  aria-label="Wormhole on Twitter"
+                >
+                  <Twitter className="w-4 h-4" aria-hidden="true" />
+                </a>
+                <a
+                  href="https://github.com/sponsors/byronwade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-9 h-9 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 flex items-center justify-center text-pink-400 hover:text-pink-300 transition-colors"
+                  aria-label="Sponsor on GitHub"
+                >
+                  <Heart className="w-4 h-4" aria-hidden="true" />
+                </a>
+              </div>
             </div>
 
-            <div className="flex items-center gap-6 text-sm text-zinc-500">
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#readme`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">Docs</a>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">GitHub</a>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">Issues</a>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">Releases</a>
+            {/* Product column */}
+            <div>
+              <h3 className="font-semibold text-wormhole-off-white mb-4 text-sm">Product</h3>
+              <ul className="space-y-2.5 text-sm">
+                <li>
+                  <a href="#how-it-works" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">How it Works</a>
+                </li>
+                <li>
+                  <a href="#use-cases" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Use Cases</a>
+                </li>
+                <li>
+                  <a href="#compare" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Compare</a>
+                </li>
+                <li>
+                  <Link href="/pricing" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Pricing</Link>
+                </li>
+                <li>
+                  <a href="#faq" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">FAQ</a>
+                </li>
+              </ul>
             </div>
 
-            <div className="flex items-center gap-4">
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors" aria-label="Wormhole on GitHub">
-                <Github className="w-5 h-5" aria-hidden="true" />
-              </a>
-              <a href="https://twitter.com/wormholeapp" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors" aria-label="Wormhole on Twitter">
-                <Twitter className="w-5 h-5" aria-hidden="true" />
-              </a>
+            {/* Resources column */}
+            <div>
+              <h3 className="font-semibold text-wormhole-off-white mb-4 text-sm">Resources</h3>
+              <ul className="space-y-2.5 text-sm">
+                <li>
+                  <Link href="/docs" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Documentation</Link>
+                </li>
+                <li>
+                  <Link href="/docs/quickstart" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Quick Start</Link>
+                </li>
+                <li>
+                  <Link href="/docs/cli" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">CLI Reference</Link>
+                </li>
+                <li>
+                  <Link href="/changelog" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Changelog</Link>
+                </li>
+                <li>
+                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues`} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Report Issue</a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Company column */}
+            <div>
+              <h3 className="font-semibold text-wormhole-off-white mb-4 text-sm">Company</h3>
+              <ul className="space-y-2.5 text-sm">
+                <li>
+                  <Link href="/about" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">About</Link>
+                </li>
+                <li>
+                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Source Code</a>
+                </li>
+                <li>
+                  <a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Sponsor</a>
+                </li>
+                <li>
+                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/discussions`} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors">Community</a>
+                </li>
+              </ul>
             </div>
           </div>
 
-          <div className="mt-8 pt-8 border-t border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-600">
-            <p>Open source under MIT License. Free during alpha.</p>
-            <p>
-              &quot;Mount Any Folder. Any Computer. No Setup.&quot;
+          {/* Bottom bar */}
+          <div className="pt-8 border-t border-zinc-800/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-zinc-600">
+              Open source under MIT License • Free during alpha
+            </p>
+            <p className="text-sm text-zinc-600 font-medium">
+              Mount Any Folder. Any Computer. No Setup.
             </p>
           </div>
         </div>

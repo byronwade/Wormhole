@@ -12,15 +12,16 @@ This is the **authoritative implementation guide** for building Project Wormhole
 2. [Prerequisites & Environment Setup](#2-prerequisites--environment-setup)
 3. [Complete Dependency Matrix](#3-complete-dependency-matrix)
 4. [Phase Execution Order](#4-phase-execution-order)
-5. [Blocking Issues & Solutions](#5-blocking-issues--solutions)
-6. [Configuration System](#6-configuration-system)
-7. [Error Handling Strategy](#7-error-handling-strategy)
-8. [Testing Strategy](#8-testing-strategy)
-9. [Security Implementation](#9-security-implementation)
-10. [CI/CD Pipeline](#10-cicd-pipeline)
-11. [Platform-Specific Requirements](#11-platform-specific-requirements)
-12. [Migration & Upgrade Path](#12-migration--upgrade-path)
-13. [Production Checklist](#13-production-checklist)
+5. [Top Features & Roadmap](#5-top-features--roadmap)
+6. [Blocking Issues & Solutions](#6-blocking-issues--solutions)
+7. [Configuration System](#7-configuration-system)
+8. [Error Handling Strategy](#8-error-handling-strategy)
+9. [Testing Strategy](#9-testing-strategy)
+10. [Security Implementation](#10-security-implementation)
+11. [CI/CD Pipeline](#11-ci-cd-pipeline)
+12. [Platform-Specific Requirements](#12-platform-specific-requirements)
+13. [Migration & Upgrade Path](#13-migration--upgrade-path)
+14. [Production Checklist](#14-production-checklist)
 
 ---
 
@@ -525,9 +526,10 @@ Phase 1 ─────► Phase 2 ─────► Phase 3 ─────►
 - [ ] Join codes functional
 
 **M4 - Production (Phase 7)**
-- [ ] Write support
-- [ ] File creation/deletion
-- [ ] Multi-user ready
+- [ ] Write support with real-time collaboration
+- [ ] Distributed locking and conflict resolution
+- [ ] Incremental syncing and content-aware transfers
+- [ ] Pipeline integration APIs
 
 **M5 - High Performance (Phase 8)**
 - [ ] >500 MB/s on 10GbE LAN
@@ -535,9 +537,65 @@ Phase 1 ─────► Phase 2 ─────► Phase 3 ─────►
 - [ ] Zero-copy I/O verified
 - [ ] Content-addressed deduplication
 
+**M6 - Creative Collaboration (Phase 7-8)**
+- [ ] Incremental syncing (90% faster iterations)
+- [ ] Real-time collaboration with distributed locking
+- [ ] Smart UX (QR codes, drag-drop discovery)
+- [ ] Pipeline integrations (Unreal, Blender, Unity)
+
 ---
 
-## 5. Blocking Issues & Solutions
+## 5. Top Features & Roadmap
+
+### Research Summary
+Comprehensive analysis of 10 proposed features identified **4 high-priority features** that should be implemented as top differentiators for Wormhole. See [Feature Research & Analysis](docs/development/feature-research-analysis.md) for detailed evaluation.
+
+### Top 4 Priority Features
+
+#### 1. Incremental & Content-Aware Syncing (Phase 7)
+**Goal:** 90% reduction in transfer time for iterative creative workflows
+- Change detection using filesystem watching
+- Content hashing to skip unchanged chunks
+- Delta compression for large files with small changes
+- Smart prefetching for likely-needed assets
+
+#### 2. Real-Time Collaboration (Phase 7)
+**Goal:** Enable true collaborative workflows without cloud costs
+- Distributed locking system with TTL-based expiry
+- Conflict resolution strategies (automatic merge, manual review)
+- Live sync indicators in UI
+- Per-file or per-chunk locking granularity
+
+#### 3. Smart UX / On-boarding Touches (Phase 5-6)
+**Goal:** Remove adoption friction that kills P2P tool usage
+- QR code join codes for easy mobile sharing
+- LAN auto-discovery ("same network" peers)
+- Progressive mount experience with real-time progress
+- Paste-aware inputs and smart defaults
+
+#### 4. Pipeline Integration (Phase 7+)
+**Goal:** Direct replacement for expensive creative tools
+- Unreal Engine virtual filesystem integration
+- Build pipeline hooks and automation
+- Live watch APIs for external tools
+- Plugin system for custom integrations
+
+### Implementation Priorities
+
+| Priority | Feature | Impact | Effort | Timeline |
+|----------|---------|--------|--------|----------|
+| **P0** | Real-Time Collaboration | Very High | Medium-High | Phase 7 |
+| **P0** | Incremental Syncing | Very High | Medium | Phase 7 |
+| **P1** | Smart UX Touches | High | Low-Medium | Phase 5-6 |
+| **P1** | Pipeline Integration | High | Medium-High | Phase 7+ |
+
+### Features to Avoid
+- **Edge/Cloud Hybrid Mode:** Dilutes core "no cloud dependency" value proposition
+- **Enterprise Security Features:** Target audience prioritizes creative workflow over enterprise compliance
+
+---
+
+## 6. Blocking Issues & Solutions
 
 ### P0 - Project Cannot Start
 
