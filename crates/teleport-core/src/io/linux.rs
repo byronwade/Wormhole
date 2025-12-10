@@ -1,4 +1,11 @@
-//! macOS-specific I/O implementation using sendfile.
+//! Linux-specific I/O implementation.
+//!
+//! This module provides Linux-optimized I/O using:
+//! - sendfile(2) for zero-copy file-to-socket transfers
+//! - io_uring for high-performance async I/O (future)
+//!
+//! Linux sendfile is simpler than macOS:
+//! `ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);`
 
 use super::AsyncIO;
 use std::fs::File;
@@ -6,46 +13,41 @@ use std::io;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
-/// macOS I/O implementation using sendfile and other optimized syscalls.
-pub struct MacOSIO;
+/// Linux I/O implementation using sendfile and other optimized syscalls.
+pub struct LinuxIO;
 
-impl MacOSIO {
+impl LinuxIO {
+    /// Create a new Linux I/O handler.
     pub fn new() -> Self {
         Self
     }
 
     /// Perform a synchronous sendfile operation.
+    ///
+    /// Linux sendfile signature:
+    /// ```c
+    /// ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
+    /// ```
     pub fn sendfile_sync(
         file_fd: i32,
         socket_fd: i32,
-        offset: i64,
+        offset: u64,
         len: usize,
     ) -> io::Result<usize> {
-        let mut sent: i64 = len as i64;
-        const SF_NODISKIO: i32 = 1;
+        let mut off = offset as i64;
 
         let result = unsafe {
-            libc::sendfile(
-                file_fd,
-                socket_fd,
-                offset,
-                &mut sent,
-                std::ptr::null_mut(),
-                SF_NODISKIO,
-            )
+            libc::sendfile(socket_fd, file_fd, &mut off, len)
         };
 
-        if result == -1 {
-            let err = io::Error::last_os_error();
-            if err.raw_os_error() == Some(libc::EAGAIN) && sent > 0 {
-                return Ok(sent as usize);
-            }
-            Err(err)
+        if result < 0 {
+            Err(io::Error::last_os_error())
         } else {
-            Ok(sent as usize)
+            Ok(result as usize)
         }
     }
 
+    /// Read file at offset using pread.
     fn pread_sync(file: &File, offset: u64, buf: &mut [u8]) -> io::Result<usize> {
         let fd = file.as_raw_fd();
         let result = unsafe {
@@ -64,6 +66,7 @@ impl MacOSIO {
         }
     }
 
+    /// Write multiple buffers at offset using pwritev.
     fn pwritev_sync(file: &File, bufs: &[&[u8]], offset: u64) -> io::Result<usize> {
         let fd = file.as_raw_fd();
 
@@ -87,14 +90,14 @@ impl MacOSIO {
     }
 }
 
-impl Default for MacOSIO {
+impl Default for LinuxIO {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[async_trait::async_trait]
-impl AsyncIO for MacOSIO {
+impl AsyncIO for LinuxIO {
     async fn read_file(&self, path: &Path, offset: u64, buf: &mut [u8]) -> io::Result<usize> {
         let path = path.to_path_buf();
         let buf_len = buf.len();
@@ -122,7 +125,7 @@ impl AsyncIO for MacOSIO {
         let file_fd = file.as_raw_fd();
 
         tokio::task::spawn_blocking(move || {
-            Self::sendfile_sync(file_fd, socket_fd, offset as i64, len)
+            Self::sendfile_sync(file_fd, socket_fd, offset, len)
         })
         .await
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
@@ -135,9 +138,12 @@ impl AsyncIO for MacOSIO {
         tokio::task::spawn_blocking(move || {
             use std::os::unix::io::FromRawFd;
             let file = unsafe { File::from_raw_fd(file_fd) };
+
             let refs: Vec<&[u8]> = owned_bufs.iter().map(|v| v.as_slice()).collect();
             let result = Self::pwritev_sync(&file, &refs, offset);
+
             std::mem::forget(file);
+
             result
         })
         .await
@@ -145,6 +151,6 @@ impl AsyncIO for MacOSIO {
     }
 
     fn name(&self) -> &'static str {
-        "macOS (sendfile)"
+        "Linux (sendfile)"
     }
 }
