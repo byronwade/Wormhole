@@ -25,7 +25,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 # FUSE filesystem (Unix-only)
 # Note: fuser is only available on Unix systems (Linux, macOS)
 # Windows uses WinFSP instead
-fuser = "0.15"
+fuser = "0.16"
 
 # WinFSP filesystem (Windows-only)
 # Note: winfsp provides Windows filesystem support similar to FUSE
