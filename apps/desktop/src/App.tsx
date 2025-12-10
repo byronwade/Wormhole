@@ -44,6 +44,45 @@ import { useFavorites } from "@/hooks/useFavorites";
 import type { ShareHistoryItem, ConnectionHistoryItem, ShareStatus, ConnectionStatus, ExpirationOption } from "@/types/history";
 import { expirationToMs } from "@/types/history";
 
+// Cross-platform path utilities
+const pathSeparatorRegex = /[/\\]/;
+
+function getFileName(path: string): string {
+  // Handle both forward and backslashes for cross-platform compatibility
+  const parts = path.split(pathSeparatorRegex).filter(Boolean);
+  return parts[parts.length - 1] || path;
+}
+
+function getParentPath(path: string, rootPath: string): string {
+  // Normalize separators for comparison
+  const parts = path.split(pathSeparatorRegex).filter(Boolean);
+  if (parts.length <= 1) return rootPath;
+
+  // Check if we're on Windows (path starts with drive letter)
+  const isWindows = /^[a-zA-Z]:/.test(path);
+  const separator = isWindows ? "\\" : "/";
+  const prefix = isWindows ? "" : "/";
+
+  parts.pop();
+  const parent = prefix + parts.join(separator);
+
+  // Don't go above root path
+  if (parent.length < rootPath.length) return rootPath;
+  return parent;
+}
+
+function joinPath(...parts: string[]): string {
+  const isWindows = parts.some(p => /^[a-zA-Z]:/.test(p));
+  const separator = isWindows ? "\\" : "/";
+  return parts.filter(Boolean).join(separator);
+}
+
+function getRelativePath(fullPath: string, rootPath: string): string[] {
+  // Remove root from path and split into parts
+  const relative = fullPath.replace(rootPath, "");
+  return relative.split(pathSeparatorRegex).filter(Boolean);
+}
+
 // shadcn components
 import { Button } from "@/components/ui/button";
 import {
@@ -283,7 +322,7 @@ function ShareCard({
   const [countdown, setCountdown] = useState<string | null>(null);
   const isActive = share.status === "active";
   const isExpired = share.status === "expired";
-  const folderName = share.path.split("/").pop() || "Shared Folder";
+  const folderName = getFileName(share.path) || "Shared Folder";
 
   // Update countdown every second for expiring shares
   useEffect(() => {
@@ -430,7 +469,7 @@ function ConnectionCard({
 }) {
   const isConnected = connection.status === "connected";
   const isConnecting = connection.status === "connecting";
-  const mountName = connection.mountPoint.split("/").pop() || "Remote Share";
+  const mountName = getFileName(connection.mountPoint) || "Remote Share";
 
   return (
     <div
@@ -734,7 +773,7 @@ function FileBrowser({
   };
 
   const goUp = () => {
-    const parent = currentPath.split("/").slice(0, -1).join("/") || "/";
+    const parent = getParentPath(currentPath, rootPath);
     if (parent.length >= rootPath.length) {
       loadDirectory(parent);
     }
@@ -769,7 +808,7 @@ function FileBrowser({
     }
   };
 
-  const pathParts = currentPath.replace(rootPath, "").split("/").filter(Boolean);
+  const pathParts = getRelativePath(currentPath, rootPath);
 
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -908,7 +947,7 @@ function FileBrowser({
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  loadDirectory(rootPath + "/" + pathParts.slice(0, i + 1).join("/"))
+                  loadDirectory(joinPath(rootPath, ...pathParts.slice(0, i + 1)))
                 }
                 className={`h-7 px-2 text-sm ${i === pathParts.length - 1 ? "text-white" : "text-zinc-400 hover:text-white"}`}
               >
@@ -1069,7 +1108,7 @@ function AllFilesView({
   const allRootFolders = [
     ...activeShares.map((share) => ({
       id: share.id,
-      name: share.path.split("/").pop() || "Shared Folder",
+      name: getFileName(share.path) || "Shared Folder",
       path: share.path,
       type: "share" as const,
       code: share.joinCode,
@@ -1077,7 +1116,7 @@ function AllFilesView({
     })),
     ...activeConnections.map((conn) => ({
       id: conn.id,
-      name: conn.mountPoint.split("/").pop() || "Remote Share",
+      name: getFileName(conn.mountPoint) || "Remote Share",
       path: conn.mountPoint,
       type: "connection" as const,
       code: conn.joinCode,
@@ -1968,6 +2007,18 @@ function App() {
     return completed !== "true";
   });
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+  const [_localIp, setLocalIp] = useState<string>("");
+
+  // Fetch local IP on mount
+  useEffect(() => {
+    invoke<string[]>("get_local_ip")
+      .then((ips) => {
+        if (ips.length > 0) {
+          setLocalIp(ips[0]);
+        }
+      })
+      .catch((e) => console.error("Failed to get local IP:", e));
+  }, []);
 
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -2133,7 +2184,7 @@ function App() {
 
   // Show delete confirmation for share
   const confirmDeleteShare = useCallback((share: ShareHistoryItem) => {
-    const folderName = share.path.split("/").pop() || "Shared Folder";
+    const folderName = getFileName(share.path) || "Shared Folder";
     setDeleteConfirm({ type: "share", id: share.id, name: folderName });
   }, []);
 
@@ -2190,7 +2241,7 @@ function App() {
 
   // Show delete confirmation for connection
   const confirmRemoveConnection = useCallback((connection: ConnectionHistoryItem) => {
-    const mountName = connection.mountPoint.split("/").pop() || "Remote Share";
+    const mountName = getFileName(connection.mountPoint) || "Remote Share";
     setDeleteConfirm({ type: "connection", id: connection.id, name: mountName });
   }, []);
 
@@ -2271,7 +2322,7 @@ function App() {
               {currentFolder ? (
                 <FileBrowser
                   rootPath={currentFolder}
-                  rootName={currentFolder.split("/").pop() || "Folder"}
+                  rootName={getFileName(currentFolder) || "Folder"}
                   viewMode={viewMode}
                   sourceId={currentFolderSource?.id || ""}
                   sourceType={currentFolderSource?.type || "share"}
