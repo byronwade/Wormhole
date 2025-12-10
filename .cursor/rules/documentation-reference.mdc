@@ -10,7 +10,7 @@ alwaysApply: true
 
 ## Master Plan (READ FIRST)
 
-**`doc/development/00-master-implementation-plan.md`** - The source of truth for:
+**`docs/development/00-master-implementation-plan.md`** - The source of truth for:
 - Development phases and their order
 - What features belong in which phase
 - Dependencies between components
@@ -19,7 +19,7 @@ alwaysApply: true
 ## Documentation Structure
 
 ```
-doc/
+docs/
 ├── CONTRIBUTING.md                       # How to contribute
 ├── USER-GUIDE.md                         # End-user documentation
 ├── development/                          # Technical implementation
@@ -115,16 +115,16 @@ Each phase folder contains:
 ### Current Phase Checklist
 ```markdown
 Phase X: [Name]
-├── Overview: doc/development/phase-X/1-overview.md
-├── Goals: doc/development/phase-X/2-goals.md
-├── Architecture: doc/development/phase-X/3-architecture.md
-├── Scope: doc/development/phase-X/4-scope.md
-├── Implementation: doc/development/phase-X/5-implementation-plan.md
-├── Testing: doc/development/phase-X/6-testing-and-metrics.md
-├── Risks: doc/development/phase-X/7-risks-and-mitigations.md
-├── Deliverables: doc/development/phase-X/8-deliverables.md
-├── Questions: doc/development/phase-X/9-open-questions.md
-└── Notes: doc/development/phase-X/10-notes.md
+├── Overview: docs/development/phase-X/1-overview.md
+├── Goals: docs/development/phase-X/2-goals.md
+├── Architecture: docs/development/phase-X/3-architecture.md
+├── Scope: docs/development/phase-X/4-scope.md
+├── Implementation: docs/development/phase-X/5-implementation-plan.md
+├── Testing: docs/development/phase-X/6-testing-and-metrics.md
+├── Risks: docs/development/phase-X/7-risks-and-mitigations.md
+├── Deliverables: docs/development/phase-X/8-deliverables.md
+├── Questions: docs/development/phase-X/9-open-questions.md
+└── Notes: docs/development/phase-X/10-notes.md
 ```
 
 ### Key Decisions Already Made

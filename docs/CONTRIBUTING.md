@@ -109,7 +109,7 @@ cargo build
 cargo test
 
 # For frontend development
-cd apps/teleport-ui
+cd apps/desktop
 pnpm install
 ```
 
@@ -145,7 +145,7 @@ cargo run -p teleport-daemon -- host ./test-folder
 cargo run -p teleport-daemon -- mount /mnt/wormhole <HOST_IP>
 
 # Frontend development
-cd apps/teleport-ui && pnpm tauri dev
+cd apps/desktop && pnpm tauri dev
 ```
 
 ---
@@ -175,7 +175,7 @@ cd apps/teleport-ui && pnpm tauri dev
 1. **Check if issue exists** - Search open and closed issues
 2. **Check if PR exists** - Someone may already be working on it
 3. **Comment on the issue** - Let others know you're working on it
-4. **Read relevant docs** - Especially `doc/development/` for your area
+4. **Read relevant docs** - Especially `docs/development/` for your area
 
 ---
 
@@ -441,7 +441,7 @@ Any other information.
 
 ### Getting Help
 
-1. **Check documentation** - Most answers are in `doc/`
+1. **Check documentation** - Most answers are in `docs/`
 2. **Search issues** - Someone may have asked before
 3. **Ask in Discussions** - For general questions
 4. **Open an issue** - For specific bugs or features

@@ -50,9 +50,9 @@ export default function ConfigCommandPage() {
           Configuration file location:
         </p>
         <ul className="list-disc list-inside text-zinc-300 space-y-1 ml-4">
-          <li><strong>macOS:</strong> <code className="text-violet-400">~/.config/wormhole/config.toml</code></li>
-          <li><strong>Linux:</strong> <code className="text-violet-400">~/.config/wormhole/config.toml</code></li>
-          <li><strong>Windows:</strong> <code className="text-violet-400">%APPDATA%\wormhole\config.toml</code></li>
+          <li><strong>macOS:</strong> <code className="text-wormhole-hunter-light">~/.config/wormhole/config.toml</code></li>
+          <li><strong>Linux:</strong> <code className="text-wormhole-hunter-light">~/.config/wormhole/config.toml</code></li>
+          <li><strong>Windows:</strong> <code className="text-wormhole-hunter-light">%APPDATA%\wormhole\config.toml</code></li>
         </ul>
       </section>
 
@@ -63,7 +63,7 @@ export default function ConfigCommandPage() {
         {/* show */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Eye className="h-5 w-5 text-violet-400" />
+            <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             config show
           </h3>
           <p className="text-zinc-300">Display the current configuration.</p>
@@ -113,7 +113,7 @@ show_notifications = true`}</code>
         {/* list */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <FileText className="h-5 w-5 text-violet-400" />
+            <FileText className="h-5 w-5 text-wormhole-hunter-light" />
             config list
           </h3>
           <p className="text-zinc-300">List all available configuration keys.</p>
@@ -154,7 +154,7 @@ ui.minimize_to_tray              Minimize to system tray`}</code>
         {/* path */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <FileText className="h-5 w-5 text-violet-400" />
+            <FileText className="h-5 w-5 text-wormhole-hunter-light" />
             config path
           </h3>
           <p className="text-zinc-300">Show the configuration file path.</p>
@@ -171,7 +171,7 @@ ui.minimize_to_tray              Minimize to system tray`}</code>
         {/* get */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Eye className="h-5 w-5 text-violet-400" />
+            <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             config get
           </h3>
           <p className="text-zinc-300">Get a specific configuration value.</p>
@@ -263,7 +263,7 @@ Configuration reset to defaults.`}</code>
         {/* edit */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Edit className="h-5 w-5 text-violet-400" />
+            <Edit className="h-5 w-5 text-wormhole-hunter-light" />
             config edit
           </h3>
           <p className="text-zinc-300">Open configuration file in your default editor.</p>
@@ -284,7 +284,7 @@ $ wormhole config edit`}</code>
         {/* import */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Download className="h-5 w-5 text-violet-400" />
+            <Download className="h-5 w-5 text-wormhole-hunter-light" />
             config import
           </h3>
           <p className="text-zinc-300">Import configuration from a file.</p>
@@ -310,7 +310,7 @@ Merged configuration from team-config.toml`}</code>
         {/* export */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Upload className="h-5 w-5 text-violet-400" />
+            <Upload className="h-5 w-5 text-wormhole-hunter-light" />
             config export
           </h3>
           <p className="text-zinc-300">Export configuration to a file.</p>
@@ -339,7 +339,7 @@ Exported configuration (including secrets) to full-backup.toml`}</code>
         <h2 className="text-2xl font-bold text-white">Configuration Reference</h2>
         <p className="text-zinc-300">
           For a complete reference of all configuration options, see the{" "}
-          <Link href="/docs/configuration" className="text-violet-400 hover:underline">
+          <Link href="/docs/configuration" className="text-wormhole-hunter-light hover:underline">
             Configuration Reference
           </Link>.
         </p>
@@ -414,17 +414,17 @@ export WORMHOLE_MAX_CONNECTIONS=20`}</code>
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/configuration">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Configuration Reference
             </Badge>
           </Link>
           <Link href="/docs/cli/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole cache
             </Badge>
           </Link>
           <Link href="/docs/self-hosting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Self-Hosting
             </Badge>
           </Link>

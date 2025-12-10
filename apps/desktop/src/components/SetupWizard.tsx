@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-shell";
 import {
@@ -83,6 +83,16 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
   const [isAutoInstalling, setIsAutoInstalling] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const steps: WizardStep[] = [
     { id: "welcome", title: "Welcome" },
@@ -356,7 +366,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
       case "pending":
         return <Circle className="w-5 h-5 text-zinc-500" />;
       case "checking":
-        return <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />;
+        return <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />;
       case "passed":
         return <CheckCircle2 className="w-5 h-5 text-green-400" />;
       case "failed":
@@ -372,7 +382,11 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
     const success = await copyToClipboard(command);
     if (success) {
       setCopiedCommand(command);
-      setTimeout(() => setCopiedCommand(null), 2000);
+      // Clear any existing timeout before setting a new one
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopiedCommand(null), 2000);
     }
   };
 
@@ -388,7 +402,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
   // Step 1: Welcome
   const renderWelcome = () => (
     <div className="flex-1 flex flex-col items-center justify-center p-8">
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-600 to-violet-700 flex items-center justify-center mb-6 shadow-lg shadow-violet-500/20">
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-800 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/20">
         <HardDrive className="w-10 h-10 text-white" />
       </div>
 
@@ -399,7 +413,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
 
       <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-8">
         <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 text-center">
-          <Wifi className="w-6 h-6 text-violet-400 mx-auto mb-2" />
+          <Wifi className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
           <p className="text-xs text-zinc-300 font-medium">Direct P2P</p>
           <p className="text-[10px] text-zinc-500">No middleman</p>
         </div>
@@ -538,7 +552,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                             <ol className="space-y-1.5">
                               {check.steps.map((step, i) => (
                                 <li key={i} className="flex gap-2 text-xs text-zinc-300">
-                                  <span className="flex-shrink-0 w-4 h-4 rounded-full bg-violet-600/30 text-violet-300 flex items-center justify-center text-[10px]">
+                                  <span className="flex-shrink-0 w-4 h-4 rounded-full bg-emerald-700/30 text-emerald-300 flex items-center justify-center text-[10px]">
                                     {i + 1}
                                   </span>
                                   <span>{step}</span>
@@ -560,7 +574,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-5 px-2 text-[10px] text-violet-400 hover:text-violet-300 gap-1"
+                                  className="h-5 px-2 text-[10px] text-emerald-400 hover:text-emerald-300 gap-1"
                                   onClick={() => handleAutoInstall(check)}
                                   disabled={isAutoInstalling === check.id}
                                 >
@@ -574,7 +588,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                               )}
                             </div>
                             <div className="relative">
-                              <pre className="text-xs text-violet-300 bg-zinc-900 rounded p-2 pr-8 overflow-x-auto font-mono whitespace-pre-wrap">
+                              <pre className="text-xs text-emerald-300 bg-zinc-900 rounded p-2 pr-8 overflow-x-auto font-mono whitespace-pre-wrap">
                                 {check.installCommand}
                               </pre>
                               <Button
@@ -598,7 +612,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                           <Button
                             variant="link"
                             size="sm"
-                            className="h-auto p-0 text-xs text-violet-400 gap-1"
+                            className="h-auto p-0 text-xs text-emerald-400 gap-1"
                             onClick={() => handleOpenUrl(check.helpUrl!)}
                           >
                             <Download className="w-3 h-3" />
@@ -665,23 +679,28 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <ShieldAlert className="w-6 h-6 text-amber-400 flex-shrink-0" />
-                <div>
+                <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-white text-sm">macOS Gatekeeper Warning</h4>
                   <p className="text-xs text-zinc-400 mt-1">
                     "Wormhole.app cannot be opened because it is from an unidentified developer"
                   </p>
-                  <div className="mt-3 p-2 rounded bg-zinc-800/50">
-                    <p className="text-xs text-zinc-300 mb-2">
+                  <div className="mt-3 p-2 rounded bg-zinc-800/50 space-y-2">
+                    <p className="text-xs text-zinc-300">
                       <strong>Why this appears:</strong> Apple charges $99/year for developer certificates.
                       We use ad-hoc signing which is secure but not recognized by Apple.
                     </p>
-                    <p className="text-xs text-zinc-300 mb-2">
-                      <strong>Is it safe?</strong> Yes! Wormhole is open-source. You can verify the code
-                      yourself at github.com/byronwade/Wormhole
-                    </p>
                     <p className="text-xs text-zinc-300">
-                      <strong>How to open:</strong> Right-click the app → Open → Click "Open" in the dialog
+                      <strong>Is it safe?</strong> Yes! Wormhole is open-source. Verify at github.com/byronwade/Wormhole
                     </p>
+                    <div className="border-t border-zinc-700 pt-2 mt-2">
+                      <p className="text-xs text-zinc-300 font-medium mb-1">How to fix:</p>
+                      <p className="text-xs text-zinc-400 mb-1">
+                        1. <strong>Right-click</strong> the app → <strong>Open</strong> → Click "Open" in dialog
+                      </p>
+                      <p className="text-xs text-zinc-400">
+                        2. Or run in Terminal: <code className="bg-zinc-700 px-1 rounded text-[10px]">xattr -cr /Applications/Wormhole.app</code>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -723,7 +742,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <Folder className="w-6 h-6 text-violet-400 flex-shrink-0" />
+              <Folder className="w-6 h-6 text-emerald-400 flex-shrink-0" />
               <div>
                 <h4 className="font-medium text-white text-sm">Your Data Stays Private</h4>
                 <div className="mt-2 space-y-2">
@@ -803,7 +822,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
       <Button
         onClick={onComplete}
         size="lg"
-        className="bg-violet-600 hover:bg-violet-700 text-white px-8 gap-2"
+        className="bg-emerald-700 hover:bg-emerald-800 text-white px-8 gap-2"
       >
         Get Started
         <ChevronRight className="w-4 h-4" />
@@ -851,9 +870,9 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
                     index < currentStep
-                      ? "bg-violet-600 text-white"
+                      ? "bg-emerald-700 text-white"
                       : index === currentStep
-                      ? "bg-violet-600 text-white ring-2 ring-violet-400/50"
+                      ? "bg-emerald-700 text-white ring-2 ring-emerald-400/50"
                       : "bg-zinc-800 text-zinc-500"
                   }`}
                 >
@@ -866,7 +885,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
                 {index < steps.length - 1 && (
                   <div
                     className={`w-8 h-0.5 mx-1 rounded-full transition-colors ${
-                      index < currentStep ? "bg-violet-600" : "bg-zinc-800"
+                      index < currentStep ? "bg-emerald-700" : "bg-zinc-800"
                     }`}
                   />
                 )}
@@ -922,7 +941,7 @@ export function SetupWizard({ onComplete }: { onComplete: () => void }) {
               onClick={() => setCurrentStep((s) => Math.min(steps.length - 1, s + 1))}
               disabled={steps[currentStep].id === "requirements" && isRunningChecks}
               className={`gap-2 ${
-                canProceed() ? "bg-violet-600 hover:bg-violet-700" : "bg-zinc-700"
+                canProceed() ? "bg-emerald-700 hover:bg-emerald-800" : "bg-zinc-700"
               }`}
             >
               Continue

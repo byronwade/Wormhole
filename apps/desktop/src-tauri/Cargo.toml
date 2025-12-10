@@ -1,12 +1,12 @@
 [package]
-name = "teleport-ui"
+name = "wormhole-desktop"
 version = "0.1.0"
 description = "Wormhole Desktop Application"
 authors = ["Wormhole Team"]
 edition = "2021"
 
 [lib]
-name = "teleport_ui_lib"
+name = "wormhole_desktop_lib"
 crate-type = ["staticlib", "cdylib", "lib"]
 
 [build-dependencies]

@@ -14,7 +14,7 @@ wormhole/
 │       │       └── teleport_cli.rs  # CLI binary (moved)
 │       └── Cargo.toml
 └── apps/
-    └── teleport-ui/              # Tauri app (NEW)
+    └── desktop/              # Tauri app (NEW)
         ├── src/                  # React frontend
         ├── src-tauri/            # Rust backend
         └── package.json
@@ -140,11 +140,11 @@ impl ShutdownHandle {
 
 ## Tauri Backend
 
-### apps/teleport-ui/src-tauri/Cargo.toml
+### apps/desktop/src-tauri/Cargo.toml
 
 ```toml
 [package]
-name = "teleport-ui"
+name = "desktop"
 version = "0.1.0"
 edition = "2021"
 
@@ -162,7 +162,7 @@ serde_json = "1"
 teleport-daemon = { path = "../../../crates/teleport-daemon" }
 ```
 
-### apps/teleport-ui/src-tauri/src/main.rs
+### apps/desktop/src-tauri/src/main.rs
 
 ```rust
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -302,7 +302,7 @@ fn main() {
 
 ## Frontend (React/TypeScript)
 
-### apps/teleport-ui/src/App.tsx
+### apps/desktop/src/App.tsx
 
 ```tsx
 import { useState, useEffect } from 'react';
@@ -484,7 +484,7 @@ export default App;
 
 ## Packaging Configuration
 
-### apps/teleport-ui/src-tauri/tauri.conf.json
+### apps/desktop/src-tauri/tauri.conf.json
 
 ```json
 {
@@ -534,7 +534,7 @@ export default App;
 
 ```bash
 # Development
-cd apps/teleport-ui
+cd apps/desktop
 npm install
 npm run tauri dev
 

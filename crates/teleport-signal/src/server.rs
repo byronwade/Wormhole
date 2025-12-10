@@ -7,8 +7,9 @@ use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use teleport_core::crypto::{generate_join_code, normalize_join_code, validate_join_code};
 
@@ -16,12 +17,17 @@ use crate::messages::{ErrorCode, PeerInfo, SignalMessage};
 use crate::room::Room;
 use crate::ROOM_IDLE_TIMEOUT_SECS;
 
+/// Channel for sending messages to a peer
+type PeerSender = mpsc::UnboundedSender<SignalMessage>;
+
 /// Signal server state
 pub struct SignalServer {
     /// Active rooms by join code
     rooms: Arc<DashMap<String, Room>>,
     /// Peer ID to room mapping
     peer_rooms: Arc<DashMap<String, String>>,
+    /// Peer connections for message relay
+    peer_senders: Arc<DashMap<String, PeerSender>>,
 }
 
 impl SignalServer {
@@ -29,6 +35,7 @@ impl SignalServer {
         Self {
             rooms: Arc::new(DashMap::new()),
             peer_rooms: Arc::new(DashMap::new()),
+            peer_senders: Arc::new(DashMap::new()),
         }
     }
 
@@ -50,12 +57,13 @@ impl SignalServer {
             let (stream, peer_addr) = listener.accept().await?;
             let rooms = self.rooms.clone();
             let peer_rooms = self.peer_rooms.clone();
+            let peer_senders = self.peer_senders.clone();
             let room_count = self.rooms.len();
             let peer_count = self.peer_rooms.len();
 
             tokio::spawn(async move {
                 if let Err(e) =
-                    handle_connection(stream, peer_addr, rooms, peer_rooms, room_count, peer_count)
+                    handle_connection(stream, peer_addr, rooms, peer_rooms, peer_senders, room_count, peer_count)
                         .await
                 {
                     debug!("Connection error from {}: {:?}", peer_addr, e);
@@ -87,15 +95,18 @@ async fn handle_connection(
     peer_addr: SocketAddr,
     rooms: Arc<DashMap<String, Room>>,
     peer_rooms: Arc<DashMap<String, String>>,
+    peer_senders: Arc<DashMap<String, PeerSender>>,
     room_count: usize,
     peer_count: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Peek at the first bytes to detect HTTP vs WebSocket
-    let mut peek_buf = [0u8; 4];
-    stream.peek(&mut peek_buf).await?;
+    // Peek at request to check if it's an HTTP health check or WebSocket upgrade
+    // WebSocket upgrades include "Upgrade: websocket" header
+    let mut peek_buf = [0u8; 512];
+    let n = stream.peek(&mut peek_buf).await?;
+    let peek_str = String::from_utf8_lossy(&peek_buf[..n]);
 
-    // Check for HTTP requests (GET /health or similar)
-    if &peek_buf == b"GET " {
+    // Check for plain HTTP requests (health checks) - these don't have Upgrade header
+    if peek_str.starts_with("GET ") && !peek_str.to_lowercase().contains("upgrade: websocket") {
         return handle_http_request(&mut stream, room_count, peer_count).await;
     }
 
@@ -106,53 +117,111 @@ async fn handle_connection(
     let peer_id = generate_peer_id();
     debug!("New connection from {} as {}", peer_addr, peer_id);
 
+    // Create channel for receiving relayed messages
+    let (tx, mut rx) = mpsc::unbounded_channel::<SignalMessage>();
+    peer_senders.insert(peer_id.clone(), tx);
+
     let mut current_room: Option<String> = None;
 
-    while let Some(msg) = ws_receiver.next().await {
-        let msg = match msg {
-            Ok(Message::Text(text)) => text,
-            Ok(Message::Close(_)) => break,
-            Ok(Message::Ping(data)) => {
-                let _ = ws_sender.send(Message::Pong(data)).await;
-                continue;
-            }
-            Ok(_) => continue,
-            Err(e) => {
-                debug!("WebSocket error: {:?}", e);
-                break;
-            }
-        };
+    loop {
+        tokio::select! {
+            // Handle incoming WebSocket messages
+            msg = ws_receiver.next() => {
+                let msg = match msg {
+                    Some(Ok(Message::Text(text))) => text,
+                    Some(Ok(Message::Close(_))) => break,
+                    Some(Ok(Message::Ping(data))) => {
+                        let _ = ws_sender.send(Message::Pong(data)).await;
+                        continue;
+                    }
+                    Some(Ok(_)) => continue,
+                    Some(Err(e)) => {
+                        debug!("WebSocket error: {:?}", e);
+                        break;
+                    }
+                    None => break,
+                };
 
-        let request = match SignalMessage::from_json(&msg) {
-            Ok(r) => r,
-            Err(e) => {
-                let error =
-                    SignalMessage::error(ErrorCode::InternalError, format!("Invalid JSON: {}", e));
-                let _ = ws_sender
-                    .send(Message::Text(error.to_json().unwrap()))
-                    .await;
-                continue;
+                let request = match SignalMessage::from_json(&msg) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        let error =
+                            SignalMessage::error(ErrorCode::InternalError, format!("Invalid JSON: {}", e));
+                        let _ = ws_sender
+                            .send(Message::Text(error.to_json().unwrap()))
+                            .await;
+                        continue;
+                    }
+                };
+
+                // Handle Relay messages specially
+                if let SignalMessage::Relay { to_peer_id, payload } = &request {
+                    // Verify sender is in a room
+                    if current_room.is_none() {
+                        let error = SignalMessage::error(ErrorCode::NotInRoom, "Not in a room");
+                        let _ = ws_sender.send(Message::Text(error.to_json().unwrap())).await;
+                        continue;
+                    }
+
+                    // Check if target peer is in the same room
+                    let same_room = peer_rooms.get(to_peer_id)
+                        .map(|r| current_room.as_ref() == Some(r.value()))
+                        .unwrap_or(false);
+
+                    if !same_room {
+                        let error = SignalMessage::error(ErrorCode::RoomNotFound, "Target peer not in your room");
+                        let _ = ws_sender.send(Message::Text(error.to_json().unwrap())).await;
+                        continue;
+                    }
+
+                    // Create the relayed message
+                    let relayed = SignalMessage::Relayed {
+                        from_peer_id: peer_id.clone(),
+                        payload: payload.clone(),
+                    };
+
+                    // Send to target peer
+                    if let Some(target_sender) = peer_senders.get(to_peer_id) {
+                        if target_sender.send(relayed).is_err() {
+                            warn!("Failed to relay message to {}", to_peer_id);
+                        } else {
+                            debug!("Relayed message from {} to {}", peer_id, to_peer_id);
+                        }
+                    } else {
+                        warn!("Target peer {} not found", to_peer_id);
+                    }
+                    continue;
+                }
+
+                let response = handle_message(
+                    request,
+                    &peer_id,
+                    peer_addr,
+                    &rooms,
+                    &peer_rooms,
+                    &mut current_room,
+                );
+
+                if let Some(response) = response {
+                    let json = response.to_json().unwrap();
+                    if ws_sender.send(Message::Text(json)).await.is_err() {
+                        break;
+                    }
+                }
             }
-        };
 
-        let response = handle_message(
-            request,
-            &peer_id,
-            peer_addr,
-            &rooms,
-            &peer_rooms,
-            &mut current_room,
-        );
-
-        if let Some(response) = response {
-            let json = response.to_json().unwrap();
-            if ws_sender.send(Message::Text(json)).await.is_err() {
-                break;
+            // Handle messages from other peers (relayed)
+            Some(relayed_msg) = rx.recv() => {
+                let json = relayed_msg.to_json().unwrap();
+                if ws_sender.send(Message::Text(json)).await.is_err() {
+                    break;
+                }
             }
         }
     }
 
     // Cleanup on disconnect
+    peer_senders.remove(&peer_id);
     if let Some(join_code) = current_room {
         leave_room(&peer_id, &join_code, &rooms, &peer_rooms);
     }
@@ -215,7 +284,7 @@ fn handle_message(
     current_room: &mut Option<String>,
 ) -> Option<SignalMessage> {
     match msg {
-        SignalMessage::CreateRoom { join_code } => {
+        SignalMessage::CreateRoom { join_code, peer_info } => {
             if current_room.is_some() {
                 return Some(SignalMessage::error(
                     ErrorCode::AlreadyInRoom,
@@ -238,13 +307,25 @@ fn handle_message(
             }
 
             let mut room = Room::new(code.clone());
-            let info = PeerInfo {
-                peer_id: peer_id.into(),
-                public_addr: Some(peer_addr),
-                local_addrs: vec![],
-                quic_port: 4433,
-                is_host: true,
+
+            // Use provided peer_info if available, otherwise create minimal info
+            let info = if let Some(mut provided_info) = peer_info {
+                // Always set peer_id to server-assigned ID and public_addr from connection
+                provided_info.peer_id = peer_id.into();
+                provided_info.public_addr = Some(peer_addr);
+                provided_info.is_host = true;
+                provided_info
+            } else {
+                PeerInfo {
+                    peer_id: peer_id.into(),
+                    public_addr: Some(peer_addr),
+                    local_addrs: vec![],
+                    quic_port: 4433,
+                    is_host: true,
+                }
             };
+
+            debug!("Creating room {} with host local_addrs: {:?}", code, info.local_addrs);
 
             if room.add_peer(info).is_err() {
                 return Some(SignalMessage::error(
@@ -324,11 +405,14 @@ fn handle_message(
         SignalMessage::PeerInfo(mut info) => {
             // Update peer's public address as seen by server
             info.public_addr = Some(peer_addr);
+            // Keep the original peer_id
+            info.peer_id = peer_id.to_string();
 
             if let Some(code) = current_room {
                 if let Some(mut room) = rooms.get_mut(code) {
-                    room.touch();
-                    // Could broadcast to other peers here
+                    // Update the peer's stored info with new addresses
+                    room.update_peer(info);
+                    debug!("Updated peer info for {} in room {}", peer_id, code);
                 }
             }
             None

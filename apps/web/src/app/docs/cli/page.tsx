@@ -222,7 +222,7 @@ export default function CLIPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           CLI Reference
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -279,27 +279,27 @@ wormhole <command> --help`}
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">-v, --verbose</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">-v, --verbose</td>
                     <td className="py-2">Increase output verbosity (-v, -vv, -vvv)</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">-q, --quiet</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">-q, --quiet</td>
                     <td className="py-2">Suppress all output except errors</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--format &lt;FORMAT&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--format &lt;FORMAT&gt;</td>
                     <td className="py-2">Output format: text, json, yaml (default: text)</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--config &lt;PATH&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--config &lt;PATH&gt;</td>
                     <td className="py-2">Path to config file</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--no-color</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--no-color</td>
                     <td className="py-2">Disable colored output</td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">-h, --help</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">-h, --help</td>
                     <td className="py-2">Print help information</td>
                   </tr>
                 </tbody>
@@ -318,14 +318,14 @@ wormhole <command> --help`}
           return (
             <div key={group.title} className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-violet-400" />
+                <div className="w-10 h-10 rounded-lg bg-wormhole-hunter/20 flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-wormhole-hunter-light" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                     {group.title}
                     {group.badge && (
-                      <Badge variant="outline" className="border-violet-500/50 text-violet-400 text-xs">
+                      <Badge variant="outline" className="border-wormhole-hunter/50 text-wormhole-hunter-light text-xs">
                         {group.badge}
                       </Badge>
                     )}
@@ -337,12 +337,12 @@ wormhole <command> --help`}
               <div className="grid gap-3 ml-13">
                 {group.commands.map((cmd) => (
                   <Link key={cmd.name} href={cmd.href}>
-                    <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors">
+                    <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors">
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <code className="text-violet-400 font-mono font-semibold">{cmd.name}</code>
+                              <code className="text-wormhole-hunter-light font-mono font-semibold">{cmd.name}</code>
                             </div>
                             <p className="text-sm text-zinc-400">{cmd.description}</p>
                           </div>
@@ -378,32 +378,32 @@ wormhole <command> --help`}
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_CONFIG</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CONFIG</td>
                     <td className="py-2">Path to config file</td>
                     <td className="py-2 text-zinc-600">~/.config/wormhole/config.toml</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_CACHE_DIR</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DIR</td>
                     <td className="py-2">Cache directory path</td>
                     <td className="py-2 text-zinc-600">~/.cache/wormhole</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_LOG_LEVEL</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_LOG_LEVEL</td>
                     <td className="py-2">Log level (trace, debug, info, warn, error)</td>
                     <td className="py-2 text-zinc-600">info</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_SIGNAL_SERVER</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_SIGNAL_SERVER</td>
                     <td className="py-2">Default signal server URL</td>
                     <td className="py-2 text-zinc-600">ws://signal.wormhole.app</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">RUST_LOG</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">RUST_LOG</td>
                     <td className="py-2">Rust logging filter (for debugging)</td>
                     <td className="py-2 text-zinc-600">(none)</td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">NO_COLOR</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">NO_COLOR</td>
                     <td className="py-2">Disable colored output</td>
                     <td className="py-2 text-zinc-600">(none)</td>
                   </tr>
@@ -419,7 +419,7 @@ wormhole <command> --help`}
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <Link href="/docs/cli/all-commands">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">All Commands Reference</h3>
                 <p className="text-sm text-zinc-400">Complete list of every command and option</p>
@@ -427,7 +427,7 @@ wormhole <command> --help`}
             </Card>
           </Link>
           <Link href="/docs/configuration">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">Configuration</h3>
                 <p className="text-sm text-zinc-400">Config file reference and examples</p>

@@ -53,13 +53,13 @@ pub fn validate_join_code(code: &str) -> bool {
 }
 
 /// Base URL for wormhole share links
-pub const WORMHOLE_BASE_URL: &str = "https://wormhole.dev";
+pub const WORMHOLE_BASE_URL: &str = "https://wormhole.byronwade.com";
 
 /// Extract a join code from a URL or return the input if it's already a code
 ///
 /// Handles formats:
 /// - `ABC-123` (plain code)
-/// - `https://wormhole.dev/j/ABC-123` (web link)
+/// - `https://wormhole.byronwade.com/j/ABC-123` (web link)
 /// - `wormhole://join/ABC-123` (deep link)
 /// - `wormhole://j/ABC-123` (deep link short)
 /// - `wormhole://ABC-123` (deep link direct)
@@ -462,8 +462,8 @@ mod tests {
 
     #[test]
     fn test_make_share_link() {
-        assert_eq!(make_share_link("ABC-DEF"), "https://wormhole.dev/j/ABC-DEF");
-        assert_eq!(make_share_link("abcdef"), "https://wormhole.dev/j/ABC-DEF");
+        assert_eq!(make_share_link("ABC-DEF"), "https://wormhole.byronwade.com/j/ABC-DEF");
+        assert_eq!(make_share_link("abcdef"), "https://wormhole.byronwade.com/j/ABC-DEF");
     }
 
     #[test]

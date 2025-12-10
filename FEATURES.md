@@ -288,8 +288,8 @@ wormhole/
 │   ├── teleport-daemon/   # FUSE driver + QUIC Host/Client
 │   └── teleport-signal/   # WebSocket rendezvous server
 ├── apps/
-│   └── teleport-ui/       # Tauri + React frontend
-└── doc/                   # Documentation
+│   └── desktop/       # Tauri + React frontend
+└── docs/                  # Documentation
 ```
 
 ### Wire Protocol
@@ -402,10 +402,10 @@ cat ~/mnt/project/README.md
 
 ## Learn More
 
-- [Master Implementation Plan](doc/development/00-master-implementation-plan.md)
-- [Security Guide](doc/development/02-security-guide.md)
-- [Testing Strategy](doc/development/01-testing-strategy.md)
-- [Brand Identity](doc/marketing/02-brand-identity.md)
+- [Master Implementation Plan](docs/development/00-master-implementation-plan.md)
+- [Security Guide](docs/development/02-security-guide.md)
+- [Testing Strategy](docs/development/01-testing-strategy.md)
+- [Brand Identity](docs/marketing/02-brand-identity.md)
 
 ---
 

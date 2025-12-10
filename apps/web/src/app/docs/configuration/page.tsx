@@ -19,7 +19,7 @@ export default function ConfigurationPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Configuration
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -273,7 +273,7 @@ theme = "system"`}
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Link href="/docs/configuration/cache">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">[cache]</h3>
                 <p className="text-sm text-zinc-400">RAM and disk cache settings, TTL, garbage collection</p>
@@ -281,7 +281,7 @@ theme = "system"`}
             </Card>
           </Link>
           <Link href="/docs/configuration/network">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">[network]</h3>
                 <p className="text-sm text-zinc-400">Timeouts, QUIC settings, signal server, STUN</p>
@@ -289,7 +289,7 @@ theme = "system"`}
             </Card>
           </Link>
           <Link href="/docs/configuration/env">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">Environment Variables</h3>
                 <p className="text-sm text-zinc-400">Override config with env vars, useful for containers</p>
@@ -297,7 +297,7 @@ theme = "system"`}
             </Card>
           </Link>
           <Link href="/docs/configuration/examples">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">Example Configurations</h3>
                 <p className="text-sm text-zinc-400">Pre-built configs for common scenarios</p>
@@ -375,42 +375,42 @@ $ wormhole config export ~/wormhole-backup.toml`}
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_CONFIG</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CONFIG</td>
                     <td className="py-2">Config file path</td>
                     <td className="py-2 font-mono text-xs">/etc/wormhole/config.toml</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_CACHE_DIR</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DIR</td>
                     <td className="py-2">Cache directory</td>
                     <td className="py-2 font-mono text-xs">/var/cache/wormhole</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_LOG_LEVEL</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_LOG_LEVEL</td>
                     <td className="py-2">Logging level</td>
                     <td className="py-2 font-mono text-xs">debug</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_SIGNAL_SERVER</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_SIGNAL_SERVER</td>
                     <td className="py-2">Signal server URL</td>
                     <td className="py-2 font-mono text-xs">wss://signal.example.com</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_HOST_PORT</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_HOST_PORT</td>
                     <td className="py-2">Default host port</td>
                     <td className="py-2 font-mono text-xs">5000</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_CACHE_RAM_MB</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_RAM_MB</td>
                     <td className="py-2">RAM cache size (MB)</td>
                     <td className="py-2 font-mono text-xs">1024</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">WORMHOLE_CACHE_DISK_GB</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DISK_GB</td>
                     <td className="py-2">Disk cache size (GB)</td>
                     <td className="py-2 font-mono text-xs">20</td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">RUST_LOG</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">RUST_LOG</td>
                     <td className="py-2">Detailed Rust logging</td>
                     <td className="py-2 font-mono text-xs">wormhole=debug,quinn=info</td>
                   </tr>
@@ -462,11 +462,11 @@ $ wormhole config export ~/wormhole-backup.toml`}
       <section className="space-y-4 pt-8 border-t border-zinc-800">
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
-          <Link href="/docs/configuration/examples" className="text-violet-400 hover:underline">Example Configurations</Link>
+          <Link href="/docs/configuration/examples" className="text-wormhole-hunter-light hover:underline">Example Configurations</Link>
           <span className="text-zinc-600">•</span>
-          <Link href="/docs/cli/config" className="text-violet-400 hover:underline">CLI config command</Link>
+          <Link href="/docs/cli/config" className="text-wormhole-hunter-light hover:underline">CLI config command</Link>
           <span className="text-zinc-600">•</span>
-          <Link href="/docs/self-hosting" className="text-violet-400 hover:underline">Self-Hosting Guide</Link>
+          <Link href="/docs/self-hosting" className="text-wormhole-hunter-light hover:underline">Self-Hosting Guide</Link>
         </div>
       </section>
     </div>

@@ -11,6 +11,9 @@ pub enum SignalMessage {
     CreateRoom {
         /// Optional preferred join code
         join_code: Option<String>,
+        /// Host's peer info (optional, for backwards compatibility)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        peer_info: Option<PeerInfo>,
     },
 
     /// Room created successfully
@@ -129,6 +132,7 @@ mod tests {
     fn test_message_serialization() {
         let msg = SignalMessage::CreateRoom {
             join_code: Some("ABC-123".into()),
+            peer_info: None,
         };
 
         let json = msg.to_json().unwrap();
@@ -137,7 +141,7 @@ mod tests {
 
         let parsed: SignalMessage = SignalMessage::from_json(&json).unwrap();
         match parsed {
-            SignalMessage::CreateRoom { join_code } => {
+            SignalMessage::CreateRoom { join_code, .. } => {
                 assert_eq!(join_code, Some("ABC-123".into()));
             }
             _ => panic!("wrong message type"),

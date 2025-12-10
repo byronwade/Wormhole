@@ -423,7 +423,7 @@ impl Filesystem for MultiShareFS {
         }
     }
 
-    fn getattr(&mut self, _req: &Request<'_>, ino: u64, reply: ReplyAttr) {
+    fn getattr(&mut self, _req: &Request<'_>, ino: u64, _fh: Option<u64>, reply: ReplyAttr) {
         trace!("getattr: ino={}", ino);
 
         // Handle virtual root

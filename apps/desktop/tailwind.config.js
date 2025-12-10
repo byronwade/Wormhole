@@ -6,9 +6,11 @@ export default {
   	extend: {
   		colors: {
   			wormhole: {
-  				purple: '#7C3AED',
-  				'purple-light': '#8B5CF6',
-  				'purple-dark': '#6D28D9'
+  				hunter: '#355E3B',
+  				'hunter-light': '#4A7C59',
+  				'hunter-dark': '#2D4F32',
+  				'off-black': '#0d0d0d',
+  				'off-white': '#f5f5f5'
   			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',

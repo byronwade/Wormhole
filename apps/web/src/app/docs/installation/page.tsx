@@ -29,7 +29,7 @@ export default function InstallationPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Getting Started
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -45,12 +45,12 @@ export default function InstallationPage() {
         <h2 className="text-2xl font-bold text-white">Installation Options</h2>
 
         <div className="grid sm:grid-cols-3 gap-4">
-          <Card className="bg-violet-500/10 border-violet-500/30">
+          <Card className="bg-wormhole-hunter/10 border-wormhole-hunter/30">
             <CardContent className="p-6 text-center">
-              <Download className="w-10 h-10 text-violet-400 mx-auto mb-4" />
+              <Download className="w-10 h-10 text-wormhole-hunter-light mx-auto mb-4" />
               <h3 className="font-semibold text-white mb-2">Desktop App</h3>
               <p className="text-sm text-zinc-400 mb-4">Full GUI with system tray, visual status, and easy controls.</p>
-              <Badge className="bg-violet-500/20 text-violet-400">Recommended</Badge>
+              <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light">Recommended</Badge>
             </CardContent>
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
@@ -78,15 +78,15 @@ export default function InstallationPage() {
 
         <Tabs defaultValue="macos" className="w-full">
           <TabsList className="grid w-full grid-cols-3 bg-zinc-900 border border-zinc-800">
-            <TabsTrigger value="macos" className="data-[state=active]:bg-violet-600">
+            <TabsTrigger value="macos" className="data-[state=active]:bg-wormhole-hunter">
               <Apple className="w-4 h-4 mr-2" />
               macOS
             </TabsTrigger>
-            <TabsTrigger value="linux" className="data-[state=active]:bg-violet-600">
+            <TabsTrigger value="linux" className="data-[state=active]:bg-wormhole-hunter">
               <Cpu className="w-4 h-4 mr-2" />
               Linux
             </TabsTrigger>
-            <TabsTrigger value="windows" className="data-[state=active]:bg-violet-600">
+            <TabsTrigger value="windows" className="data-[state=active]:bg-wormhole-hunter">
               <Monitor className="w-4 h-4 mr-2" />
               Windows
             </TabsTrigger>
@@ -131,7 +131,7 @@ brew install macfuse
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardContent className="p-4">
                   <ol className="list-decimal list-inside space-y-2 text-zinc-400 text-sm">
-                    <li>Download <code className="bg-zinc-800 px-1 rounded">Wormhole.dmg</code> from the <Link href="https://github.com/byronwade/wormhole/releases" className="text-violet-400 hover:underline">releases page</Link></li>
+                    <li>Download <code className="bg-zinc-800 px-1 rounded">Wormhole.dmg</code> from the <Link href="https://github.com/byronwade/wormhole/releases" className="text-wormhole-hunter-light hover:underline">releases page</Link></li>
                     <li>Open the DMG and drag Wormhole to Applications</li>
                     <li>Launch Wormhole from Applications or Spotlight</li>
                     <li>The CLI will be available at <code className="bg-zinc-800 px-1 rounded">/Applications/Wormhole.app/Contents/MacOS/wormhole</code></li>
@@ -292,7 +292,7 @@ sudo sh -c 'echo "user_allow_other" >> /etc/fuse.conf'`}
               <AlertTriangle className="h-4 w-4 text-amber-400" />
               <AlertTitle className="text-amber-400">Coming Soon</AlertTitle>
               <AlertDescription className="text-zinc-400">
-                Windows support is in development. It will use WinFSP for mounting. Join our <Link href="https://github.com/byronwade/wormhole/issues" className="text-violet-400 hover:underline">GitHub issues</Link> to track progress.
+                Windows support is in development. It will use WinFSP for mounting. Join our <Link href="https://github.com/byronwade/wormhole/issues" className="text-wormhole-hunter-light hover:underline">GitHub issues</Link> to track progress.
               </AlertDescription>
             </Alert>
 
@@ -301,7 +301,7 @@ sudo sh -c 'echo "user_allow_other" >> /etc/fuse.conf'`}
               <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardContent className="p-4 text-zinc-400">
                   <ol className="list-decimal list-inside space-y-2 text-sm">
-                    <li>Install WinFSP from <a href="https://winfsp.dev" className="text-violet-400 hover:underline">winfsp.dev</a></li>
+                    <li>Install WinFSP from <a href="https://winfsp.dev" className="text-wormhole-hunter-light hover:underline">winfsp.dev</a></li>
                     <li>Download <code className="bg-zinc-800 px-1 rounded">Wormhole-Setup.exe</code></li>
                     <li>Run the installer</li>
                     <li>Wormhole will be available in Start Menu and PATH</li>
@@ -327,7 +327,7 @@ sudo sh -c 'echo "user_allow_other" >> /etc/fuse.conf'`}
               <ul className="space-y-2 text-sm text-zinc-400">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-400" />
-                  <span><strong className="text-white">Rust 1.75+</strong> - Install via <a href="https://rustup.rs" className="text-violet-400 hover:underline">rustup.rs</a></span>
+                  <span><strong className="text-white">Rust 1.75+</strong> - Install via <a href="https://rustup.rs" className="text-wormhole-hunter-light hover:underline">rustup.rs</a></span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -465,7 +465,7 @@ $ wormhole doctor
       <section className="space-y-4 pt-8 border-t border-zinc-800">
         <h2 className="text-2xl font-bold text-white">Next Steps</h2>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button asChild size="lg" className="bg-violet-600 hover:bg-violet-700">
+          <Button asChild size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark">
             <Link href="/docs/quickstart">
               Quick Start Guide
               <ArrowRight className="w-4 h-4 ml-2" />

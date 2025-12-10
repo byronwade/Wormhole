@@ -990,7 +990,7 @@ pub fn deserialize<'a, T: Deserialize<'a>>(bytes: &'a [u8]) -> Result<T, bincode
 # ~/.config/wormhole/config.toml
 
 [network]
-signal_url = "wss://signal.wormhole.dev"
+signal_url = "wss://wormhole-signal.fly.dev"
 timeout_ms = 30000
 keepalive_ms = 10000
 

@@ -72,7 +72,7 @@ pub fn run() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("teleport_ui=info".parse().unwrap())
+                .add_directive("wormhole_desktop=info".parse().unwrap())
                 .add_directive("tauri=info".parse().unwrap()),
         )
         .init();

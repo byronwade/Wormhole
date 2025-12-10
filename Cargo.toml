@@ -25,7 +25,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 # FUSE filesystem (Unix-only)
 # Note: fuser is only available on Unix systems (Linux, macOS)
 # Windows uses WinFSP instead
-fuser = "0.14"
+fuser = "0.15"
 
 # WinFSP filesystem (Windows-only)
 # Note: winfsp provides Windows filesystem support similar to FUSE
@@ -61,7 +61,7 @@ directories = "5.0"
 sha2 = "0.10"
 
 # Signal server
-tokio-tungstenite = "0.21"
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 futures-util = "0.3"
 serde_json = "1.0"
 
@@ -87,6 +87,13 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 
 # Testing
 tempfile = "3.10"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Compression (Phase 8)
+zstd = "0.13"
+
+# Async trait (Phase 8)
+async-trait = "0.1"
 
 [profile.release]
 lto = true

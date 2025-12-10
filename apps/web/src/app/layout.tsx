@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -19,6 +19,15 @@ export const metadata: Metadata = {
   },
 };
 
+// AGENTS.md: Mobile input font-size ≥16px or set viewport
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5, // AGENTS.md: NEVER disable browser zoom
+  viewportFit: "cover",
+  themeColor: "#0d0d0d",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,8 +35,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-[#030014] text-white`}>
-        {children}
+      <body className={`${inter.variable} font-sans antialiased bg-wormhole-off-black text-wormhole-off-white`}>
+        {/* AGENTS.md: Include a "Skip to content" link */}
+        <a href="#main-content" className="skip-to-content">
+          Skip to content
+        </a>
+        <main id="main-content">
+          {children}
+        </main>
       </body>
     </html>
   );

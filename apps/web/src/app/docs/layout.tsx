@@ -169,14 +169,14 @@ function NavLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
         "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
         depth > 0 && "ml-4 text-xs",
         isActive
-          ? "bg-violet-500/10 text-violet-400 font-medium"
+          ? "bg-wormhole-hunter/10 text-wormhole-hunter-light font-medium"
           : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
       )}
     >
       {Icon && <Icon className="w-4 h-4" />}
       <span>{item.title}</span>
       {item.badge && (
-        <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 border-violet-500/50 text-violet-400">
+        <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 border-wormhole-hunter/50 text-wormhole-hunter-light">
           {item.badge}
         </Badge>
       )}
@@ -233,7 +233,7 @@ function MobileNav() {
       <SheetContent side="left" className="w-72 p-0 bg-zinc-900 border-zinc-800">
         <div className="p-4 border-b border-zinc-800">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center">
               <Share2 className="w-4 h-4 text-white" />
             </div>
             <span className="font-bold text-white">Wormhole Docs</span>
@@ -260,7 +260,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
           <div className="flex items-center gap-4">
             <MobileNav />
             <Link href="/" className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center">
                 <Share2 className="w-4 h-4 text-white" />
               </div>
               <span className="font-bold text-lg text-white">Wormhole</span>
@@ -283,7 +283,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             >
               <Github className="w-5 h-5" />
             </Link>
-            <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white" asChild>
+            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white" asChild>
               <Link href="/#download">
                 <Download className="w-4 h-4 mr-2" />
                 Download

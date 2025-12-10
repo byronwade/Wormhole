@@ -84,6 +84,17 @@ impl Room {
         self.peers.get(peer_id).map(|p| &p.info)
     }
 
+    /// Update peer info
+    pub fn update_peer(&mut self, info: PeerInfo) -> bool {
+        if let Some(peer) = self.peers.get_mut(&info.peer_id) {
+            peer.info = info;
+            self.last_activity = Instant::now();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Get host info
     pub fn get_host(&self) -> Option<&PeerInfo> {
         self.host_id.as_ref().and_then(|id| self.get_peer(id))

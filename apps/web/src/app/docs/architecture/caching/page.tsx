@@ -61,8 +61,8 @@ export default function CachingArchitecturePage() {
               </div>
               <ArrowDown className="h-5 w-5 text-zinc-600 mx-auto" />
               <div className="flex justify-center items-center gap-2 flex-wrap">
-                <div className="px-4 py-3 bg-violet-500/20 border border-violet-500/30 rounded w-32">
-                  <div className="font-semibold text-violet-400">Network</div>
+                <div className="px-4 py-3 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded w-32">
+                  <div className="font-semibold text-wormhole-hunter-light">Network</div>
                   <div className="text-xs text-zinc-500">Remote Host</div>
                 </div>
                 <div className="text-yellow-400 text-sm">2-100ms+</div>
@@ -80,7 +80,7 @@ export default function CachingArchitecturePage() {
         </h2>
         <p className="text-zinc-300">
           The L1 cache keeps recently accessed chunks in memory for instant access.
-          Implementation is in <code className="text-violet-400">crates/teleport-daemon/src/cache.rs</code>.
+          Implementation is in <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/cache.rs</code>.
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -151,7 +151,7 @@ impl RamCache {
         </h2>
         <p className="text-zinc-300">
           The L2 cache persists data to disk for offline access and to survive restarts.
-          Implementation is in <code className="text-violet-400">crates/teleport-daemon/src/disk_cache.rs</code>.
+          Implementation is in <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/disk_cache.rs</code>.
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -361,31 +361,31 @@ async fn handle_dir_changed(&mut self, parent_inode: u64) {
             </thead>
             <tbody className="text-zinc-300">
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">none</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">none</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Always-fresh data, debugging</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">ram</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">ram</td>
                 <td className="py-3 px-4 text-green-400">512MB</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Fast, no disk writes</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">disk</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">disk</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-green-400">10GB</td>
                 <td className="py-3 px-4">Low RAM, offline needed</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">hybrid</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">hybrid</td>
                 <td className="py-3 px-4 text-green-400">512MB</td>
                 <td className="py-3 px-4 text-green-400">10GB</td>
                 <td className="py-3 px-4"><strong>Default</strong> - best of both</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">aggressive</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">aggressive</td>
                 <td className="py-3 px-4 text-green-400">2GB</td>
                 <td className="py-3 px-4 text-green-400">50GB</td>
                 <td className="py-3 px-4">Maximum offline, lots of storage</td>
@@ -459,17 +459,17 @@ impl DiskCache {
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole cache
             </Badge>
           </Link>
           <Link href="/docs/performance/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Cache Performance
             </Badge>
           </Link>
           <Link href="/docs/configuration">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Configuration
             </Badge>
           </Link>

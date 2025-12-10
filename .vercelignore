@@ -1,0 +1,36 @@
+# Build artifacts
+target/
+*.o
+*.a
+*.so
+*.dylib
+
+# Node modules (will be reinstalled)
+node_modules/
+**/node_modules/
+
+# Build outputs that shouldn't be included
+apps/desktop/
+apps/web/.next/
+dist/
+
+# Rust/Cargo
+crates/
+Cargo.lock
+Cargo.toml
+
+# Documentation
+docs/
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+
+# Other
+*.log
+.DS_Store

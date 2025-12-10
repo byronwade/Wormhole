@@ -182,10 +182,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - signal.wormhole.dev
+    - wormhole-signal.fly.dev
     secretName: signal-tls
   rules:
-  - host: signal.wormhole.dev
+  - host: wormhole-signal.fly.dev
     http:
       paths:
       - path: /
@@ -290,13 +290,13 @@ fly scale vm shared-cpu-1x
 
 ```bash
 # Using Let's Encrypt with certbot
-sudo certbot certonly --standalone -d signal.wormhole.dev
+sudo certbot certonly --standalone -d wormhole-signal.fly.dev
 
 # Signal server with TLS
 teleport-signal \
   --bind 0.0.0.0:443 \
-  --tls-cert /etc/letsencrypt/live/signal.wormhole.dev/fullchain.pem \
-  --tls-key /etc/letsencrypt/live/signal.wormhole.dev/privkey.pem
+  --tls-cert /etc/letsencrypt/live/wormhole-signal.fly.dev/fullchain.pem \
+  --tls-key /etc/letsencrypt/live/wormhole-signal.fly.dev/privkey.pem
 ```
 
 ---
@@ -307,7 +307,7 @@ teleport-signal \
 
 ```bash
 # Build Tauri app for all platforms
-cd apps/teleport-ui
+cd apps/desktop
 
 # macOS (Universal binary)
 pnpm tauri build --target universal-apple-darwin
@@ -480,7 +480,7 @@ allowed_paths = {{ wormhole_allowed_paths | to_json }}
 scrape_configs:
   - job_name: 'wormhole-signal'
     static_configs:
-      - targets: ['signal.wormhole.dev:8080']
+      - targets: ['wormhole-signal.fly.dev:8080']
     metrics_path: /metrics
 ```
 

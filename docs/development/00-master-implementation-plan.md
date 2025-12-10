@@ -103,7 +103,7 @@ wormhole/
 │           └── db.rs               # Persistence (SQLite)
 │
 └── apps/
-    └── teleport-ui/                # Tauri desktop app
+    └── desktop/                # Tauri desktop app
         ├── package.json
         ├── src/                    # React frontend
         └── src-tauri/              # Rust backend
@@ -416,11 +416,11 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 ```
 
-### apps/teleport-ui/package.json
+### apps/desktop/package.json
 
 ```json
 {
-  "name": "teleport-ui",
+  "name": "desktop",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -485,13 +485,13 @@ Phase 1 ─────► Phase 2 ─────► Phase 3 ─────►
                     ┌───────────────────────┘
                     │
                     ▼
-              Phase 5 ─────► Phase 6 ─────► Phase 7
-                 │              │              │
-                 ▼              ▼              ▼
-           ┌─────────┐  ┌─────────┐  ┌─────────┐
-           │   GUI   │  │   NAT   │  │  Write  │
-           │ + Tray  │  │ + Codes │  │ + Lock  │
-           └─────────┘  └─────────┘  └─────────┘
+              Phase 5 ─────► Phase 6 ─────► Phase 7 ─────► Phase 8
+                 │              │              │              │
+                 ▼              ▼              ▼              ▼
+           ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+           │   GUI   │  │   NAT   │  │  Write  │  │ Hi-Perf │
+           │ + Tray  │  │ + Codes │  │ + Lock  │  │Transfer │
+           └─────────┘  └─────────┘  └─────────┘  └─────────┘
 ```
 
 ### Phase Dependencies
@@ -505,6 +505,7 @@ Phase 1 ─────► Phase 2 ─────► Phase 3 ─────►
 | 5 | Phase 4 | Desktop app, installer |
 | 6 | Phase 5 | Global connectivity |
 | 7 | Phase 6 | Write support, sync |
+| 8 | Phase 7 | Max throughput, zero-copy, dedup |
 
 ### Milestone Checkpoints
 
@@ -527,6 +528,12 @@ Phase 1 ─────► Phase 2 ─────► Phase 3 ─────►
 - [ ] Write support
 - [ ] File creation/deletion
 - [ ] Multi-user ready
+
+**M5 - High Performance (Phase 8)**
+- [ ] >500 MB/s on 10GbE LAN
+- [ ] >90% WAN efficiency
+- [ ] Zero-copy I/O verified
+- [ ] Content-addressed deduplication
 
 ---
 
@@ -679,7 +686,7 @@ pub fn set_config(config: config::Config) -> anyhow::Result<()> {
 # Requires: ImageMagick (brew install imagemagick)
 
 SOURCE="assets/icon-source.png"  # 1024x1024 source image
-OUT_DIR="apps/teleport-ui/src-tauri/icons"
+OUT_DIR="apps/desktop/src-tauri/icons"
 
 mkdir -p "$OUT_DIR"
 
@@ -1540,7 +1547,7 @@ jobs:
         run: npm install -g pnpm
 
       - name: Install frontend dependencies
-        working-directory: apps/teleport-ui
+        working-directory: apps/desktop
         run: pnpm install
 
       - name: Build Tauri
@@ -1550,7 +1557,7 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          projectPath: apps/teleport-ui
+          projectPath: apps/desktop
           tagName: v__VERSION__
           releaseName: 'Wormhole v__VERSION__'
           releaseBody: 'See CHANGELOG.md for details.'
@@ -1715,7 +1722,7 @@ cargo run -p teleport-daemon -- host ./share  # Run host
 cargo run -p teleport-daemon -- mount ./mnt 127.0.0.1:5000  # Run mount
 
 # Frontend
-cd apps/teleport-ui
+cd apps/desktop
 pnpm install
 pnpm tauri dev                        # Dev mode
 pnpm tauri build                      # Production build

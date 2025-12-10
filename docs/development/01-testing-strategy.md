@@ -378,7 +378,7 @@ async fn wait_for_mount(events: &mut broadcast::Receiver<ServiceEvent>) {
 ### Tauri UI Tests
 
 ```typescript
-// apps/teleport-ui/tests/e2e/host-connect.spec.ts
+// apps/desktop/tests/e2e/host-connect.spec.ts
 
 import { test, expect } from '@playwright/test';
 import { spawn, ChildProcess } from 'child_process';

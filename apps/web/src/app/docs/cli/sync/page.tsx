@@ -22,7 +22,7 @@ export default function SyncCommandPage() {
           <h1 className="text-4xl font-bold text-white tracking-tight font-mono">
             wormhole sync
           </h1>
-          <Badge variant="outline" className="border-violet-500/50 text-violet-400">
+          <Badge variant="outline" className="border-wormhole-hunter/50 text-wormhole-hunter-light">
             Phase 7
           </Badge>
         </div>
@@ -32,10 +32,10 @@ export default function SyncCommandPage() {
       </div>
 
       {/* Phase Notice */}
-      <div className="p-4 bg-violet-500/10 border border-violet-500/20 rounded-lg">
-        <p className="text-violet-300 text-sm">
+      <div className="p-4 bg-wormhole-hunter/10 border border-wormhole-hunter/20 rounded-lg">
+        <p className="text-wormhole-hunter-light text-sm">
           <strong>Phase 7 Feature:</strong> Sync commands require a mount created with
-          <code className="mx-1 text-violet-400">--allow-write</code> on the host side. This
+          <code className="mx-1 text-wormhole-hunter-light">--allow-write</code> on the host side. This
           enables bidirectional synchronization with conflict detection and resolution.
         </p>
       </div>
@@ -71,7 +71,7 @@ export default function SyncCommandPage() {
         {/* status */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-violet-400" />
+            <RefreshCw className="h-5 w-5 text-wormhole-hunter-light" />
             sync status
           </h3>
           <p className="text-zinc-300">Show synchronization status for shares.</p>
@@ -308,7 +308,7 @@ Sync state reset for project-files.`}</code>
         {/* log */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <History className="h-5 w-5 text-violet-400" />
+            <History className="h-5 w-5 text-wormhole-hunter-light" />
             sync log
           </h3>
           <p className="text-zinc-300">Show sync history.</p>
@@ -364,22 +364,22 @@ Total: 847 syncs, 48.2 GB transferred`}</code>
             </thead>
             <tbody className="text-zinc-300">
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">local</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">local</td>
                 <td className="py-3 px-4">Keep your version, overwrite remote</td>
                 <td className="py-3 px-4">Your changes are more important</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">remote</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">remote</td>
                 <td className="py-3 px-4">Keep remote version, discard local</td>
                 <td className="py-3 px-4">Remote changes are more important</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">both</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">both</td>
                 <td className="py-3 px-4">Keep both with different names</td>
                 <td className="py-3 px-4">Need to review both versions</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">merge</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">merge</td>
                 <td className="py-3 px-4">Auto-merge (text files only)</td>
                 <td className="py-3 px-4">Code files with non-overlapping changes</td>
               </tr>
@@ -416,17 +416,17 @@ wormhole mount WORM-XXXX --allow-write --sync-interval 5`}</code>
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/host">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole host
             </Badge>
           </Link>
           <Link href="/docs/cli/mount">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole mount
             </Badge>
           </Link>
           <Link href="/docs/architecture">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Architecture
             </Badge>
           </Link>

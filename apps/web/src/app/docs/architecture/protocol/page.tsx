@@ -30,15 +30,15 @@ export default function ProtocolArchitecturePage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Overview</h2>
         <p className="text-zinc-300">
-          Wormhole uses a binary protocol built on <code className="text-violet-400">serde</code>{" "}
-          + <code className="text-violet-400">bincode</code> for efficient serialization. All
+          Wormhole uses a binary protocol built on <code className="text-wormhole-hunter-light">serde</code>{" "}
+          + <code className="text-wormhole-hunter-light">bincode</code> for efficient serialization. All
           protocol messages are defined in{" "}
-          <code className="text-violet-400">crates/teleport-core/src/protocol.rs</code>.
+          <code className="text-wormhole-hunter-light">crates/teleport-core/src/protocol.rs</code>.
         </p>
         <div className="grid gap-4 md:grid-cols-3 mt-6">
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4 text-center">
-              <Package className="h-8 w-8 text-violet-400 mx-auto mb-2" />
+              <Package className="h-8 w-8 text-wormhole-hunter-light mx-auto mb-2" />
               <h3 className="font-semibold text-white">Compact</h3>
               <p className="text-zinc-400 text-sm mt-1">Binary format, no JSON overhead</p>
             </CardContent>
@@ -266,11 +266,11 @@ pub enum ErrorCode {
               <div className="flex items-center gap-4">
                 <span className="text-blue-400 w-20">Client</span>
                 <ArrowRight className="h-4 w-4 text-zinc-600" />
-                <span className="text-violet-400 w-20">Host</span>
+                <span className="text-wormhole-hunter-light w-20">Host</span>
                 <span className="text-zinc-500">Hello &#123; version: 1, capabilities: [...] &#125;</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-violet-400 w-20">Host</span>
+                <span className="text-wormhole-hunter-light w-20">Host</span>
                 <ArrowRight className="h-4 w-4 text-zinc-600" />
                 <span className="text-blue-400 w-20">Client</span>
                 <span className="text-zinc-500">Welcome &#123; share_name: &quot;...&quot;, root_inode: 1 &#125;</span>
@@ -286,11 +286,11 @@ pub enum ErrorCode {
               <div className="flex items-center gap-4">
                 <span className="text-blue-400 w-20">Client</span>
                 <ArrowRight className="h-4 w-4 text-zinc-600" />
-                <span className="text-violet-400 w-20">Host</span>
+                <span className="text-wormhole-hunter-light w-20">Host</span>
                 <span className="text-zinc-500">Lookup &#123; parent: 1, name: &quot;file.txt&quot; &#125;</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-violet-400 w-20">Host</span>
+                <span className="text-wormhole-hunter-light w-20">Host</span>
                 <ArrowRight className="h-4 w-4 text-zinc-600" />
                 <span className="text-blue-400 w-20">Client</span>
                 <span className="text-zinc-500">Entry &#123; inode: 42, attr: ... &#125;</span>
@@ -298,11 +298,11 @@ pub enum ErrorCode {
               <div className="flex items-center gap-4">
                 <span className="text-blue-400 w-20">Client</span>
                 <ArrowRight className="h-4 w-4 text-zinc-600" />
-                <span className="text-violet-400 w-20">Host</span>
+                <span className="text-wormhole-hunter-light w-20">Host</span>
                 <span className="text-zinc-500">ReadChunk &#123; inode: 42, offset: 0, size: 131072 &#125;</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-violet-400 w-20">Host</span>
+                <span className="text-wormhole-hunter-light w-20">Host</span>
                 <ArrowRight className="h-4 w-4 text-zinc-600" />
                 <span className="text-blue-400 w-20">Client</span>
                 <span className="text-zinc-500">Data([128KB of bytes])</span>
@@ -350,7 +350,7 @@ Example: ReadChunk request
         </p>
         <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
           <li><strong>Additive only:</strong> New message types can be added without breaking compatibility</li>
-          <li><strong>Optional fields:</strong> New fields use <code className="text-violet-400">Option&lt;T&gt;</code></li>
+          <li><strong>Optional fields:</strong> New fields use <code className="text-wormhole-hunter-light">Option&lt;T&gt;</code></li>
           <li><strong>Unknown variants:</strong> Receivers ignore unknown enum variants gracefully</li>
           <li><strong>Version negotiation:</strong> Host and client agree on highest common version</li>
         </ul>
@@ -403,17 +403,17 @@ pub const CHUNK_SIZE: usize = 128 * 1024;  // 128 KB
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/architecture/quic">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               QUIC Protocol
             </Badge>
           </Link>
           <Link href="/docs/architecture/caching">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Caching System
             </Badge>
           </Link>
           <Link href="/docs/security/encryption">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Encryption
             </Badge>
           </Link>

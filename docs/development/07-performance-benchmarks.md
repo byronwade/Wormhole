@@ -18,7 +18,7 @@ This document defines performance targets, benchmarking methodology, and baselin
 
 ## 1. Performance Targets
 
-### Primary Metrics
+### Primary Metrics (Phase 7)
 
 | Metric | Target | Critical | Measurement |
 |--------|--------|----------|-------------|
@@ -30,6 +30,47 @@ This document defines performance targets, benchmarking methodology, and baselin
 | **Memory (Active)** | <200 MB | <500 MB | During file transfer |
 | **CPU (Idle)** | <1% | <5% | No active operations |
 | **CPU (Transfer)** | <25% | <50% | During 100MB/s transfer |
+
+### Phase 8 High-Performance Targets
+
+Phase 8 introduces zero-copy I/O, content-addressed chunking, and adaptive transport to achieve near line-rate throughput.
+
+#### Throughput Targets by Network Speed
+
+| Network | Phase 7 | Phase 8 Target | Theoretical Max | Efficiency |
+|---------|---------|----------------|-----------------|------------|
+| 1 Gbps LAN | 80-100 MB/s | **>112 MB/s** | 125 MB/s | 90%+ |
+| 2.5 Gbps LAN | ~180 MB/s | **>280 MB/s** | 312 MB/s | 90%+ |
+| 10 Gbps LAN | ~450 MB/s | **>900 MB/s** | 1,250 MB/s | 72%+ |
+| WAN (100 Mbps, 50ms RTT) | 40-70% eff. | **>90% eff.** | 12.5 MB/s | 90%+ |
+
+#### Zero-Copy Efficiency Targets
+
+| Metric | Phase 7 | Phase 8 Target | Measurement |
+|--------|---------|----------------|-------------|
+| RAM copies per chunk | 2-3 | **0-1** | `strace` analysis |
+| Syscalls per 128KB | 4-6 | **1-2** | `strace -c` |
+| Allocations per chunk | 1-2 | **0** (pooled) | Memory profiler |
+| CPU per 100 MB/s | 2-5% | **<1%** | `perf stat` |
+
+#### Latency Targets
+
+| Metric | Phase 7 | Phase 8 Target |
+|--------|---------|----------------|
+| First byte (cold) | <100ms | **<50ms** |
+| First byte (warm) | <10ms | **<5ms** |
+| Random 4KB read | <15ms | **<10ms** (no regression) |
+| Dedup lookup | N/A | **<1ms** per hash |
+
+#### Content-Addressed Chunking Targets
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| BLAKE3 hash rate | >3 GB/s | `cargo bench blake3` |
+| Dedup index lookup | <1ms | `cargo bench dedup_lookup` |
+| Identical file transfer | **<1 second** | `cargo bench dedup_transfer` |
+| Chunk size (bulk) | 4 MB | Configuration |
+| Chunk size (random) | 128 KB | Configuration |
 
 ### Scalability Targets
 
@@ -314,6 +355,103 @@ fn bench_blake3_128kb(b: &mut Bencher) {
 }
 ```
 
+#### 3.6 Phase 8 Benchmarks
+
+```rust
+// benches/phase8_throughput.rs
+
+/// Bulk transfer throughput (4MB chunks, parallel streams)
+#[bench]
+fn bench_bulk_transfer_50gb(b: &mut Bencher) {
+    let host = setup_host_with_50gb_file();
+    let client = connect_client(&host);
+
+    b.iter(|| {
+        // Transfer entire file using Phase 8 pipeline
+        client.bulk_transfer("large_file.bin", "/tmp/output").unwrap()
+    });
+
+    // Target: >900 MB/s on 10GbE, >112 MB/s on 1GbE
+}
+
+/// Content-addressed deduplication speed
+#[bench]
+fn bench_dedup_identical_file(b: &mut Bencher) {
+    let host = setup_host_with_1gb_file();
+    let client = connect_client(&host);
+
+    // First transfer populates dedup index
+    client.bulk_transfer("test.bin", "/tmp/first").unwrap();
+
+    b.iter(|| {
+        // Second transfer should be near-instant (dedup hit)
+        client.bulk_transfer("test.bin", "/tmp/second").unwrap()
+    });
+
+    // Target: <1 second for 1GB identical file
+}
+
+/// Parallel stream scaling
+#[bench]
+fn bench_parallel_streams_scaling(b: &mut Bencher) {
+    let host = setup_host_with_files();
+
+    for stream_count in [4, 16, 64, 256] {
+        let client = connect_client_with_streams(&host, stream_count);
+
+        b.iter(|| {
+            client.parallel_transfer(1024 * 1024 * 1024) // 1GB
+        });
+
+        // Measure scaling efficiency
+    }
+}
+
+/// Zero-copy verification (syscall count)
+#[bench]
+fn bench_zero_copy_syscalls(b: &mut Bencher) {
+    let host = setup_host();
+    let client = connect_client(&host);
+
+    b.iter(|| {
+        // Should use sendfile/splice, not read+write
+        client.transfer_with_syscall_count("file.bin")
+    });
+
+    // Target: 1-2 syscalls per 128KB chunk
+}
+
+// benches/compression.rs
+
+/// Smart compression decision speed
+#[bench]
+fn bench_compression_decision(b: &mut Bencher) {
+    let samples = vec![
+        ("text.txt", generate_text_data(1_000_000)),
+        ("video.mp4", generate_random_data(1_000_000)),
+        ("json.json", generate_json_data(1_000_000)),
+    ];
+
+    b.iter(|| {
+        for (name, data) in &samples {
+            should_compress(name, data)
+        }
+    });
+}
+
+/// Compression throughput (zstd level 3)
+#[bench]
+fn bench_zstd_compression_throughput(b: &mut Bencher) {
+    let compressible_data = generate_text_data(4 * 1024 * 1024); // 4MB
+
+    b.iter(|| {
+        zstd::encode_all(&compressible_data[..], 3).unwrap()
+    });
+
+    // Target: >500 MB/s compression rate
+}
+```
+
 ---
 
 ## 4. Baseline Metrics
@@ -491,6 +629,8 @@ Test conditions:
 
 ### Benchmark Results (Expected)
 
+#### Phase 7 Baseline (1 Gbps LAN)
+
 | Tool | Sequential Read | Random Read | First Byte |
 |------|-----------------|-------------|------------|
 | **Wormhole** | 90 MB/s | 8,000 IOPS | 50ms |
@@ -498,6 +638,16 @@ Test conditions:
 | **NFS** | 100 MB/s | 10,000 IOPS | 20ms |
 | **Syncthing** | N/A (sync) | N/A | N/A |
 | **Dropbox** | 50 MB/s | 1,000 IOPS | 500ms |
+
+#### Phase 8 Targets (10 Gbps LAN)
+
+| Tool | Sequential Read | Dedup Transfer | Line Rate |
+|------|-----------------|----------------|-----------|
+| **Wormhole (Phase 8)** | >900 MB/s | <1s (identical) | 72%+ |
+| **sshfs** | ~200 MB/s | N/A | 16% |
+| **NFS** | ~600 MB/s | N/A | 48% |
+| **SMB** | ~500 MB/s | N/A | 40% |
+| **iSCSI** | ~900 MB/s | N/A | 72% |
 
 ### Notes
 

@@ -377,6 +377,232 @@ impl From<GlobalInode> for u64 {
     }
 }
 
+// === Phase 8: Content-Addressed Types ===
+
+/// BLAKE3 hash for content-addressed deduplication
+///
+/// Used to uniquely identify chunks by their content, enabling:
+/// - Deduplication (same content only transferred once)
+/// - Integrity verification
+/// - Resume-able transfers
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+pub struct ContentHash(pub [u8; 32]);
+
+impl ContentHash {
+    /// Compute the BLAKE3 hash of data
+    pub fn compute(data: &[u8]) -> Self {
+        Self(*blake3::hash(data).as_bytes())
+    }
+
+    /// Create from raw bytes
+    pub const fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the raw bytes
+    pub const fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+
+    /// Convert to hex string for display/storage
+    pub fn to_hex(&self) -> String {
+        self.0.iter().map(|b| format!("{:02x}", b)).collect()
+    }
+
+    /// Parse from hex string
+    pub fn from_hex(s: &str) -> Option<Self> {
+        if s.len() != 64 {
+            return None;
+        }
+        let mut bytes = [0u8; 32];
+        for (i, chunk) in s.as_bytes().chunks(2).enumerate() {
+            let hex_str = std::str::from_utf8(chunk).ok()?;
+            bytes[i] = u8::from_str_radix(hex_str, 16).ok()?;
+        }
+        Some(Self(bytes))
+    }
+
+    /// Zero hash (for uninitialized/invalid state)
+    pub const ZERO: ContentHash = ContentHash([0u8; 32]);
+}
+
+impl std::fmt::Display for ContentHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Display first 8 characters for brevity
+        for byte in &self.0[..4] {
+            write!(f, "{:02x}", byte)?;
+        }
+        Ok(())
+    }
+}
+
+impl Default for ContentHash {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
+/// A chunk identified by its content hash
+///
+/// Used in file manifests to describe the content structure
+/// without including the actual data.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ContentChunk {
+    /// BLAKE3 hash of the chunk data
+    pub hash: ContentHash,
+    /// Actual size in bytes (may be < CHUNK_SIZE for final chunk)
+    pub size: u32,
+    /// Offset in the original file
+    pub offset: u64,
+}
+
+impl ContentChunk {
+    /// Create a new content chunk
+    pub fn new(hash: ContentHash, size: u32, offset: u64) -> Self {
+        Self { hash, size, offset }
+    }
+
+    /// Create from data with automatic hash computation
+    pub fn from_data(data: &[u8], offset: u64) -> Self {
+        Self {
+            hash: ContentHash::compute(data),
+            size: data.len() as u32,
+            offset,
+        }
+    }
+}
+
+/// File manifest listing all content chunks
+///
+/// Used for:
+/// - Dedup negotiation (exchange manifests to find missing chunks)
+/// - Integrity verification
+/// - Resume-able transfers
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FileManifest {
+    /// File inode this manifest describes
+    pub inode: Inode,
+    /// Total file size in bytes
+    pub total_size: u64,
+    /// All chunks in order
+    pub chunks: Vec<ContentChunk>,
+    /// Optional: hash of the entire file (for quick validation)
+    pub file_hash: Option<ContentHash>,
+}
+
+impl FileManifest {
+    /// Create a new empty manifest
+    pub fn new(inode: Inode) -> Self {
+        Self {
+            inode,
+            total_size: 0,
+            chunks: Vec::new(),
+            file_hash: None,
+        }
+    }
+
+    /// Create manifest with pre-allocated chunk capacity
+    pub fn with_capacity(inode: Inode, chunk_count: usize) -> Self {
+        Self {
+            inode,
+            total_size: 0,
+            chunks: Vec::with_capacity(chunk_count),
+            file_hash: None,
+        }
+    }
+
+    /// Add a chunk to the manifest
+    pub fn push_chunk(&mut self, chunk: ContentChunk) {
+        self.total_size += chunk.size as u64;
+        self.chunks.push(chunk);
+    }
+
+    /// Get unique content hashes (for dedup queries)
+    pub fn unique_hashes(&self) -> Vec<ContentHash> {
+        use std::collections::HashSet;
+        let mut seen = HashSet::new();
+        self.chunks
+            .iter()
+            .filter_map(|c| {
+                if seen.insert(c.hash) {
+                    Some(c.hash)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Calculate potential savings from deduplication
+    pub fn dedup_stats(&self) -> DedupStats {
+        use std::collections::HashMap;
+        let mut hash_counts: HashMap<ContentHash, u32> = HashMap::new();
+
+        for chunk in &self.chunks {
+            *hash_counts.entry(chunk.hash).or_insert(0) += 1;
+        }
+
+        let unique_count = hash_counts.len();
+        let duplicate_count = self.chunks.len() - unique_count;
+        let unique_bytes: u64 = hash_counts
+            .keys()
+            .map(|h| {
+                self.chunks
+                    .iter()
+                    .find(|c| c.hash == *h)
+                    .map(|c| c.size as u64)
+                    .unwrap_or(0)
+            })
+            .sum();
+
+        DedupStats {
+            total_chunks: self.chunks.len(),
+            unique_chunks: unique_count,
+            duplicate_chunks: duplicate_count,
+            total_bytes: self.total_size,
+            unique_bytes,
+            saved_bytes: self.total_size.saturating_sub(unique_bytes),
+        }
+    }
+}
+
+/// Statistics about deduplication potential
+#[derive(Clone, Debug, Default)]
+pub struct DedupStats {
+    /// Total number of chunks
+    pub total_chunks: usize,
+    /// Number of unique chunks
+    pub unique_chunks: usize,
+    /// Number of duplicate chunks
+    pub duplicate_chunks: usize,
+    /// Total file size
+    pub total_bytes: u64,
+    /// Bytes needed (unique content)
+    pub unique_bytes: u64,
+    /// Bytes saved by dedup
+    pub saved_bytes: u64,
+}
+
+impl DedupStats {
+    /// Deduplication ratio (1.0 = no dedup, higher = more savings)
+    pub fn ratio(&self) -> f64 {
+        if self.unique_bytes == 0 {
+            1.0
+        } else {
+            self.total_bytes as f64 / self.unique_bytes as f64
+        }
+    }
+
+    /// Percentage of bytes saved
+    pub fn savings_percent(&self) -> f64 {
+        if self.total_bytes == 0 {
+            0.0
+        } else {
+            (self.saved_bytes as f64 / self.total_bytes as f64) * 100.0
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -455,5 +681,95 @@ mod tests {
 
         let large = FileAttr::file(1, CHUNK_SIZE as u64 * 100);
         assert_eq!(large.chunk_count(), 100);
+    }
+
+    // Phase 8: Content-addressed types tests
+
+    #[test]
+    fn test_content_hash_compute() {
+        let data = b"Hello, Wormhole!";
+        let hash1 = ContentHash::compute(data);
+        let hash2 = ContentHash::compute(data);
+        assert_eq!(hash1, hash2);
+
+        let different = ContentHash::compute(b"Different data");
+        assert_ne!(hash1, different);
+    }
+
+    #[test]
+    fn test_content_hash_hex() {
+        let hash = ContentHash::compute(b"test");
+        let hex = hash.to_hex();
+        assert_eq!(hex.len(), 64);
+
+        let parsed = ContentHash::from_hex(&hex).unwrap();
+        assert_eq!(hash, parsed);
+
+        // Invalid hex should return None
+        assert!(ContentHash::from_hex("invalid").is_none());
+        assert!(ContentHash::from_hex("abc").is_none());
+    }
+
+    #[test]
+    fn test_content_hash_display() {
+        let hash = ContentHash::compute(b"test");
+        let display = format!("{}", hash);
+        assert_eq!(display.len(), 8); // First 4 bytes = 8 hex chars
+    }
+
+    #[test]
+    fn test_content_chunk_from_data() {
+        let data = b"Test chunk data";
+        let chunk = ContentChunk::from_data(data, 1024);
+
+        assert_eq!(chunk.size, data.len() as u32);
+        assert_eq!(chunk.offset, 1024);
+        assert_eq!(chunk.hash, ContentHash::compute(data));
+    }
+
+    #[test]
+    fn test_file_manifest() {
+        let mut manifest = FileManifest::new(42);
+
+        // Add some chunks
+        let chunk1 = ContentChunk::from_data(b"Chunk 1 data", 0);
+        let chunk2 = ContentChunk::from_data(b"Chunk 2 data", 1024);
+        let chunk3 = ContentChunk::from_data(b"Chunk 1 data", 2048); // Same as chunk1
+
+        manifest.push_chunk(chunk1);
+        manifest.push_chunk(chunk2);
+        manifest.push_chunk(chunk3);
+
+        assert_eq!(manifest.chunks.len(), 3);
+        assert_eq!(manifest.inode, 42);
+
+        // Should have 2 unique hashes
+        let unique = manifest.unique_hashes();
+        assert_eq!(unique.len(), 2);
+    }
+
+    #[test]
+    fn test_dedup_stats() {
+        let mut manifest = FileManifest::new(1);
+
+        // Add 4 chunks, 2 unique
+        let data_a = [0u8; 1024];
+        let data_b = [1u8; 1024];
+
+        manifest.push_chunk(ContentChunk::from_data(&data_a, 0));
+        manifest.push_chunk(ContentChunk::from_data(&data_b, 1024));
+        manifest.push_chunk(ContentChunk::from_data(&data_a, 2048)); // Duplicate
+        manifest.push_chunk(ContentChunk::from_data(&data_a, 3072)); // Duplicate
+
+        let stats = manifest.dedup_stats();
+
+        assert_eq!(stats.total_chunks, 4);
+        assert_eq!(stats.unique_chunks, 2);
+        assert_eq!(stats.duplicate_chunks, 2);
+        assert_eq!(stats.total_bytes, 4096);
+        assert_eq!(stats.unique_bytes, 2048);
+        assert_eq!(stats.saved_bytes, 2048);
+        assert!((stats.ratio() - 2.0).abs() < 0.001);
+        assert!((stats.savings_percent() - 50.0).abs() < 0.001);
     }
 }

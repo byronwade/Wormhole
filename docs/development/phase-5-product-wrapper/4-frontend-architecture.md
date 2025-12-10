@@ -40,7 +40,7 @@ UI Kit:       Custom components (or shadcn/ui)
 ## Project Structure
 
 ```
-apps/teleport-ui/
+apps/desktop/
 ├── index.html
 ├── package.json
 ├── tsconfig.json
@@ -107,7 +107,7 @@ apps/teleport-ui/
 
 ```json
 {
-  "name": "teleport-ui",
+  "name": "wormhole-desktop",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -1431,7 +1431,7 @@ export default defineConfig({
 
 ```bash
 # Initial setup
-cd apps/teleport-ui
+cd apps/desktop
 npm install
 
 # Development (starts both Vite and Tauri)

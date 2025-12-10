@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,8 +28,25 @@ import {
   Upload,
   Timer,
   Database,
+  Video,
+  Gamepad2,
+  Film,
+  Code2,
+  Users,
+  DollarSign,
+  FolderOpen,
+  ChevronDown,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import the 3D scene to avoid SSR issues
+const WormholeScene = dynamic(
+  () => import("@/components/three/WormholeScene"),
+  { ssr: false }
+);
 
 type Platform = "mac" | "windows" | "linux" | "unknown";
 
@@ -56,40 +74,55 @@ function detectPlatform(): Platform {
   return "unknown";
 }
 
+// AGENTS.md: Icon-only buttons have descriptive aria-label, decorative icons are aria-hidden
 function PlatformIcon({ platform }: { platform: Platform }) {
   switch (platform) {
     case "mac":
-      return <Apple className="w-5 h-5" />;
+      return <Apple className="w-5 h-5" aria-hidden="true" />;
     case "windows":
-      return <Monitor className="w-5 h-5" />;
+      return <Monitor className="w-5 h-5" aria-hidden="true" />;
     case "linux":
-      return <Terminal className="w-5 h-5" />;
+      return <Terminal className="w-5 h-5" aria-hidden="true" />;
     default:
-      return <Download className="w-5 h-5" />;
+      return <Download className="w-5 h-5" aria-hidden="true" />;
   }
 }
 
+// AGENTS.md: Tabular numbers for comparisons
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
+  if (bytes === 0) return "0\u00A0B"; // Non-breaking space
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + "\u00A0" + sizes[i];
 }
 
 function getAssetForPlatform(assets: GitHubRelease["assets"], platform: Platform): GitHubRelease["assets"][0] | null {
-  const patterns: Record<Platform, string[]> = {
-    mac: ["darwin", "macos", "osx", ".dmg", "apple"],
-    windows: ["windows", "win64", "win32", ".exe", ".msi"],
-    linux: ["linux", ".deb", ".rpm", ".AppImage", ".tar.gz"],
+  const patterns: Record<Platform, string[][]> = {
+    mac: [
+      [".dmg"],
+      ["macos", "darwin", "aarch64", "arm64"].filter(() => true),
+    ],
+    windows: [
+      ["-setup.exe", ".msi"],
+      [".exe"],
+    ],
+    linux: [
+      [".appimage"],
+      [".deb"],
+      [".rpm"],
+    ],
     unknown: [],
   };
 
-  const platformPatterns = patterns[platform];
-  for (const asset of assets) {
-    const name = asset.name.toLowerCase();
-    if (platformPatterns.some(p => name.includes(p.toLowerCase()))) {
-      return asset;
+  const platformPatternGroups = patterns[platform];
+
+  for (const patternGroup of platformPatternGroups) {
+    for (const asset of assets) {
+      const name = asset.name.toLowerCase();
+      if (patternGroup.some(p => name.includes(p.toLowerCase()))) {
+        return asset;
+      }
     }
   }
   return null;
@@ -99,6 +132,7 @@ export default function Home() {
   const [platform, setPlatform] = useState<Platform>("unknown");
   const [mounted, setMounted] = useState(false);
   const [release, setRelease] = useState<GitHubRelease | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -117,14 +151,6 @@ export default function Home() {
     unknown: "Download",
   };
 
-  const getDownloadUrl = (targetPlatform: Platform): string => {
-    if (release?.assets) {
-      const asset = getAssetForPlatform(release.assets, targetPlatform);
-      if (asset) return asset.browser_download_url;
-    }
-    return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
-  };
-
   const getPlatformAssetInfo = (targetPlatform: Platform) => {
     if (release?.assets) {
       const asset = getAssetForPlatform(release.assets, targetPlatform);
@@ -133,70 +159,126 @@ export default function Home() {
     return null;
   };
 
+  const getPlatformDownloadUrl = (targetPlatform: Platform) => {
+    switch (targetPlatform) {
+      case "mac": return "/download/macos";
+      case "windows": return "/download/windows";
+      case "linux": return "/download/linux";
+      default: return "#download";
+    }
+  };
+
+  const faqs = [
+    {
+      q: "How is this different from Dropbox or Google Drive?",
+      a: "Cloud storage uploads your files to third-party servers, which takes time and costs money. Wormhole creates a direct peer-to-peer connection - your files never leave your machine. A 50GB folder is accessible in seconds, not hours."
+    },
+    {
+      q: "What happens when the host computer goes offline?",
+      a: "Mounted files become unavailable (like unplugging a USB drive). Wormhole uses smart caching - files you've accessed recently stay available locally. For offline support, we recommend keeping critical files synced."
+    },
+    {
+      q: "Is my data secure?",
+      a: "Yes. All connections use end-to-end encryption (TLS 1.3 via QUIC). Join codes use PAKE (SPAKE2) so the session key is never transmitted. The signaling server only facilitates connections - it never sees your files or content."
+    },
+    {
+      q: "Why do I need to install FUSE/macFUSE/WinFSP?",
+      a: "FUSE (Filesystem in Userspace) is what allows Wormhole to mount remote files as a native drive. This means you can use Finder, Explorer, or any app - they see a normal folder. The FUSE drivers are open source and trusted by millions."
+    },
+    {
+      q: "Will Wormhole always be free?",
+      a: "The core product will always have a free tier. We're planning Pro ($8/mo) and Team ($15/mo) tiers with features like persistent sessions, team management, and priority support. During alpha, everything is free."
+    },
+    {
+      q: "Can I edit files or just read them?",
+      a: "Currently read-only in alpha. Bidirectional sync with write support is planned for Phase 7. For now, you can read, copy, and stream files directly."
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-wormhole-off-black">
+      {/* Navigation - AGENTS.md: proper landmark */}
+      <nav className="border-b border-white/10 sticky top-0 z-50 bg-wormhole-off-black/80 backdrop-blur-sm" aria-label="Main navigation">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-              <Share2 className="w-4 h-4 text-white" />
+          <Link href="/" className="flex items-center gap-3" aria-label="Wormhole Home">
+            <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center" aria-hidden="true">
+              <Share2 className="w-4 h-4 text-wormhole-off-white" />
             </div>
-            <span className="font-bold text-lg text-white">Wormhole</span>
+            <span className="font-bold text-lg text-wormhole-off-white">Wormhole</span>
             <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs font-medium">
               ALPHA
             </Badge>
-          </div>
+          </Link>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#compare" className="text-sm text-zinc-400 hover:text-white transition-colors">Compare</a>
-            <a href="#how-it-works" className="text-sm text-zinc-400 hover:text-white transition-colors">How it Works</a>
-            <a href="#download" className="text-sm text-zinc-400 hover:text-white transition-colors">Download</a>
-            <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-white transition-colors">
-              <Github className="w-5 h-5" />
+            <a href="#use-cases" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">Use Cases</a>
+            <a href="#compare" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">Compare</a>
+            <a href="#how-it-works" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">How it Works</a>
+            <a href="#faq" className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">FAQ</a>
+            <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"} className="text-sm text-zinc-400 hover:text-wormhole-off-white transition-colors">Download</a>
+            <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-wormhole-off-white transition-colors" aria-label="View source on GitHub">
+              <Github className="w-5 h-5" aria-hidden="true" />
             </a>
           </div>
-          <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white" asChild>
-            <a href="#download">
-              <Download className="w-4 h-4 mr-2" />
-              Download
+          <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white" asChild>
+            <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"}>
+              {mounted && <PlatformIcon platform={platform} />}
+              <span className="ml-2">{mounted ? platformLabels[platform] : "Download"}</span>
             </a>
           </Button>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-20 pb-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
+      {/* Hero Section with 3D Background */}
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+        {/* 3D Wormhole Background */}
+        <Suspense fallback={<div className="absolute inset-0 bg-wormhole-off-black" />}>
+          <WormholeScene />
+        </Suspense>
+
+        {/* Content */}
+        <div className="relative z-10 max-w-5xl mx-auto text-center px-6 py-20">
           {/* Alpha Notice */}
-          <div className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20">
+          <div className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm">
             <AlertTriangle className="w-4 h-4 text-amber-400" />
             <span className="text-sm text-amber-400 font-medium">Alpha Release</span>
             <span className="text-sm text-zinc-500">•</span>
             <span className="text-sm text-zinc-400">Free while in development</span>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight">
+          <h1
+            className="text-5xl md:text-7xl lg:text-8xl font-bold text-wormhole-off-white mb-8 tracking-tight leading-[1.1]"
+            style={{ textShadow: "0 0 60px rgba(53, 94, 59, 0.5), 0 0 120px rgba(53, 94, 59, 0.3)" }}
+          >
             Mount Any Folder.<br />
-            <span className="text-violet-400">Any Computer. Instantly.</span>
+            <span className="bg-gradient-to-r from-wormhole-hunter-light via-wormhole-hunter to-wormhole-hunter-dark bg-clip-text text-transparent">
+              Any Computer. No Setup.
+            </span>
           </h1>
 
-          <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Access a 50GB folder in under 10 seconds. No uploads, no cloud storage, no waiting.
-            Files stream directly from one computer to another.
+          <p
+            className="text-xl md:text-2xl text-zinc-300 max-w-3xl mx-auto mb-4 leading-relaxed"
+            style={{ textShadow: "0 0 40px rgba(53, 94, 59, 0.35)" }}
+          >
+            Stop uploading. Stop waiting. Stop paying rent on your own files.
+          </p>
+
+          <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-12">
+            Direct peer-to-peer file sharing. A 50GB folder accessible in under 10 seconds.
+            No cloud, no accounts, no monthly fees.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             {mounted && (
-              <Button size="lg" className="bg-violet-600 hover:bg-violet-700 text-white px-8" asChild>
-                <a href={getDownloadUrl(platform)}>
+              <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white px-8 h-14 text-lg shadow-lg shadow-wormhole-hunter/25 hover:shadow-wormhole-hunter/40 transition-all" asChild>
+                <a href={getPlatformDownloadUrl(platform)}>
                   <PlatformIcon platform={platform} />
                   <span className="ml-2">{platformLabels[platform]}</span>
-                  {release && <span className="ml-2 text-violet-300 text-sm">{release.tag_name}</span>}
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  {release && <span className="ml-2 text-wormhole-hunter-light text-sm">{release.tag_name}</span>}
+                  <ArrowRight className="w-5 h-5 ml-2" />
                 </a>
               </Button>
             )}
-            <Button variant="outline" size="lg" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white" asChild>
+            <Button variant="outline" size="lg" className="border-zinc-600 bg-zinc-900/50 backdrop-blur-sm text-zinc-300 hover:bg-zinc-800 hover:text-wormhole-off-white h-14 text-lg" asChild>
               <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer">
                 <Github className="w-5 h-5 mr-2" />
                 View Source
@@ -204,30 +286,233 @@ export default function Home() {
             </Button>
           </div>
 
-          {/* Terminal Demo */}
-          <div className="max-w-3xl mx-auto">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-900/50">
-                <div className="w-3 h-3 rounded-full bg-zinc-700" />
-                <div className="w-3 h-3 rounded-full bg-zinc-700" />
-                <div className="w-3 h-3 rounded-full bg-zinc-700" />
+          {/* Terminal Demo - Floating Card */}
+          <div className="max-w-2xl mx-auto">
+            <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/80 backdrop-blur-md overflow-hidden shadow-2xl shadow-wormhole-hunter/10">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-800/50">
+                <div className="w-3 h-3 rounded-full bg-red-500/70" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+                <div className="w-3 h-3 rounded-full bg-green-500/70" />
                 <span className="ml-3 text-xs text-zinc-500 font-mono">Terminal</span>
               </div>
-              <div className="p-6 font-mono text-sm">
+              <div className="p-6 font-mono text-sm text-left">
                 <div className="flex items-start gap-2 mb-3">
-                  <span className="text-zinc-500">$</span>
-                  <span className="text-white">wormhole host ~/Projects/video-project</span>
+                  <span className="text-wormhole-hunter-light">❯</span>
+                  <span className="text-wormhole-off-white">wormhole host ~/Projects/video-project</span>
                 </div>
                 <div className="pl-4 space-y-1 text-zinc-400">
                   <div>Scanning folder... <span className="text-green-400">47.3 GB</span> in 1,247 files</div>
                   <div>Starting QUIC server on port 4433...</div>
-                  <div className="mt-3 p-3 rounded bg-zinc-800 border border-zinc-700">
-                    <div className="text-white">Share this link: <span className="text-violet-400 font-bold">wormhole.dev/j/MARS-WIND</span></div>
-                    <div className="text-xs text-zinc-500 mt-1">Anyone with this link can mount your folder</div>
+                  <div className="mt-4 p-4 rounded-lg bg-zinc-800/70 border border-wormhole-hunter/30">
+                    <div className="text-zinc-500 text-xs mb-2">Share this code with anyone:</div>
+                    <div className="text-2xl font-bold tracking-wider text-wormhole-hunter-light">MARS-WIND-BLUE-FISH</div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+            <div className="w-6 h-10 rounded-full border-2 border-zinc-600 flex items-start justify-center p-2">
+              <div className="w-1 h-2 bg-zinc-500 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Key Value Props */}
+      <section className="py-16 px-6 border-t border-zinc-800">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-6">
+            <div className="text-center p-6">
+              <div className="w-14 h-14 rounded-xl bg-wormhole-hunter/20 flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-7 h-7 text-wormhole-hunter-light" />
+              </div>
+              <div className="text-3xl font-bold text-wormhole-off-white mb-2">&lt;10 sec</div>
+              <div className="text-sm text-zinc-500">to access 50GB folder</div>
+              <div className="text-xs text-zinc-600 mt-1">vs 2-4 hours cloud upload</div>
+            </div>
+            <div className="text-center p-6">
+              <div className="w-14 h-14 rounded-xl bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <DollarSign className="w-7 h-7 text-green-400" />
+              </div>
+              <div className="text-3xl font-bold text-wormhole-off-white mb-2">$0</div>
+              <div className="text-sm text-zinc-500">forever free tier</div>
+              <div className="text-xs text-zinc-600 mt-1">vs $144-600/year cloud</div>
+            </div>
+            <div className="text-center p-6">
+              <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-7 h-7 text-blue-400" />
+              </div>
+              <div className="text-3xl font-bold text-wormhole-off-white mb-2">E2E</div>
+              <div className="text-sm text-zinc-500">encrypted always</div>
+              <div className="text-xs text-zinc-600 mt-1">files never hit servers</div>
+            </div>
+            <div className="text-center p-6">
+              <div className="w-14 h-14 rounded-xl bg-pink-500/20 flex items-center justify-center mx-auto mb-4">
+                <HardDrive className="w-7 h-7 text-pink-400" />
+              </div>
+              <div className="text-3xl font-bold text-wormhole-off-white mb-2">Native</div>
+              <div className="text-sm text-zinc-500">mounts as a drive</div>
+              <div className="text-xs text-zinc-600 mt-1">works with any app</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Who It's For - Use Cases */}
+      <section id="use-cases" className="py-24 px-6 border-t border-zinc-800 bg-zinc-900/30">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
+              Built For Creators
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
+              Stop Waiting. Start Working.
+            </h2>
+            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
+              Wormhole is designed for creative professionals who work with large files
+              and are tired of cloud upload delays and subscription fees.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Video Editors */}
+            <Card className="bg-zinc-900 border-zinc-800 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-6 border-b border-zinc-800">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+                      <Video className="w-6 h-6 text-wormhole-off-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-wormhole-off-white">Video Editors</h3>
+                      <p className="text-sm text-zinc-500">Premiere, DaVinci, Final Cut</p>
+                    </div>
+                  </div>
+                  <p className="text-zinc-400">
+                    Mount your render farm&apos;s output folder and edit files as they finish rendering.
+                    No more downloading 50GB projects just to review a timeline.
+                  </p>
+                </div>
+                <div className="p-6 bg-zinc-800/30">
+                  <div className="text-sm font-medium text-zinc-300 mb-3">Real savings:</div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">2-4 hrs</div>
+                      <div className="text-zinc-500">saved per project</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">$600+</div>
+                      <div className="text-zinc-500">saved yearly vs Frame.io</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Game Developers */}
+            <Card className="bg-zinc-900 border-zinc-800 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-6 border-b border-zinc-800">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-wormhole-hunter to-wormhole-hunter-dark flex items-center justify-center">
+                      <Gamepad2 className="w-6 h-6 text-wormhole-off-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-wormhole-off-white">Game Developers</h3>
+                      <p className="text-sm text-zinc-500">Unity, Unreal, Godot</p>
+                    </div>
+                  </div>
+                  <p className="text-zinc-400">
+                    Mount your build server&apos;s output for instant testing. Share game builds with QA
+                    without uploading 100GB to Steam or creating download links.
+                  </p>
+                </div>
+                <div className="p-6 bg-zinc-800/30">
+                  <div className="text-sm font-medium text-zinc-300 mb-3">Real savings:</div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">Instant</div>
+                      <div className="text-zinc-500">build distribution</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">$0</div>
+                      <div className="text-zinc-500">bandwidth costs</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* VFX Studios */}
+            <Card className="bg-zinc-900 border-zinc-800 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-6 border-b border-zinc-800">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+                      <Film className="w-6 h-6 text-wormhole-off-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-wormhole-off-white">VFX Studios</h3>
+                      <p className="text-sm text-zinc-500">After Effects, Nuke, Houdini</p>
+                    </div>
+                  </div>
+                  <p className="text-zinc-400">
+                    Remote artists can mount the studio&apos;s asset library directly.
+                    No more syncing 500GB of textures before starting work.
+                  </p>
+                </div>
+                <div className="p-6 bg-zinc-800/30">
+                  <div className="text-sm font-medium text-zinc-300 mb-3">Real savings:</div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">$500+</div>
+                      <div className="text-zinc-500">saved monthly on storage</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">1 day</div>
+                      <div className="text-zinc-500">to onboard new artists</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Remote Dev Teams */}
+            <Card className="bg-zinc-900 border-zinc-800 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-6 border-b border-zinc-800">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                      <Code2 className="w-6 h-6 text-wormhole-off-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-wormhole-off-white">Remote Dev Teams</h3>
+                      <p className="text-sm text-zinc-500">Any tech stack</p>
+                    </div>
+                  </div>
+                  <p className="text-zinc-400">
+                    Share ML model weights, training data, or Docker images directly between machines.
+                    Skip the 45-minute docker push/pull cycle.
+                  </p>
+                </div>
+                <div className="p-6 bg-zinc-800/30">
+                  <div className="text-sm font-medium text-zinc-300 mb-3">Real savings:</div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">Zero</div>
+                      <div className="text-zinc-500">config required</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">$0</div>
+                      <div className="text-zinc-500">vs S3/GCS egress fees</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -239,7 +524,7 @@ export default function Home() {
             <Badge className="mb-4 bg-zinc-800 text-zinc-400 border-zinc-700">
               The Architecture Difference
             </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
               Why Wormhole is Fundamentally Different
             </h2>
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
@@ -252,99 +537,121 @@ export default function Home() {
             <Card className="bg-zinc-900 border-zinc-800">
               <CardContent className="p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-                    <Upload className="w-5 h-5 text-red-400" />
+                  <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-red-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Traditional Cloud Storage</h3>
+                    <h3 className="text-xl font-semibold text-wormhole-off-white">Traditional Cloud Storage</h3>
                     <p className="text-sm text-zinc-500">Dropbox, Google Drive, WeTransfer</p>
                   </div>
                 </div>
-                <div className="space-y-4 mb-6">
-                  <div className="flex items-center gap-3 p-3 rounded bg-zinc-800/50">
-                    <Server className="w-5 h-5 text-zinc-500" />
-                    <span className="text-sm text-zinc-400">Your files → Their servers → Recipient</span>
+
+                <div className="mb-6 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-zinc-700 flex items-center justify-center">
+                        <FolderOpen className="w-4 h-4 text-zinc-400" />
+                      </div>
+                      <span className="text-zinc-300">Your Files</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-zinc-600" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-red-500/20 flex items-center justify-center">
+                        <Server className="w-4 h-4 text-red-400" />
+                      </div>
+                      <span className="text-zinc-300">Their Servers</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-zinc-600" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-zinc-700 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-zinc-400" />
+                      </div>
+                      <span className="text-zinc-300">Recipient</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-red-400 text-center">
+                    Files copied twice • Upload wait • Storage fees • Privacy concerns
                   </div>
                 </div>
+
                 <ul className="space-y-3 text-sm">
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                    Files copied to third-party servers
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <X className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <span>Upload 50GB = 2-4 hours (at 5 Mbps upload)</span>
                   </li>
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                    Upload time = file size / your upload speed
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <X className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <span>Pay $12-25/mo for storage you already have</span>
                   </li>
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                    Storage limits and monthly fees
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <X className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <span>Files exist on third-party servers</span>
                   </li>
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                    Recipient must download entire file
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <X className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <span>Recipient must download entire file first</span>
                   </li>
                 </ul>
               </CardContent>
             </Card>
 
             {/* Wormhole Architecture */}
-            <Card className="bg-zinc-900 border-violet-500/30">
+            <Card className="bg-zinc-900 border-wormhole-hunter/30 ring-1 ring-wormhole-hunter/20">
               <CardContent className="p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                    <Wifi className="w-5 h-5 text-violet-400" />
+                  <div className="w-12 h-12 rounded-xl bg-wormhole-hunter/20 flex items-center justify-center">
+                    <Wifi className="w-6 h-6 text-wormhole-hunter-light" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Wormhole P2P Mount</h3>
-                    <p className="text-sm text-violet-400">Direct connection, no middleman</p>
+                    <h3 className="text-xl font-semibold text-wormhole-off-white">Wormhole P2P Mount</h3>
+                    <p className="text-sm text-wormhole-hunter-light">Direct connection, no middleman</p>
                   </div>
                 </div>
-                <div className="space-y-4 mb-6">
-                  <div className="flex items-center gap-3 p-3 rounded bg-violet-500/10 border border-violet-500/20">
-                    <Wifi className="w-5 h-5 text-violet-400" />
-                    <span className="text-sm text-violet-300">Your computer ↔ Their computer (direct)</span>
+
+                <div className="mb-6 p-4 rounded-lg bg-wormhole-hunter/10 border border-wormhole-hunter/20">
+                  <div className="flex items-center justify-center gap-4 text-sm mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-wormhole-hunter/20 flex items-center justify-center">
+                        <FolderOpen className="w-4 h-4 text-wormhole-hunter-light" />
+                      </div>
+                      <span className="text-zinc-300">Your Files</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ArrowRight className="w-4 h-4 text-wormhole-hunter-light" />
+                      <ArrowRight className="w-4 h-4 text-wormhole-hunter-light -ml-3" style={{ transform: 'scaleX(-1)' }} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded bg-wormhole-hunter/20 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-wormhole-hunter-light" />
+                      </div>
+                      <span className="text-zinc-300">Recipient</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-wormhole-hunter-light text-center">
+                    Direct connection • Instant access • Zero storage • Complete privacy
                   </div>
                 </div>
+
                 <ul className="space-y-3 text-sm">
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                    Files never leave your machine
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Access 50GB = under 10 seconds (any connection)</span>
                   </li>
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                    Connection ready in seconds, any file size
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Free tier forever - you own the storage</span>
                   </li>
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                    No storage needed - stream on demand
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Files never leave your machine</span>
                   </li>
-                  <li className="flex items-start gap-2 text-zinc-400">
-                    <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                    Access any file without downloading all
+                  <li className="flex items-start gap-3 text-zinc-400">
+                    <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span>Stream any byte range on demand</span>
                   </li>
                 </ul>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Key Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-6 rounded-lg bg-zinc-900 border border-zinc-800 text-center">
-              <div className="text-3xl font-bold text-violet-400 mb-1">&lt;10s</div>
-              <div className="text-sm text-zinc-500">Time to access 50GB</div>
-            </div>
-            <div className="p-6 rounded-lg bg-zinc-900 border border-zinc-800 text-center">
-              <div className="text-3xl font-bold text-violet-400 mb-1">0 GB</div>
-              <div className="text-sm text-zinc-500">Cloud storage used</div>
-            </div>
-            <div className="p-6 rounded-lg bg-zinc-900 border border-zinc-800 text-center">
-              <div className="text-3xl font-bold text-violet-400 mb-1">$0</div>
-              <div className="text-sm text-zinc-500">Monthly cost (alpha)</div>
-            </div>
-            <div className="p-6 rounded-lg bg-zinc-900 border border-zinc-800 text-center">
-              <div className="text-3xl font-bold text-violet-400 mb-1">100%</div>
-              <div className="text-sm text-zinc-500">Files stay on your machine</div>
-            </div>
           </div>
         </div>
       </section>
@@ -356,7 +663,7 @@ export default function Home() {
             <Badge className="mb-4 bg-zinc-800 text-zinc-400 border-zinc-700">
               Head-to-Head Comparison
             </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
               How Wormhole Stacks Up
             </h2>
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
@@ -365,146 +672,180 @@ export default function Home() {
           </div>
 
           {/* Comparison Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-zinc-800">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-zinc-800">
-                  <th className="py-4 px-4 text-sm font-medium text-zinc-400">Feature</th>
-                  <th className="py-4 px-4 text-sm font-medium text-violet-400 bg-violet-500/5">
+                <tr className="border-b border-zinc-800 bg-zinc-900">
+                  <th className="py-4 px-6 text-sm font-medium text-zinc-400">Feature</th>
+                  <th className="py-4 px-6 text-sm font-medium text-wormhole-hunter-light bg-wormhole-hunter/10">
                     <div className="flex items-center gap-2">
                       <Share2 className="w-4 h-4" />
                       Wormhole
                     </div>
                   </th>
-                  <th className="py-4 px-4 text-sm font-medium text-zinc-400">Dropbox</th>
-                  <th className="py-4 px-4 text-sm font-medium text-zinc-400">Google Drive</th>
-                  <th className="py-4 px-4 text-sm font-medium text-zinc-400">WeTransfer</th>
-                  <th className="py-4 px-4 text-sm font-medium text-zinc-400">Resilio Sync</th>
+                  <th className="py-4 px-6 text-sm font-medium text-zinc-400">Dropbox</th>
+                  <th className="py-4 px-6 text-sm font-medium text-zinc-400">Google Drive</th>
+                  <th className="py-4 px-6 text-sm font-medium text-zinc-400">WeTransfer</th>
+                  <th className="py-4 px-6 text-sm font-medium text-zinc-400">Resilio Sync</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
                 <tr className="border-b border-zinc-800/50">
-                  <td className="py-4 px-4 text-zinc-300">
+                  <td className="py-4 px-6 text-zinc-300">
                     <div className="flex items-center gap-2">
                       <Timer className="w-4 h-4 text-zinc-500" />
                       Share 50GB folder
                     </div>
                   </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
-                    <span className="text-green-400 font-medium">~10 seconds</span>
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
+                    <span className="text-green-400 font-semibold">~10 seconds</span>
                   </td>
-                  <td className="py-4 px-4 text-zinc-400">2-4 hours upload</td>
-                  <td className="py-4 px-4 text-zinc-400">2-4 hours upload</td>
-                  <td className="py-4 px-4 text-zinc-400">2GB limit</td>
-                  <td className="py-4 px-4 text-zinc-400">30-60 min sync</td>
+                  <td className="py-4 px-6 text-zinc-400">2-4 hours upload</td>
+                  <td className="py-4 px-6 text-zinc-400">2-4 hours upload</td>
+                  <td className="py-4 px-6 text-zinc-400">2GB limit</td>
+                  <td className="py-4 px-6 text-zinc-400">30-60 min sync</td>
                 </tr>
                 <tr className="border-b border-zinc-800/50">
-                  <td className="py-4 px-4 text-zinc-300">
+                  <td className="py-4 px-6 text-zinc-300">
+                    <div className="flex items-center gap-2">
+                      <CircleDollarSign className="w-4 h-4 text-zinc-500" />
+                      Monthly cost (100GB)
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
+                    <span className="text-green-400 font-semibold">$0 free tier</span>
+                  </td>
+                  <td className="py-4 px-6 text-zinc-400">$12/month</td>
+                  <td className="py-4 px-6 text-zinc-400">$3/month</td>
+                  <td className="py-4 px-6 text-zinc-400">$12/month</td>
+                  <td className="py-4 px-6 text-zinc-400">$60/year</td>
+                </tr>
+                <tr className="border-b border-zinc-800/50">
+                  <td className="py-4 px-6 text-zinc-300">
                     <div className="flex items-center gap-2">
                       <Database className="w-4 h-4 text-zinc-500" />
                       Cloud storage needed
                     </div>
                   </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
-                    <span className="text-green-400 font-medium">None</span>
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
+                    <span className="text-green-400 font-semibold">None</span>
                   </td>
-                  <td className="py-4 px-4 text-zinc-400">Full file size</td>
-                  <td className="py-4 px-4 text-zinc-400">Full file size</td>
-                  <td className="py-4 px-4 text-zinc-400">Full file size</td>
-                  <td className="py-4 px-4 text-zinc-400">None</td>
+                  <td className="py-4 px-6 text-zinc-400">Full file size</td>
+                  <td className="py-4 px-6 text-zinc-400">Full file size</td>
+                  <td className="py-4 px-6 text-zinc-400">Full file size</td>
+                  <td className="py-4 px-6 text-zinc-400">None</td>
                 </tr>
                 <tr className="border-b border-zinc-800/50">
-                  <td className="py-4 px-4 text-zinc-300">
+                  <td className="py-4 px-6 text-zinc-300">
                     <div className="flex items-center gap-2">
                       <Server className="w-4 h-4 text-zinc-500" />
                       Files on third-party servers
                     </div>
                   </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
-                    <span className="text-green-400 font-medium">Never</span>
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
+                    <span className="text-green-400 font-semibold">Never</span>
                   </td>
-                  <td className="py-4 px-4 text-zinc-400">Yes</td>
-                  <td className="py-4 px-4 text-zinc-400">Yes</td>
-                  <td className="py-4 px-4 text-zinc-400">Yes</td>
-                  <td className="py-4 px-4 text-zinc-400">Never</td>
+                  <td className="py-4 px-6 text-zinc-400">Yes</td>
+                  <td className="py-4 px-6 text-zinc-400">Yes</td>
+                  <td className="py-4 px-6 text-zinc-400">Yes</td>
+                  <td className="py-4 px-6 text-zinc-400">Never</td>
                 </tr>
                 <tr className="border-b border-zinc-800/50">
-                  <td className="py-4 px-4 text-zinc-300">
+                  <td className="py-4 px-6 text-zinc-300">
                     <div className="flex items-center gap-2">
                       <HardDrive className="w-4 h-4 text-zinc-500" />
                       Mounts as native drive
                     </div>
                   </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
                     <Check className="w-5 h-5 text-green-400" />
                   </td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
                 </tr>
                 <tr className="border-b border-zinc-800/50">
-                  <td className="py-4 px-4 text-zinc-300">
-                    <div className="flex items-center gap-2">
-                      <CircleDollarSign className="w-4 h-4 text-zinc-500" />
-                      Cost for 100GB
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
-                    <span className="text-green-400 font-medium">$0 (alpha)</span>
-                  </td>
-                  <td className="py-4 px-4 text-zinc-400">$12/month</td>
-                  <td className="py-4 px-4 text-zinc-400">$3/month</td>
-                  <td className="py-4 px-4 text-zinc-400">$12/month</td>
-                  <td className="py-4 px-4 text-zinc-400">$60/year</td>
-                </tr>
-                <tr className="border-b border-zinc-800/50">
-                  <td className="py-4 px-4 text-zinc-300">
+                  <td className="py-4 px-6 text-zinc-300">
                     <div className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-zinc-500" />
                       E2E encryption
                     </div>
                   </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
                     <Check className="w-5 h-5 text-green-400" />
                   </td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4"><Check className="w-5 h-5 text-green-400" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><Check className="w-5 h-5 text-green-400" /></td>
                 </tr>
                 <tr className="border-b border-zinc-800/50">
-                  <td className="py-4 px-4 text-zinc-300">
+                  <td className="py-4 px-6 text-zinc-300">
                     <div className="flex items-center gap-2">
                       <Globe className="w-4 h-4 text-zinc-500" />
                       Works through NAT/firewall
                     </div>
                   </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
                     <Check className="w-5 h-5 text-green-400" />
                   </td>
-                  <td className="py-4 px-4"><Check className="w-5 h-5 text-green-400" /></td>
-                  <td className="py-4 px-4"><Check className="w-5 h-5 text-green-400" /></td>
-                  <td className="py-4 px-4"><Check className="w-5 h-5 text-green-400" /></td>
-                  <td className="py-4 px-4"><Check className="w-5 h-5 text-green-400" /></td>
+                  <td className="py-4 px-6"><Check className="w-5 h-5 text-green-400" /></td>
+                  <td className="py-4 px-6"><Check className="w-5 h-5 text-green-400" /></td>
+                  <td className="py-4 px-6"><Check className="w-5 h-5 text-green-400" /></td>
+                  <td className="py-4 px-6"><Check className="w-5 h-5 text-green-400" /></td>
                 </tr>
                 <tr>
-                  <td className="py-4 px-4 text-zinc-300">
+                  <td className="py-4 px-6 text-zinc-300">
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-zinc-500" />
                       Stream without full download
                     </div>
                   </td>
-                  <td className="py-4 px-4 bg-violet-500/5">
+                  <td className="py-4 px-6 bg-wormhole-hunter/5">
                     <Check className="w-5 h-5 text-green-400" />
                   </td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4 text-zinc-500">Partial</td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
-                  <td className="py-4 px-4"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6 text-zinc-500">Partial</td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
+                  <td className="py-4 px-6"><X className="w-5 h-5 text-zinc-600" /></td>
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          {/* Cost Calculator */}
+          <div className="mt-12 p-8 rounded-xl bg-zinc-900 border border-zinc-800">
+            <h3 className="text-xl font-semibold text-wormhole-off-white mb-6 text-center">
+              Annual Cost Comparison for 1TB Storage
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="p-4 rounded-lg bg-wormhole-hunter/10 border border-wormhole-hunter/30 text-center">
+                <div className="text-sm text-wormhole-hunter-light mb-1">Wormhole</div>
+                <div className="text-3xl font-bold text-wormhole-off-white">$0</div>
+                <div className="text-xs text-zinc-500">free forever</div>
+              </div>
+              <div className="p-4 rounded-lg bg-zinc-800 text-center">
+                <div className="text-sm text-zinc-400 mb-1">Dropbox</div>
+                <div className="text-3xl font-bold text-zinc-300">$180</div>
+                <div className="text-xs text-zinc-500">$15/mo</div>
+              </div>
+              <div className="p-4 rounded-lg bg-zinc-800 text-center">
+                <div className="text-sm text-zinc-400 mb-1">Google Drive</div>
+                <div className="text-3xl font-bold text-zinc-300">$120</div>
+                <div className="text-xs text-zinc-500">$10/mo</div>
+              </div>
+              <div className="p-4 rounded-lg bg-zinc-800 text-center">
+                <div className="text-sm text-zinc-400 mb-1">Frame.io</div>
+                <div className="text-3xl font-bold text-zinc-300">$300</div>
+                <div className="text-xs text-zinc-500">$25/mo</div>
+              </div>
+              <div className="p-4 rounded-lg bg-zinc-800 text-center">
+                <div className="text-sm text-zinc-400 mb-1">Resilio Sync</div>
+                <div className="text-3xl font-bold text-zinc-300">$60</div>
+                <div className="text-xs text-zinc-500">$60/yr</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -516,77 +857,144 @@ export default function Home() {
             <Badge className="mb-4 bg-zinc-800 text-zinc-400 border-zinc-700">
               Under the Hood
             </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Built for Performance
+            <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
+              Enterprise-Grade Technology
             </h2>
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
-              Modern protocols and architecture designed for large file workflows.
+              Built with modern protocols and battle-tested encryption.
+              Open source, so you can verify everything.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
             <Card className="bg-zinc-900 border-zinc-800">
               <CardContent className="p-6">
-                <Gauge className="w-8 h-8 text-violet-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">QUIC Protocol</h3>
+                <div className="w-12 h-12 rounded-xl bg-wormhole-hunter/20 flex items-center justify-center mb-4">
+                  <Gauge className="w-6 h-6 text-wormhole-hunter-light" />
+                </div>
+                <h3 className="text-lg font-semibold text-wormhole-off-white mb-2">QUIC Protocol</h3>
                 <p className="text-sm text-zinc-400 mb-4">
-                  Same protocol as HTTP/3. Multiplexed streams, 0-RTT connection resumption, built-in encryption.
+                  Same protocol powering HTTP/3 and used by Google, Cloudflare, and Meta.
+                  Multiplexed streams, 0-RTT connection resumption, built-in TLS 1.3.
                 </p>
-                <div className="text-xs text-zinc-500 font-mono bg-zinc-800 rounded px-3 py-2">
-                  Latency: ~50ms connection setup
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Connection setup</span>
+                    <span className="text-wormhole-hunter-light font-mono">~50ms</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Encryption</span>
+                    <span className="text-wormhole-hunter-light font-mono">TLS 1.3</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-zinc-900 border-zinc-800">
               <CardContent className="p-6">
-                <Database className="w-8 h-8 text-violet-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Smart Caching</h3>
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4">
+                  <Database className="w-6 h-6 text-blue-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-wormhole-off-white mb-2">Smart Caching</h3>
                 <p className="text-sm text-zinc-400 mb-4">
-                  128KB chunked transfers with LRU disk cache. Files you access often stay local.
+                  Intelligent 128KB chunked transfers with LRU disk cache.
+                  Files you access often stay local for offline access.
                 </p>
-                <div className="text-xs text-zinc-500 font-mono bg-zinc-800 rounded px-3 py-2">
-                  Cache location: ~/.cache/wormhole
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Chunk size</span>
+                    <span className="text-blue-400 font-mono">128 KB</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Cache location</span>
+                    <span className="text-blue-400 font-mono">~/.cache/wormhole</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-zinc-900 border-zinc-800">
               <CardContent className="p-6">
-                <Shield className="w-8 h-8 text-violet-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">PAKE Authentication</h3>
+                <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-4">
+                  <Shield className="w-6 h-6 text-green-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-wormhole-off-white mb-2">PAKE Authentication</h3>
                 <p className="text-sm text-zinc-400 mb-4">
-                  Password-authenticated key exchange. Join codes generate session keys without server involvement.
+                  Password-authenticated key exchange. Join codes generate session keys
+                  without ever transmitting the password or key.
                 </p>
-                <div className="text-xs text-zinc-500 font-mono bg-zinc-800 rounded px-3 py-2">
-                  Algorithm: SPAKE2 + AES-256-GCM
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Algorithm</span>
+                    <span className="text-green-400 font-mono">SPAKE2</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-500">Symmetric cipher</span>
+                    <span className="text-green-400 font-mono">AES-256-GCM</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Architecture diagram replacement - simple text */}
-          <div className="mt-12 p-8 rounded-lg bg-zinc-900 border border-zinc-800">
-            <h4 className="text-lg font-semibold text-white mb-6 text-center">Data Flow</h4>
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 text-sm font-mono">
-              <div className="px-4 py-3 rounded bg-zinc-800 text-zinc-300">
-                Your App<br/>
-                <span className="text-xs text-zinc-500">(Finder, Premiere, etc)</span>
+          {/* Architecture diagram */}
+          <div className="p-8 rounded-xl bg-zinc-900 border border-zinc-800">
+            <h4 className="text-lg font-semibold text-wormhole-off-white mb-8 text-center">Data Flow Architecture</h4>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-xl bg-zinc-800 flex items-center justify-center mx-auto mb-3">
+                  <FolderOpen className="w-8 h-8 text-zinc-400" />
+                </div>
+                <div className="text-sm font-medium text-zinc-300">Your App</div>
+                <div className="text-xs text-zinc-500">Finder, Premiere, etc</div>
               </div>
-              <ArrowRight className="w-5 h-5 text-zinc-600 rotate-90 md:rotate-0" />
-              <div className="px-4 py-3 rounded bg-zinc-800 text-zinc-300">
-                FUSE Mount<br/>
-                <span className="text-xs text-zinc-500">/Volumes/wormhole</span>
+
+              <ArrowRight className="w-6 h-6 text-zinc-600 rotate-90 md:rotate-0" />
+
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-xl bg-zinc-800 flex items-center justify-center mx-auto mb-3">
+                  <HardDrive className="w-8 h-8 text-zinc-400" />
+                </div>
+                <div className="text-sm font-medium text-zinc-300">FUSE Mount</div>
+                <div className="text-xs text-zinc-500">/Volumes/wormhole</div>
               </div>
-              <ArrowRight className="w-5 h-5 text-zinc-600 rotate-90 md:rotate-0" />
-              <div className="px-4 py-3 rounded bg-violet-500/20 border border-violet-500/30 text-violet-300">
-                QUIC Tunnel<br/>
-                <span className="text-xs text-violet-400">encrypted P2P</span>
+
+              <ArrowRight className="w-6 h-6 text-zinc-600 rotate-90 md:rotate-0" />
+
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-xl bg-wormhole-hunter/20 border border-wormhole-hunter/30 flex items-center justify-center mx-auto mb-3">
+                  <Wifi className="w-8 h-8 text-wormhole-hunter-light" />
+                </div>
+                <div className="text-sm font-medium text-wormhole-hunter-light">QUIC Tunnel</div>
+                <div className="text-xs text-wormhole-hunter-light">E2E Encrypted P2P</div>
               </div>
-              <ArrowRight className="w-5 h-5 text-zinc-600 rotate-90 md:rotate-0" />
-              <div className="px-4 py-3 rounded bg-zinc-800 text-zinc-300">
-                Host Machine<br/>
-                <span className="text-xs text-zinc-500">actual files</span>
+
+              <ArrowRight className="w-6 h-6 text-zinc-600 rotate-90 md:rotate-0" />
+
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-xl bg-zinc-800 flex items-center justify-center mx-auto mb-3">
+                  <Server className="w-8 h-8 text-zinc-400" />
+                </div>
+                <div className="text-sm font-medium text-zinc-300">Host Machine</div>
+                <div className="text-xs text-zinc-500">actual files</div>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-zinc-800 grid md:grid-cols-3 gap-6 text-center text-sm">
+              <div>
+                <div className="text-zinc-500 mb-1">Signal Server Role</div>
+                <div className="text-zinc-300">Connection coordination only</div>
+                <div className="text-xs text-zinc-500">Never sees file content</div>
+              </div>
+              <div>
+                <div className="text-zinc-500 mb-1">NAT Traversal</div>
+                <div className="text-zinc-300">STUN + TURN fallback</div>
+                <div className="text-xs text-zinc-500">Works through firewalls</div>
+              </div>
+              <div>
+                <div className="text-zinc-500 mb-1">Data Path</div>
+                <div className="text-zinc-300">Direct peer-to-peer</div>
+                <div className="text-xs text-zinc-500">No relay by default</div>
               </div>
             </div>
           </div>
@@ -600,9 +1008,12 @@ export default function Home() {
             <Badge className="mb-4 bg-zinc-800 text-zinc-400 border-zinc-700">
               Quick Start
             </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Three Commands to Share
+            <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
+              Share a Code. That&apos;s It.
             </h2>
+            <p className="text-lg text-zinc-400">
+              No accounts. No configuration. No upload wait.
+            </p>
           </div>
 
           <div className="space-y-8">
@@ -610,35 +1021,45 @@ export default function Home() {
               {
                 step: "1",
                 title: "Host your folder",
-                description: "Run wormhole host on any folder. Server starts instantly.",
-                code: "$ wormhole host ~/Projects/video-edit",
-                output: "Share link: wormhole.dev/j/MARS-WIND"
+                description: "Run wormhole host on any folder. The server starts instantly - no upload required.",
+                code: "wormhole host ~/Projects/video-edit",
+                output: "Share code: MARS-WIND-BLUE-FISH"
               },
               {
                 step: "2",
-                title: "Share the link",
-                description: "Send the link to your collaborator - text, slack, email. They click to join.",
-                code: "# Just copy and share",
-                output: "wormhole.dev/j/MARS-WIND"
+                title: "Share the code",
+                description: "Send the 4-word code to your collaborator via any channel - Slack, text, email.",
+                code: "# Easy to remember, easy to type",
+                output: "MARS-WIND-BLUE-FISH"
               },
               {
                 step: "3",
                 title: "Mount and work",
-                description: "They click the link or paste it in the app. Files mount as a local drive.",
-                code: "$ wormhole mount wormhole.dev/j/MARS-WIND",
-                output: "Mounted at /Volumes/wormhole"
+                description: "They run wormhole mount with the code. Files appear as a native drive instantly.",
+                code: "wormhole mount MARS-WIND-BLUE-FISH",
+                output: "Mounted at /Volumes/wormhole/video-edit"
               },
             ].map((item, i) => (
               <div key={i} className="flex gap-6 items-start">
-                <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-violet-600 flex items-center justify-center">
-                  <span className="text-xl font-bold text-white">{item.step}</span>
+                <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-[#4B5320] to-[#3d4419] flex items-center justify-center shadow-lg shadow-wormhole-hunter/20">
+                  <span className="text-2xl font-bold text-wormhole-off-white">{item.step}</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white mb-2">{item.title}</h3>
+                  <h3 className="text-xl font-semibold text-wormhole-off-white mb-2">{item.title}</h3>
                   <p className="text-zinc-400 mb-4">{item.description}</p>
-                  <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4 font-mono text-sm">
-                    <div className="text-zinc-300">{item.code}</div>
-                    <div className="text-green-400 mt-2">{item.output}</div>
+                  <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2 border-b border-zinc-800 bg-zinc-800/50">
+                      <div className="w-2 h-2 rounded-full bg-zinc-600" />
+                      <div className="w-2 h-2 rounded-full bg-zinc-600" />
+                      <div className="w-2 h-2 rounded-full bg-zinc-600" />
+                    </div>
+                    <div className="p-4 font-mono text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-wormhole-hunter-light">❯</span>
+                        <span className="text-zinc-300">{item.code}</span>
+                      </div>
+                      <div className="text-green-400 mt-2 pl-4">{item.output}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -647,79 +1068,337 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Pricing Preview */}
+      <section id="pricing" className="py-24 px-6 border-t border-zinc-800">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-green-500/20 text-green-400 border-green-500/40">
+              Free During Alpha
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
+              Free tier forever. Pro tiers coming after launch for power users and teams.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Free Tier */}
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardContent className="p-8">
+                <div className="text-sm font-medium text-zinc-400 mb-2">Free</div>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-bold text-wormhole-off-white">$0</span>
+                  <span className="text-zinc-500">/forever</span>
+                </div>
+                <p className="text-sm text-zinc-400 mb-6">
+                  For individuals and hobbyists who want to try P2P file sharing.
+                </p>
+                <ul className="space-y-3 text-sm mb-8">
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    Unlimited file sizes
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    End-to-end encryption
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    2 simultaneous connections
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    Community support
+                  </li>
+                </ul>
+                <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-wormhole-off-white" asChild>
+                  <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"}>
+                    Download Free
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Pro Tier */}
+            <Card className="bg-zinc-900 border-wormhole-hunter/50 ring-1 ring-wormhole-hunter/20 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge className="bg-wormhole-hunter text-wormhole-off-white border-0">
+                  Coming Soon
+                </Badge>
+              </div>
+              <CardContent className="p-8">
+                <div className="text-sm font-medium text-wormhole-hunter-light mb-2">Pro</div>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-bold text-wormhole-off-white">$8</span>
+                  <span className="text-zinc-500">/month</span>
+                </div>
+                <p className="text-sm text-zinc-400 mb-6">
+                  For freelancers and power users who need more connections.
+                </p>
+                <ul className="space-y-3 text-sm mb-8">
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-wormhole-hunter-light" />
+                    Everything in Free
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-wormhole-hunter-light" />
+                    10 simultaneous connections
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-wormhole-hunter-light" />
+                    Persistent join codes
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-wormhole-hunter-light" />
+                    Priority support
+                  </li>
+                </ul>
+                <Button className="w-full bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white" disabled>
+                  Coming After Launch
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Team Tier */}
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardContent className="p-8">
+                <div className="text-sm font-medium text-zinc-400 mb-2">Team</div>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-bold text-wormhole-off-white">$15</span>
+                  <span className="text-zinc-500">/user/mo</span>
+                </div>
+                <p className="text-sm text-zinc-400 mb-6">
+                  For studios and teams (3-25 people) with collaboration needs.
+                </p>
+                <ul className="space-y-3 text-sm mb-8">
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    Everything in Pro
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    Unlimited connections
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    Team management
+                  </li>
+                  <li className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-green-400" />
+                    Usage analytics
+                  </li>
+                </ul>
+                <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-wormhole-off-white" disabled>
+                  Coming After Launch
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <p className="text-center text-sm text-zinc-500 mt-8">
+            Need enterprise features? Custom deployment, SSO, audit logs? <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues`} className="text-wormhole-hunter-light hover:underline">Contact us</a>.
+          </p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="py-24 px-6 border-t border-zinc-800 bg-zinc-900/30">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-zinc-800 text-zinc-400 border-zinc-700">
+              FAQ
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
+              Common Questions
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {faqs.map((faq, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden"
+              >
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between p-6 text-left hover:bg-zinc-800/50 transition-colors"
+                >
+                  <span className="font-medium text-wormhole-off-white pr-4">{faq.q}</span>
+                  <ChevronDown className={`w-5 h-5 text-zinc-500 flex-shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
+                </button>
+                {openFaq === i && (
+                  <div className="px-6 pb-6 text-zinc-400 text-sm leading-relaxed">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof */}
+      <section className="py-24 px-6 border-t border-zinc-800">
+        <div className="max-w-4xl mx-auto text-center">
+          <Badge className="mb-4 bg-zinc-800 text-zinc-400 border-zinc-700">
+            Open Source
+          </Badge>
+          <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-6">
+            Built in Public. Free Forever.
+          </h2>
+          <p className="text-lg text-zinc-400 mb-12 max-w-2xl mx-auto">
+            Wormhole is open source under the MIT license. Inspect the code, contribute features,
+            or fork it for your own use. The core will always be free.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-8 mb-12">
+            <a
+              href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-6 py-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
+            >
+              <Github className="w-6 h-6 text-wormhole-off-white" />
+              <div className="text-left">
+                <div className="text-sm font-medium text-wormhole-off-white">Star on GitHub</div>
+                <div className="text-xs text-zinc-500">MIT Licensed</div>
+              </div>
+            </a>
+            <a
+              href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-6 py-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
+            >
+              <MessageSquare className="w-6 h-6 text-wormhole-off-white" />
+              <div className="text-left">
+                <div className="text-sm font-medium text-wormhole-off-white">Report Issues</div>
+                <div className="text-xs text-zinc-500">Bugs & Features</div>
+              </div>
+            </a>
+            <a
+              href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#contributing`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-6 py-3 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
+            >
+              <Sparkles className="w-6 h-6 text-wormhole-off-white" />
+              <div className="text-left">
+                <div className="text-sm font-medium text-wormhole-off-white">Contribute</div>
+                <div className="text-xs text-zinc-500">PRs Welcome</div>
+              </div>
+            </a>
+          </div>
+
+          {/* Tech Stack */}
+          <div className="p-6 rounded-xl bg-zinc-900 border border-zinc-800 inline-flex flex-wrap items-center justify-center gap-4 text-sm">
+            <span className="text-zinc-500">Built with:</span>
+            <span className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300">Rust</span>
+            <span className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300">QUIC/quinn</span>
+            <span className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300">FUSE</span>
+            <span className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300">Tauri</span>
+            <span className="px-3 py-1 rounded-full bg-zinc-800 text-zinc-300">React</span>
+          </div>
+        </div>
+      </section>
+
       {/* Download Section */}
-      <section id="download" className="py-24 px-6 border-t border-zinc-800">
+      <section id="download" className="py-24 px-6 border-t border-zinc-800 bg-gradient-to-b from-zinc-900/50 to-[#0a0a0a]">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20">
             <AlertTriangle className="w-4 h-4 text-amber-400" />
             <span className="text-sm text-amber-400 font-medium">Alpha Release</span>
           </div>
 
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Download Wormhole
+          <h2 className="text-3xl md:text-4xl font-bold text-wormhole-off-white mb-4">
+            Ready to Stop Waiting?
           </h2>
           <p className="text-lg text-zinc-400 mb-4">
-            Free while in alpha. Pro tiers with team features coming later.
+            Download Wormhole and start sharing files instantly.
           </p>
 
           {release && (
             <p className="text-sm text-zinc-500 mb-8">
-              Version <span className="text-violet-400 font-mono">{release.tag_name}</span>
+              Version <span className="text-wormhole-hunter-light font-mono">{release.tag_name}</span>
               {" • "}
-              <a href={release.html_url} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline">
+              <a href={release.html_url} target="_blank" rel="noopener noreferrer" className="text-wormhole-hunter-light hover:underline">
                 Release notes
               </a>
             </p>
           )}
 
-          <div className="grid sm:grid-cols-3 gap-4 max-w-xl mx-auto mb-8">
+          {mounted && (
+            <div className="flex flex-col items-center gap-4 mb-8">
+              <Button
+                size="lg"
+                className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white h-auto py-6 px-12 flex-col gap-2"
+                asChild
+              >
+                <a href={getPlatformDownloadUrl(platform)}>
+                  <PlatformIcon platform={platform} />
+                  <span className="font-medium text-lg">{platformLabels[platform]}</span>
+                  <span className="text-xs text-wormhole-hunter-light">
+                    {getPlatformAssetInfo(platform)?.size || (platform === 'mac' ? 'Intel & ARM' : platform === 'windows' ? 'Windows 10+' : 'x64 & ARM')}
+                  </span>
+                </a>
+              </Button>
+              <a
+                href="#all-downloads"
+                className="text-sm text-zinc-500 hover:text-wormhole-off-white transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const el = document.getElementById('all-downloads');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                Other platforms
+              </a>
+            </div>
+          )}
+
+          {/* Hidden section for other platforms */}
+          <div id="all-downloads" className="grid sm:grid-cols-3 gap-4 max-w-xl mx-auto mb-8 pt-4 border-t border-zinc-800" role="group" aria-label="Download options for all platforms">
+            <p className="col-span-3 text-sm text-zinc-500 mb-2 text-center">All platforms</p>
             <Button
               variant="outline"
-              size="lg"
-              className={`h-auto py-6 flex-col gap-2 ${platform === 'mac' ? 'border-violet-500 bg-violet-500/10 text-white' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'}`}
+              size="sm"
+              className="h-auto py-3 flex-col gap-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
               asChild
             >
-              <a href={getDownloadUrl("mac")}>
-                <Apple className="w-8 h-8" />
-                <span className="font-medium">macOS</span>
-                <span className="text-xs text-zinc-500">
-                  {getPlatformAssetInfo("mac")?.size || "Intel & ARM"}
-                </span>
+              <a href="/download/macos">
+                <Apple className="w-5 h-5" aria-hidden="true" />
+                <span className="font-medium text-sm">macOS</span>
               </a>
             </Button>
             <Button
               variant="outline"
-              size="lg"
-              className={`h-auto py-6 flex-col gap-2 ${platform === 'windows' ? 'border-violet-500 bg-violet-500/10 text-white' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'}`}
+              size="sm"
+              className="h-auto py-3 flex-col gap-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
               asChild
             >
-              <a href={getDownloadUrl("windows")}>
-                <Monitor className="w-8 h-8" />
-                <span className="font-medium">Windows</span>
-                <span className="text-xs text-zinc-500">
-                  {getPlatformAssetInfo("windows")?.size || "Windows 10+"}
-                </span>
+              <a href="/download/windows">
+                <Monitor className="w-5 h-5" aria-hidden="true" />
+                <span className="font-medium text-sm">Windows</span>
               </a>
             </Button>
             <Button
               variant="outline"
-              size="lg"
-              className={`h-auto py-6 flex-col gap-2 ${platform === 'linux' ? 'border-violet-500 bg-violet-500/10 text-white' : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'}`}
+              size="sm"
+              className="h-auto py-3 flex-col gap-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
               asChild
             >
-              <a href={getDownloadUrl("linux")}>
-                <Terminal className="w-8 h-8" />
-                <span className="font-medium">Linux</span>
-                <span className="text-xs text-zinc-500">
-                  {getPlatformAssetInfo("linux")?.size || "x64 & ARM"}
-                </span>
+              <a href="/download/linux">
+                <Terminal className="w-5 h-5" aria-hidden="true" />
+                <span className="font-medium text-sm">Linux</span>
               </a>
             </Button>
           </div>
 
           <div className="flex items-center justify-center gap-4 text-sm text-zinc-500">
-            <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
-              <Github className="w-4 h-4" />
+            <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-wormhole-off-white transition-colors">
+              <Github className="w-4 h-4" aria-hidden="true" />
               All releases on GitHub
             </a>
           </div>
@@ -731,34 +1410,37 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-                <Share2 className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center">
+                <Share2 className="w-4 h-4 text-wormhole-off-white" />
               </div>
-              <span className="font-bold text-white">Wormhole</span>
+              <span className="font-bold text-wormhole-off-white">Wormhole</span>
               <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs">
                 ALPHA
               </Badge>
             </div>
 
             <div className="flex items-center gap-6 text-sm text-zinc-500">
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#readme`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Docs</a>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Issues</a>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Releases</a>
+              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#readme`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">Docs</a>
+              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">GitHub</a>
+              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">Issues</a>
+              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" className="hover:text-wormhole-off-white transition-colors">Releases</a>
             </div>
 
             <div className="flex items-center gap-4">
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-white transition-colors">
-                <Github className="w-5 h-5" />
+              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors" aria-label="Wormhole on GitHub">
+                <Github className="w-5 h-5" aria-hidden="true" />
               </a>
-              <a href="https://twitter.com/wormholeapp" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-white transition-colors">
-                <Twitter className="w-5 h-5" />
+              <a href="https://twitter.com/wormholeapp" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-wormhole-off-white transition-colors" aria-label="Wormhole on Twitter">
+                <Twitter className="w-5 h-5" aria-hidden="true" />
               </a>
             </div>
           </div>
 
-          <div className="mt-8 pt-8 border-t border-zinc-800 text-center text-sm text-zinc-600">
+          <div className="mt-8 pt-8 border-t border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-600">
             <p>Open source under MIT License. Free during alpha.</p>
+            <p>
+              &quot;Mount Any Folder. Any Computer. No Setup.&quot;
+            </p>
           </div>
         </div>
       </footer>

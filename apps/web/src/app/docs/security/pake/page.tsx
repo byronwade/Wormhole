@@ -87,7 +87,7 @@ export default function PakePage() {
       {/* How SPAKE2 Works */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Key className="h-6 w-6 text-violet-400" />
+          <Key className="h-6 w-6 text-wormhole-hunter-light" />
           How SPAKE2 Works
         </h2>
         <p className="text-zinc-300">
@@ -102,12 +102,12 @@ export default function PakePage() {
                 <div className="flex items-center gap-4">
                   <span className="text-blue-400 w-16">Host</span>
                   <span className="text-zinc-600">knows</span>
-                  <span className="text-violet-400">WORM-ABCD-EFGH</span>
+                  <span className="text-wormhole-hunter-light">WORM-ABCD-EFGH</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-green-400 w-16">Client</span>
                   <span className="text-zinc-600">knows</span>
-                  <span className="text-violet-400">WORM-ABCD-EFGH</span>
+                  <span className="text-wormhole-hunter-light">WORM-ABCD-EFGH</span>
                 </div>
               </div>
 
@@ -269,21 +269,21 @@ fn generate_join_code() -> String {
           <CardContent className="p-6">
             <div className="space-y-4 font-mono text-sm">
               <div className="flex items-start gap-4">
-                <span className="text-violet-400 font-bold">1.</span>
+                <span className="text-wormhole-hunter-light font-bold">1.</span>
                 <div>
                   <span className="text-white">TLS handshake</span>
                   <span className="text-zinc-500"> - establishes encrypted channel</span>
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <span className="text-violet-400 font-bold">2.</span>
+                <span className="text-wormhole-hunter-light font-bold">2.</span>
                 <div>
                   <span className="text-white">PAKE exchange</span>
                   <span className="text-zinc-500"> - authenticates via join code (over TLS)</span>
                 </div>
               </div>
               <div className="flex items-start gap-4">
-                <span className="text-violet-400 font-bold">3.</span>
+                <span className="text-wormhole-hunter-light font-bold">3.</span>
                 <div>
                   <span className="text-white">Session established</span>
                   <span className="text-zinc-500"> - both encrypted and authenticated</span>
@@ -303,7 +303,7 @@ fn generate_join_code() -> String {
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Implementation</h2>
         <p className="text-zinc-300">
-          Wormhole uses the <code className="text-violet-400">spake2</code> crate:
+          Wormhole uses the <code className="text-wormhole-hunter-light">spake2</code> crate:
         </p>
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-4">
@@ -342,17 +342,17 @@ let client_key = client_state.finish(&host_msg)?;
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/security/encryption">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Encryption Details
             </Badge>
           </Link>
           <Link href="/docs/security">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Security Overview
             </Badge>
           </Link>
           <Link href="/docs/architecture/signal-server">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Signal Server
             </Badge>
           </Link>

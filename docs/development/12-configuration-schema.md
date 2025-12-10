@@ -41,7 +41,7 @@ This document defines the complete configuration schema for Wormhole, including 
 # All values shown are defaults unless otherwise noted
 
 [network]
-signal_url = "wss://signal.wormhole.dev"
+signal_url = "wss://wormhole-signal.fly.dev"
 timeout_ms = 30000
 keepalive_ms = 10000
 
@@ -73,8 +73,8 @@ minimize_to_tray = true
 # Signal server URL for NAT traversal
 # Type: String (URL)
 # Required: No
-# Default: "wss://signal.wormhole.dev"
-signal_url = "wss://signal.wormhole.dev"
+# Default: "wss://wormhole-signal.fly.dev"
+signal_url = "wss://wormhole-signal.fly.dev"
 
 # Connection timeout in milliseconds
 # Type: Integer (1000-300000)
@@ -529,7 +529,7 @@ fn validate_stun_servers(servers: &[String]) -> Result<(), ValidationError> {
 
 ```toml
 [network]
-signal_url = "wss://signal.wormhole.dev"
+signal_url = "wss://wormhole-signal.fly.dev"
 timeout_ms = 30000
 keepalive_ms = 10000
 idle_timeout_ms = 60000

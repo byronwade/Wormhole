@@ -4,8 +4,8 @@ You are implementing Phase $ARGUMENTS of the Wormhole project.
 
 ## Before You Start
 
-1. Read the phase documentation: `doc/development/phase-$ARGUMENTS-*/`
-2. Check the master implementation plan: `doc/development/00-master-implementation-plan.md`
+1. Read the phase documentation: `docs/development/phase-$ARGUMENTS-*/`
+2. Check the master implementation plan: `docs/development/00-master-implementation-plan.md`
 3. Identify what files need to be created/modified
 4. Review dependencies - don't introduce future phase requirements
 

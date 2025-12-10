@@ -36,12 +36,13 @@ use std::time::{Duration, Instant};
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use tokio::signal;
-use tracing::{error, Level};
+use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::EnvFilter;
 
 use teleport_core::crypto::{extract_join_code, make_share_link};
 use teleport_core::{CHUNK_SIZE, PROTOCOL_VERSION};
 use teleport_daemon::host::{HostConfig, WormholeHost};
+use teleport_daemon::rendezvous::{RendezvousClient, RendezvousError};
 use teleport_daemon::updater::{format_update_message, UpdateChannel, UpdateChecker};
 use teleport_daemon::{DiskCache, HybridCacheManager};
 
@@ -210,7 +211,7 @@ struct HostArgs {
     max_connections: usize,
 
     /// Signal server URL for join code registration
-    #[arg(long, default_value = "ws://localhost:8080", env = "WORMHOLE_SIGNAL")]
+    #[arg(long, default_value = "wss://wormhole-signal.fly.dev", env = "WORMHOLE_SIGNAL")]
     signal_server: String,
 
     /// Don't register with signal server (direct IP only)
@@ -304,7 +305,7 @@ struct MountArgs {
     #[arg(
         short,
         long,
-        default_value = "ws://localhost:8080",
+        default_value = "wss://wormhole-signal.fly.dev",
         env = "WORMHOLE_SIGNAL"
     )]
     signal: String,
@@ -1045,7 +1046,7 @@ struct PingArgs {
     timeout: u64,
 
     /// Signal server URL
-    #[arg(long, default_value = "ws://localhost:8080")]
+    #[arg(long, default_value = "wss://wormhole-signal.fly.dev")]
     signal: String,
 }
 
@@ -1067,7 +1068,7 @@ struct BenchArgs {
     parallel: usize,
 
     /// Signal server URL
-    #[arg(long, default_value = "ws://localhost:8080")]
+    #[arg(long, default_value = "wss://wormhole-signal.fly.dev")]
     signal: String,
 }
 
@@ -1456,6 +1457,45 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         r.store(false, Ordering::SeqCst);
     });
 
+    // Register with signal server if not disabled
+    let signal_task = if !args.no_signal {
+        let signal_server = args.signal_server.clone();
+        let join_code_clone = join_code.clone();
+        let running_clone = running.clone();
+
+        Some(tokio::spawn(async move {
+            // Run signal server registration in a loop to handle reconnects
+            loop {
+                if !running_clone.load(Ordering::SeqCst) {
+                    break;
+                }
+
+                info!("Registering with signal server: {}", signal_server);
+                let rendezvous = RendezvousClient::new(Some(signal_server.clone()));
+
+                match rendezvous.host(&join_code_clone).await {
+                    Ok(result) => {
+                        info!("Peer connected via signal server: {:?}", result.peer_addr);
+                        // Continue loop to accept more peers
+                    }
+                    Err(e) => {
+                        // Don't log timeout as error - it's expected when no peers connect
+                        if !matches!(e, RendezvousError::Timeout) {
+                            warn!("Signal server error: {} - will retry in 5s", e);
+                        } else {
+                            debug!("Signal server timeout, re-registering...");
+                        }
+                        // Brief delay before retry
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    }
+                }
+            }
+        }))
+    } else {
+        info!("Signal server registration disabled (--no-signal)");
+        None
+    };
+
     tokio::select! {
         result = host.serve() => {
             if let Err(e) = result {
@@ -1469,6 +1509,11 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         } => {
             println!("\nShutting down...");
         }
+    }
+
+    // Abort signal task on shutdown
+    if let Some(task) = signal_task {
+        task.abort();
     }
 
     Ok(())

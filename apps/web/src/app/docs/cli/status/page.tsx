@@ -43,12 +43,12 @@ export default function StatusCommandPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Description</h2>
         <p className="text-zinc-300">
-          The <code className="text-violet-400">status</code> command displays information about active
+          The <code className="text-wormhole-hunter-light">status</code> command displays information about active
           Wormhole connections. Without arguments, it shows a summary of all hosts and mounts. With an
           ID argument, it shows detailed information about a specific connection.
         </p>
         <p className="text-zinc-300">
-          Use the <code className="text-violet-400">--watch</code> flag to continuously update the
+          Use the <code className="text-wormhole-hunter-light">--watch</code> flag to continuously update the
           display, similar to tools like <code>top</code> or <code>htop</code>.
         </p>
       </section>
@@ -66,7 +66,7 @@ export default function StatusCommandPage() {
             </thead>
             <tbody className="text-zinc-300">
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">[ID]</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">[ID]</td>
                 <td className="py-3 px-4">Optional share or mount ID to show details for a specific connection</td>
               </tr>
             </tbody>
@@ -182,7 +182,7 @@ Statistics:
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Eye className="h-5 w-5 text-violet-400" />
+            <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             Basic Status
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -203,7 +203,7 @@ wormhole status --mounts</code>
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Activity className="h-5 w-5 text-violet-400" />
+            <Activity className="h-5 w-5 text-wormhole-hunter-light" />
             Live Monitoring
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -224,7 +224,7 @@ wormhole status abc123 --watch</code>
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Network className="h-5 w-5 text-violet-400" />
+            <Network className="h-5 w-5 text-wormhole-hunter-light" />
             Network Statistics
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -254,7 +254,7 @@ def456      15.3ms      ↓ 28 MB/s       847K        0.02%`}</code>
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-violet-400" />
+            <Gauge className="h-5 w-5 text-wormhole-hunter-light" />
             Performance Metrics
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -275,7 +275,7 @@ wormhole status abc123 --detailed --network --performance</code>
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">JSON Output</h2>
         <p className="text-zinc-300">
-          For scripting and automation, use <code className="text-violet-400">--format json</code>:
+          For scripting and automation, use <code className="text-wormhole-hunter-light">--format json</code>:
         </p>
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-4">
@@ -351,17 +351,17 @@ wormhole status abc123 --detailed --network --performance</code>
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/host">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole host
             </Badge>
           </Link>
           <Link href="/docs/cli/mount">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole mount
             </Badge>
           </Link>
           <Link href="/docs/cli/all-commands">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               All Commands
             </Badge>
           </Link>

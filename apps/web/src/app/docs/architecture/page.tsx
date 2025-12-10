@@ -24,7 +24,7 @@ export default function ArchitecturePage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Architecture
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -57,9 +57,9 @@ export default function ArchitecturePage() {
                 <div className="text-xs text-zinc-500">Cache + Protocol</div>
               </div>
               <ArrowRight className="w-6 h-6 text-zinc-600 rotate-90 lg:rotate-0" />
-              <div className="text-center p-4 rounded bg-violet-500/20 border border-violet-500/30 min-w-[140px]">
-                <div className="text-violet-300 font-semibold">QUIC Tunnel</div>
-                <div className="text-xs text-violet-400">TLS 1.3 encrypted</div>
+              <div className="text-center p-4 rounded bg-wormhole-hunter/20 border border-wormhole-hunter/30 min-w-[140px]">
+                <div className="text-wormhole-hunter-light font-semibold">QUIC Tunnel</div>
+                <div className="text-xs text-wormhole-hunter-light">TLS 1.3 encrypted</div>
               </div>
               <ArrowRight className="w-6 h-6 text-zinc-600 rotate-90 lg:rotate-0" />
               <div className="text-center p-4 rounded bg-zinc-800 border border-zinc-700 min-w-[140px]">
@@ -86,7 +86,7 @@ export default function ArchitecturePage() {
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-white">
-                <Lock className="w-5 h-5 text-violet-400" />
+                <Lock className="w-5 h-5 text-wormhole-hunter-light" />
                 Control Plane
               </CardTitle>
             </CardHeader>
@@ -105,7 +105,7 @@ export default function ArchitecturePage() {
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-white">
-                <FileCode className="w-5 h-5 text-violet-400" />
+                <FileCode className="w-5 h-5 text-wormhole-hunter-light" />
                 Metadata Plane
               </CardTitle>
             </CardHeader>
@@ -124,7 +124,7 @@ export default function ArchitecturePage() {
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-white">
-                <Database className="w-5 h-5 text-violet-400" />
+                <Database className="w-5 h-5 text-wormhole-hunter-light" />
                 Data Plane
               </CardTitle>
             </CardHeader>
@@ -188,9 +188,9 @@ export default function ArchitecturePage() {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Link href="/docs/architecture/fuse">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <HardDrive className="w-8 h-8 text-violet-400 mb-4" />
+                <HardDrive className="w-8 h-8 text-wormhole-hunter-light mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">FUSE Filesystem</h3>
                 <p className="text-sm text-zinc-400">
                   How we implement a virtual filesystem that intercepts file operations and forwards them over the network.
@@ -200,9 +200,9 @@ export default function ArchitecturePage() {
           </Link>
 
           <Link href="/docs/architecture/quic">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Wifi className="w-8 h-8 text-violet-400 mb-4" />
+                <Wifi className="w-8 h-8 text-wormhole-hunter-light mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">QUIC Protocol</h3>
                 <p className="text-sm text-zinc-400">
                   Why we chose QUIC over TCP, multiplexing, 0-RTT resumption, and connection migration.
@@ -212,9 +212,9 @@ export default function ArchitecturePage() {
           </Link>
 
           <Link href="/docs/architecture/protocol">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Network className="w-8 h-8 text-violet-400 mb-4" />
+                <Network className="w-8 h-8 text-wormhole-hunter-light mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">Wire Protocol</h3>
                 <p className="text-sm text-zinc-400">
                   Message formats, bincode serialization, framing, and the complete list of protocol messages.
@@ -224,9 +224,9 @@ export default function ArchitecturePage() {
           </Link>
 
           <Link href="/docs/architecture/caching">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Database className="w-8 h-8 text-violet-400 mb-4" />
+                <Database className="w-8 h-8 text-wormhole-hunter-light mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">Caching System</h3>
                 <p className="text-sm text-zinc-400">
                   Two-tier cache architecture, LRU eviction, prefetching strategies, and offline mode.
@@ -236,9 +236,9 @@ export default function ArchitecturePage() {
           </Link>
 
           <Link href="/docs/architecture/signal-server">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Server className="w-8 h-8 text-violet-400 mb-4" />
+                <Server className="w-8 h-8 text-wormhole-hunter-light mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">Signal Server</h3>
                 <p className="text-sm text-zinc-400">
                   WebSocket signaling, room management, NAT traversal coordination, and self-hosting.
@@ -248,9 +248,9 @@ export default function ArchitecturePage() {
           </Link>
 
           <Link href="/docs/security">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Lock className="w-8 h-8 text-violet-400 mb-4" />
+                <Lock className="w-8 h-8 text-wormhole-hunter-light mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">Security Architecture</h3>
                 <p className="text-sm text-zinc-400">
                   TLS 1.3, PAKE authentication, data integrity with BLAKE3, and the threat model.

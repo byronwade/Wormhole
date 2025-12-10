@@ -190,7 +190,7 @@ Error: STUN request timed out
 
 1. **Use signal server:**
    ```bash
-   wormhole mount <code> --signal-server wss://signal.wormhole.dev
+   wormhole mount <code> --signal-server wss://wormhole-signal.fly.dev
    ```
 
 2. **Manual port forwarding:**
@@ -219,7 +219,7 @@ Error: Signal server timeout
 
 1. **Check signal server status:**
    ```bash
-   curl -I https://signal.wormhole.dev/health
+   curl -I https://wormhole-signal.fly.dev/health
    ```
 
 2. **Use alternate signal server:**

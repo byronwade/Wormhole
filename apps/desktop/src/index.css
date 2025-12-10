@@ -10,7 +10,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 262.1 83.3% 57.8%;
+    --primary: 140 27% 29%;
     --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -22,8 +22,15 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 262.1 83.3% 57.8%;
+    --ring: 140 27% 29%;
     --radius: 0.5rem;
+
+    /* Wormhole Brand Colors */
+    --wormhole-hunter: #355E3B;
+    --wormhole-hunter-light: #4A7C59;
+    --wormhole-hunter-dark: #2D4F32;
+    --wormhole-off-black: #0d0d0d;
+    --wormhole-off-white: #f5f5f5;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -107,7 +114,7 @@ body {
 
 /* Focus styles */
 :focus-visible {
-  outline: 2px solid rgba(139, 92, 246, 0.5);
+  outline: 2px solid rgba(53, 94, 59, 0.5);
   outline-offset: 2px;
 }
 
@@ -145,6 +152,7 @@ input[type="number"] {
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
+  will-change: transform, opacity;
 }
 
 /* Glass effect */
@@ -156,7 +164,7 @@ input[type="number"] {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  background: linear-gradient(135deg, var(--wormhole-hunter-light), var(--wormhole-hunter));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -168,12 +176,13 @@ input[type="number"] {
 }
 
 .btn-glow:hover {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 20px rgba(53, 94, 59, 0.4);
 }
 
-/* Card hover effect */
+/* Card hover effect - AGENTS.md: compositor-friendly (transform) */
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
 }
 
 .card-hover:hover {
@@ -195,6 +204,7 @@ input[type="number"] {
 
 .status-dot-pulse {
   animation: status-pulse 2s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 /* Loading skeleton */
@@ -229,7 +239,7 @@ input[type="number"] {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(99, 102, 241, 0.5));
+  background: linear-gradient(135deg, rgba(53, 94, 59, 0.5), rgba(45, 79, 50, 0.5));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -269,8 +279,8 @@ button, .select-none {
 }
 
 /* Accent colors for dynamic theming */
-.accent-violet {
-  --accent-color: 139 92 246;
+.accent-hunter {
+  --accent-color: 53 94 59;
 }
 
 .accent-blue {
@@ -315,7 +325,7 @@ button, .select-none {
 
 /* Focus ring for file items */
 .file-item-focused {
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3), 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 2px rgba(53, 94, 59, 0.3), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 @layer base {
@@ -325,4 +335,122 @@ button, .select-none {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* AGENTS.md: Scroll margin for anchored headings */
+  h1, h2, h3, h4, h5, h6 {
+    scroll-margin-top: 4rem;
+  }
+
+  /* AGENTS.md: Tabular numbers for comparisons */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* AGENTS.md: Honor prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-in,
+  .animate-slide-in,
+  .animate-scale-in,
+  .status-dot-pulse {
+    animation: none !important;
+  }
+}
+
+/* AGENTS.md: Touch interaction improvements */
+button, a, [role="button"], input, select, textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(53, 94, 59, 0.2);
+}
+
+/* AGENTS.md: Minimum touch targets ≥24px (desktop app, not mobile) */
+button, [role="button"] {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+/* AGENTS.md: Modal/drawer overscroll containment */
+.modal, .drawer, [role="dialog"] {
+  overscroll-behavior: contain;
+}
+
+/* AGENTS.md: Prevent text selection during drag */
+.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* AGENTS.md: Loading button with spinner - keep original label */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  color: transparent !important;
+}
+
+.btn-loading > * {
+  visibility: hidden;
+}
+
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* AGENTS.md: Confirm destructive actions - warning state */
+.destructive-confirm {
+  @apply border-red-500 bg-red-500/10;
+}
+
+/* AGENTS.md: aria-live for toasts/inline validation */
+[aria-live="polite"] {
+  /* Ensure screen readers announce */
+}
+
+/* AGENTS.md: Non-breaking spaces utility */
+.nbsp {
+  white-space: nowrap;
+}
+
+/* AGENTS.md: Increase contrast on hover/active/focus */
+button:hover, a:hover, [role="button"]:hover {
+  filter: brightness(1.1);
+}
+
+button:active, a:active, [role="button"]:active {
+  filter: brightness(0.95);
+}
+
+/* AGENTS.md: Animations use compositor-friendly props only */
+.animate-compositor {
+  will-change: transform, opacity;
+}
+
+/* AGENTS.md: Ellipsis for options that open follow-ups */
+.menu-item-ellipsis::after {
+  content: "…";
 }

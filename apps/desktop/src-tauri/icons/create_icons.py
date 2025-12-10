@@ -6,11 +6,11 @@ import struct
 import zlib
 
 def create_png(size, filename):
-    # Create a simple purple square PNG
+    # Create a simple hunter green square PNG
     width = height = size
-    
-    # RGBA pixels - purple (#7C3AED) with full opacity
-    r, g, b, a = 124, 58, 237, 255
+
+    # RGBA pixels - hunter green (#355E3B) with full opacity
+    r, g, b, a = 53, 94, 59, 255
     
     # Build raw image data (with filter byte per row)
     raw_data = b''
