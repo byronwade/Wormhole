@@ -203,6 +203,21 @@ pub fn create_nat_transport_config() -> TransportConfig {
     transport.max_concurrent_bidi_streams(VarInt::from_u32(128));
     transport.max_concurrent_uni_streams(VarInt::from_u32(128));
 
+    // Flow-control windows for bulk file transfer. QUIC throughput on a single
+    // transfer is bounded by window / RTT, so quinn's defaults (~1.25 MiB stream /
+    // ~12.5 MiB connection) throttle high bandwidth-delay-product links — e.g. the
+    // default stream window caps one file at ~25 MiB/s on a 50 ms link regardless
+    // of available bandwidth. These larger windows lift that cap for fast/remote
+    // links; the values are bounded to keep per-connection receive-buffer memory
+    // reasonable (8 MiB/stream, 32 MiB/connection) given max_connections hosts.
+    // NOTE: this helps real (higher-RTT) networks; it is intentionally neutral on
+    // loopback, where BDP is tiny and the window is never the limiter.
+    const STREAM_WINDOW: u64 = 8 * 1024 * 1024; // 8 MiB per stream
+    const CONN_WINDOW: u64 = 32 * 1024 * 1024; // 32 MiB per connection
+    transport.stream_receive_window(VarInt::from_u64(STREAM_WINDOW).unwrap());
+    transport.receive_window(VarInt::from_u64(CONN_WINDOW).unwrap());
+    transport.send_window(CONN_WINDOW);
+
     transport
 }
 

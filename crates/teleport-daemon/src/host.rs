@@ -1612,6 +1612,46 @@ mod tests {
     use teleport_core::ChunkId;
     use tempfile::TempDir;
 
+    /// Isolates host-side CPU cost per chunk (file open + safe_real_path
+    /// canonicalize + seek + read + blake3) with NO QUIC, to attribute the
+    /// per-chunk latency seen in the network benchmark.
+    ///   cargo test -p teleport-daemon --lib --release bench_host_read_chunk_cpu -- --ignored --nocapture
+    #[ignore]
+    #[test]
+    fn bench_host_read_chunk_cpu() {
+        let dir = TempDir::new().unwrap();
+        let file = dir.path().join("big.bin");
+        let bytes: Vec<u8> = (0..(64 * 1024 * 1024usize)).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&file, &bytes).unwrap();
+        let table = InodeTable::new(dir.path().to_path_buf());
+        let inode = table.get_or_create_inode(file).unwrap();
+        let chunks = bytes.len() / CHUNK_SIZE;
+
+        // warm the page cache
+        for i in 0..chunks {
+            let _ = handle_read_chunk(
+                ReadChunkRequest { chunk_id: ChunkId::new(inode, i as u64), priority: 0 },
+                &table,
+                dir.path(),
+            );
+        }
+        let start = Instant::now();
+        for i in 0..chunks {
+            let _ = handle_read_chunk(
+                ReadChunkRequest { chunk_id: ChunkId::new(inode, i as u64), priority: 0 },
+                &table,
+                dir.path(),
+            );
+        }
+        let el = start.elapsed();
+        println!(
+            "BENCH host read_chunk CPU: {chunks} chunks in {:.3}s = {:.3} ms/chunk, {:.1} MiB/s",
+            el.as_secs_f64(),
+            el.as_secs_f64() * 1000.0 / chunks as f64,
+            bytes.len() as f64 / (1024.0 * 1024.0) / el.as_secs_f64()
+        );
+    }
+
     #[test]
     fn test_inode_table() {
         let table = InodeTable::new(PathBuf::from("/shared"));

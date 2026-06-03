@@ -1118,6 +1118,90 @@ mod tests {
         assert!(matches!(missing, Err(FuseError::NotFound)), "expected NotFound, got {missing:?}");
     }
 
+    /// Performance baseline: sequential read throughput of a large file through
+    /// the real QUIC data plane over loopback. Ignored by default (opt-in):
+    ///   cargo test -p teleport-daemon --lib --release bench_sequential_read_throughput -- --ignored --nocapture
+    #[ignore]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn bench_sequential_read_throughput() {
+        const FILE_BYTES: usize = 64 * 1024 * 1024; // 64 MiB
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let data = pseudo_bytes(FILE_BYTES);
+        std::fs::write(dir.path().join("big.bin"), &data).unwrap();
+
+        let addr = free_loopback_addr();
+        let host = WormholeHost::new(HostConfig {
+            bind_addr: addr,
+            shared_path: dir.path().to_path_buf(),
+            max_connections: 4,
+            host_name: "bench-host".into(),
+        });
+        tokio::spawn(async move {
+            let _ = host.serve().await;
+        });
+
+        let mut client = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(30),
+        });
+        for _ in 0..50 {
+            if client.connect().await.is_ok() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        let attr = client.lookup(ROOT_INODE, "big.bin").await.expect("lookup");
+        assert_eq!(attr.size, FILE_BYTES as u64);
+
+        // Warm-up pass (open caches, JIT of code paths) then timed pass.
+        let _ = read_whole_file(&client, attr.inode, attr.size).await;
+
+        let start = std::time::Instant::now();
+        let got = read_whole_file(&client, attr.inode, attr.size).await;
+        let elapsed = start.elapsed();
+        assert_eq!(got.len(), FILE_BYTES);
+
+        let mb = FILE_BYTES as f64 / (1024.0 * 1024.0);
+        let secs = elapsed.as_secs_f64();
+        let chunks = FILE_BYTES / CHUNK_SIZE;
+        println!(
+            "BENCH sequential read: {mb:.0} MiB in {secs:.3}s = {:.1} MiB/s ({chunks} chunks, {:.3} ms/chunk)",
+            mb / secs,
+            secs * 1000.0 / chunks as f64
+        );
+
+        // Pipelined: issue many chunk reads concurrently (bounded) to test
+        // whether per-request round-trip latency (not bandwidth) is the limiter.
+        use futures_util::stream::{self, StreamExt};
+        for concurrency in [8usize, 32, 64] {
+            let n = FILE_BYTES / CHUNK_SIZE;
+            let start = std::time::Instant::now();
+            let total: usize = stream::iter(0..n)
+                .map(|i| {
+                    let c = &client;
+                    let inode = attr.inode;
+                    async move {
+                        c.read(inode, (i * CHUNK_SIZE) as u64, CHUNK_SIZE as u32)
+                            .await
+                            .map(|d| d.len())
+                            .unwrap_or(0)
+                    }
+                })
+                .buffer_unordered(concurrency)
+                .fold(0usize, |acc, len| async move { acc + len })
+                .await;
+            let el = start.elapsed().as_secs_f64();
+            assert_eq!(total, FILE_BYTES);
+            println!(
+                "BENCH pipelined read (concurrency={concurrency}): {mb:.0} MiB in {el:.3}s = {:.1} MiB/s",
+                mb / el
+            );
+        }
+    }
+
     /// SECURITY regression: a symlink inside the shared directory that points
     /// OUTSIDE it must not allow a client to read (or otherwise reach) the
     /// target. The host must reject both the lookup and any read by inode.
