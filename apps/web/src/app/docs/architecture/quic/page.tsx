@@ -13,53 +13,53 @@ export default function QuicArchitecturePage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/architecture" className="hover:text-white">Architecture</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/architecture" className="hover:text-foreground">Architecture</Link>
           <span>/</span>
-          <span className="text-zinc-400">QUIC</span>
+          <span className="text-muted-foreground">QUIC</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           QUIC Transport Protocol
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Wormhole uses QUIC (RFC 9000) for fast, secure, multiplexed data transfer.
         </p>
       </div>
 
       {/* What is QUIC */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">What is QUIC?</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">What is QUIC?</h2>
+        <p className="text-muted-foreground">
           QUIC is a modern transport protocol originally developed by Google and now
           standardized as RFC 9000. It runs over UDP and provides:
         </p>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <Zap className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
-              <h3 className="font-semibold text-white">Low Latency</h3>
-              <p className="text-zinc-400 text-sm mt-1">0-RTT connection establishment</p>
+              <h3 className="font-semibold text-foreground">Low Latency</h3>
+              <p className="text-muted-foreground text-sm mt-1">0-RTT connection establishment</p>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <Lock className="h-8 w-8 text-green-400 mx-auto mb-2" />
-              <h3 className="font-semibold text-white">Built-in TLS</h3>
-              <p className="text-zinc-400 text-sm mt-1">TLS 1.3 mandatory</p>
+              <h3 className="font-semibold text-foreground">Built-in TLS</h3>
+              <p className="text-muted-foreground text-sm mt-1">TLS 1.3 mandatory</p>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <Layers className="h-8 w-8 text-wormhole-hunter-light mx-auto mb-2" />
-              <h3 className="font-semibold text-white">Multiplexing</h3>
-              <p className="text-zinc-400 text-sm mt-1">Multiple streams, no HOL blocking</p>
+              <h3 className="font-semibold text-foreground">Multiplexing</h3>
+              <p className="text-muted-foreground text-sm mt-1">Multiple streams, no HOL blocking</p>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <RefreshCw className="h-8 w-8 text-blue-400 mx-auto mb-2" />
-              <h3 className="font-semibold text-white">Connection Migration</h3>
-              <p className="text-zinc-400 text-sm mt-1">Survives IP changes</p>
+              <h3 className="font-semibold text-foreground">Connection Migration</h3>
+              <p className="text-muted-foreground text-sm mt-1">Survives IP changes</p>
             </CardContent>
           </Card>
         </div>
@@ -67,12 +67,12 @@ export default function QuicArchitecturePage() {
 
       {/* Why QUIC for Wormhole */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Why QUIC for Wormhole?</h2>
+        <h2 className="text-2xl font-bold text-foreground">Why QUIC for Wormhole?</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="font-semibold text-green-400 mb-3">Perfect for File Transfer</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><strong>Streams:</strong> Each file read is a separate stream - if one stalls,
                   others continue.</li>
                 <li><strong>No HOL Blocking:</strong> Unlike TCP, a lost packet doesn&apos;t block
@@ -83,10 +83,10 @@ export default function QuicArchitecturePage() {
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="font-semibold text-green-400 mb-3">Security Built-In</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><strong>TLS 1.3:</strong> All traffic encrypted, always.</li>
                 <li><strong>No Plaintext:</strong> Even connection headers are encrypted.</li>
                 <li><strong>Certificate Pinning:</strong> Wormhole validates peer certificates.</li>
@@ -99,43 +99,43 @@ export default function QuicArchitecturePage() {
 
       {/* QUIC vs TCP */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">QUIC vs TCP Comparison</h2>
+        <h2 className="text-2xl font-bold text-foreground">QUIC vs TCP Comparison</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Feature</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">TCP + TLS</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">QUIC</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Feature</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">TCP + TLS</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">QUIC</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4">Connection Setup</td>
                 <td className="py-3 px-4 text-yellow-400">3 RTT (TCP + TLS handshake)</td>
                 <td className="py-3 px-4 text-green-400">1 RTT (0-RTT for repeat)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4">Head-of-Line Blocking</td>
                 <td className="py-3 px-4 text-red-400">Yes (packet loss blocks all)</td>
                 <td className="py-3 px-4 text-green-400">No (per-stream only)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4">Encryption</td>
                 <td className="py-3 px-4 text-yellow-400">Optional TLS layer</td>
                 <td className="py-3 px-4 text-green-400">Mandatory TLS 1.3</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4">Multiplexing</td>
                 <td className="py-3 px-4 text-red-400">Requires HTTP/2</td>
                 <td className="py-3 px-4 text-green-400">Native streams</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4">Connection Migration</td>
                 <td className="py-3 px-4 text-red-400">No (IP change = reconnect)</td>
                 <td className="py-3 px-4 text-green-400">Yes (connection ID based)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4">NAT Traversal</td>
                 <td className="py-3 px-4 text-red-400">Needs additional tools</td>
                 <td className="py-3 px-4 text-green-400">Better (UDP-based)</td>
@@ -147,18 +147,18 @@ export default function QuicArchitecturePage() {
 
       {/* Wormhole's QUIC Implementation */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Wormhole&apos;s Implementation</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Wormhole&apos;s Implementation</h2>
+        <p className="text-muted-foreground">
           Wormhole uses the <code className="text-wormhole-hunter-light">quinn</code> crate for QUIC
           and <code className="text-wormhole-hunter-light">rustls</code> for TLS. The implementation
           is in <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/net.rs</code>.
         </p>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Connection Setup</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Connection Setup</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// Server (Host) setup
+              <code className="text-muted-foreground">{`// Server (Host) setup
 let server_config = ServerConfig::with_single_cert(
     vec![cert],      // TLS certificate
     private_key,     // TLS private key
@@ -184,11 +184,11 @@ let connection = endpoint
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Stream Management</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Stream Management</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// Bidirectional stream for request/response
+              <code className="text-muted-foreground">{`// Bidirectional stream for request/response
 let (mut send, mut recv) = connection.open_bi().await?;
 
 // Send request
@@ -209,36 +209,36 @@ send.write_all(&notification_data).await?;`}</code>
 
       {/* Stream Types */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Stream Usage</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Stream Usage</h2>
+        <p className="text-muted-foreground">
           Wormhole uses different stream types for different purposes:
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Stream Type</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Direction</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Use Case</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Stream Type</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Direction</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Use Case</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Control Stream</td>
                 <td className="py-3 px-4">Bidirectional</td>
                 <td className="py-3 px-4">Handshake, metadata queries, keepalives</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Data Streams</td>
                 <td className="py-3 px-4">Bidirectional</td>
                 <td className="py-3 px-4">Chunk requests and responses</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Notification Stream</td>
                 <td className="py-3 px-4">Unidirectional (host→client)</td>
                 <td className="py-3 px-4">File change notifications, invalidations</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Write Stream</td>
                 <td className="py-3 px-4">Unidirectional (client→host)</td>
                 <td className="py-3 px-4">File writes (Phase 7)</td>
@@ -250,15 +250,15 @@ send.write_all(&notification_data).await?;`}</code>
 
       {/* Congestion Control */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Congestion Control</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Congestion Control</h2>
+        <p className="text-muted-foreground">
           QUIC implements congestion control at the protocol level. Wormhole uses Quinn&apos;s
           default controller (based on CUBIC) but can be tuned:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
-              <code className="text-zinc-300">{`// Configuration options in quinn
+              <code className="text-muted-foreground">{`// Configuration options in quinn
 TransportConfig {
     // Initial congestion window
     initial_rtt: Duration::from_millis(100),
@@ -283,31 +283,31 @@ TransportConfig {
 
       {/* Connection Migration */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Connection Migration</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Connection Migration</h2>
+        <p className="text-muted-foreground">
           QUIC connections survive IP address changes (e.g., WiFi → cellular). This is
           especially useful for laptops moving between networks:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="text-center space-y-4">
               <div className="flex justify-center items-center gap-4 text-sm">
                 <div className="px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded">
-                  Client<br/><span className="text-zinc-500 text-xs">192.168.1.42</span>
+                  Client<br/><span className="text-muted-foreground text-xs">192.168.1.42</span>
                 </div>
                 <ArrowLeftRight className="h-5 w-5 text-green-400" />
                 <div className="px-4 py-2 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded">
-                  Host<br/><span className="text-zinc-500 text-xs">Connection ID: abc123</span>
+                  Host<br/><span className="text-muted-foreground text-xs">Connection ID: abc123</span>
                 </div>
               </div>
-              <p className="text-zinc-500 text-xs">↓ Client switches to cellular</p>
+              <p className="text-muted-foreground text-xs">↓ Client switches to cellular</p>
               <div className="flex justify-center items-center gap-4 text-sm">
                 <div className="px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded">
-                  Client<br/><span className="text-zinc-500 text-xs">10.0.0.15</span>
+                  Client<br/><span className="text-muted-foreground text-xs">10.0.0.15</span>
                 </div>
                 <ArrowLeftRight className="h-5 w-5 text-green-400" />
                 <div className="px-4 py-2 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded">
-                  Host<br/><span className="text-zinc-500 text-xs">Connection ID: abc123</span>
+                  Host<br/><span className="text-muted-foreground text-xs">Connection ID: abc123</span>
                 </div>
               </div>
               <p className="text-green-400 text-sm">Same connection, no interruption!</p>
@@ -318,14 +318,14 @@ TransportConfig {
 
       {/* TLS Configuration */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">TLS Configuration</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">TLS Configuration</h2>
+        <p className="text-muted-foreground">
           Wormhole uses rustls with a strict TLS 1.3-only configuration:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// Cipher suites (in preference order)
+              <code className="text-muted-foreground">{`// Cipher suites (in preference order)
 TLS13_AES_256_GCM_SHA384
 TLS13_AES_128_GCM_SHA256
 TLS13_CHACHA20_POLY1305_SHA256
@@ -349,20 +349,20 @@ RSA-PSS
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/architecture/protocol">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Wire Protocol
             </Badge>
           </Link>
           <Link href="/docs/security/encryption">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Encryption Details
             </Badge>
           </Link>
           <Link href="/docs/performance/network">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Network Performance
             </Badge>
           </Link>

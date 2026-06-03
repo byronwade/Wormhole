@@ -13,27 +13,27 @@ export default function ConfigCommandPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/cli" className="hover:text-white">CLI Reference</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
           <span>/</span>
-          <span className="text-zinc-400">config</span>
+          <span className="text-muted-foreground">config</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight font-mono">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight font-mono">
           wormhole config
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           View and modify Wormhole configuration settings.
         </p>
       </div>
 
       {/* Synopsis */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Synopsis</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Synopsis</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
               <code className="text-green-400">wormhole config</code>
-              <code className="text-zinc-400"> &lt;COMMAND&gt; [OPTIONS]</code>
+              <code className="text-muted-foreground"> &lt;COMMAND&gt; [OPTIONS]</code>
             </pre>
           </CardContent>
         </Card>
@@ -41,15 +41,15 @@ export default function ConfigCommandPage() {
 
       {/* Description */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Description</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Description</h2>
+        <p className="text-muted-foreground">
           Wormhole stores its configuration in a TOML file. The config command provides
           tools to view, modify, and manage these settings without manually editing files.
         </p>
-        <p className="text-zinc-300">
+        <p className="text-muted-foreground">
           Configuration file location:
         </p>
-        <ul className="list-disc list-inside text-zinc-300 space-y-1 ml-4">
+        <ul className="list-disc list-inside text-muted-foreground space-y-1 ml-4">
           <li><strong>macOS:</strong> <code className="text-wormhole-hunter-light">~/.config/wormhole/config.toml</code></li>
           <li><strong>Linux:</strong> <code className="text-wormhole-hunter-light">~/.config/wormhole/config.toml</code></li>
           <li><strong>Windows:</strong> <code className="text-wormhole-hunter-light">%APPDATA%\wormhole\config.toml</code></li>
@@ -58,29 +58,29 @@ export default function ConfigCommandPage() {
 
       {/* Subcommands */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Subcommands</h2>
+        <h2 className="text-2xl font-bold text-foreground">Subcommands</h2>
 
         {/* show */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             config show
           </h3>
-          <p className="text-zinc-300">Display the current configuration.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Display the current configuration.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole config show [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole config show [OPTIONS]
 
 OPTIONS:
   --show-secrets    Show sensitive values (tokens, passwords)`}</code>
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole config show
+                <code className="text-muted-foreground">{`$ wormhole config show
 [general]
 default_signal_server = "wss://signal.wormhole.app"
 auto_update_check = true
@@ -112,15 +112,15 @@ show_notifications = true`}</code>
 
         {/* list */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <FileText className="h-5 w-5 text-wormhole-hunter-light" />
             config list
           </h3>
-          <p className="text-zinc-300">List all available configuration keys.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">List all available configuration keys.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole config list
+                <code className="text-muted-foreground">{`$ wormhole config list
 Available configuration keys:
 
 general.default_signal_server    Signal server URL
@@ -153,15 +153,15 @@ ui.minimize_to_tray              Minimize to system tray`}</code>
 
         {/* path */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <FileText className="h-5 w-5 text-wormhole-hunter-light" />
             config path
           </h3>
-          <p className="text-zinc-300">Show the configuration file path.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Show the configuration file path.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`$ wormhole config path
+                <code className="text-muted-foreground">{`$ wormhole config path
 /Users/alice/.config/wormhole/config.toml`}</code>
               </pre>
             </CardContent>
@@ -170,15 +170,15 @@ ui.minimize_to_tray              Minimize to system tray`}</code>
 
         {/* get */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             config get
           </h3>
-          <p className="text-zinc-300">Get a specific configuration value.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Get a specific configuration value.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole config get <KEY>
+                <code className="text-muted-foreground">{`wormhole config get <KEY>
 
 # Examples
 $ wormhole config get cache.ram_size_mb
@@ -196,15 +196,15 @@ wss://signal.wormhole.app`}</code>
 
         {/* set */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Edit className="h-5 w-5 text-green-400" />
             config set
           </h3>
-          <p className="text-zinc-300">Set a configuration value.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Set a configuration value.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole config set <KEY> <VALUE>
+                <code className="text-muted-foreground">{`wormhole config set <KEY> <VALUE>
 
 # Examples
 $ wormhole config set cache.ram_size_mb 1024
@@ -231,15 +231,15 @@ Set security.require_password = true`}</code>
 
         {/* reset */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <RotateCcw className="h-5 w-5 text-yellow-400" />
             config reset
           </h3>
-          <p className="text-zinc-300">Reset configuration to defaults.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Reset configuration to defaults.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole config reset [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole config reset [OPTIONS]
 
 OPTIONS:
   --key <KEY>     Reset only specific key
@@ -262,15 +262,15 @@ Configuration reset to defaults.`}</code>
 
         {/* edit */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Edit className="h-5 w-5 text-wormhole-hunter-light" />
             config edit
           </h3>
-          <p className="text-zinc-300">Open configuration file in your default editor.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Open configuration file in your default editor.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`$ wormhole config edit
+                <code className="text-muted-foreground">{`$ wormhole config edit
 # Opens ~/.config/wormhole/config.toml in $EDITOR
 
 # Set your preferred editor
@@ -283,15 +283,15 @@ $ wormhole config edit`}</code>
 
         {/* import */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Download className="h-5 w-5 text-wormhole-hunter-light" />
             config import
           </h3>
-          <p className="text-zinc-300">Import configuration from a file.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Import configuration from a file.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole config import <PATH> [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole config import <PATH> [OPTIONS]
 
 OPTIONS:
   --merge         Merge with existing (don't overwrite)
@@ -309,15 +309,15 @@ Merged configuration from team-config.toml`}</code>
 
         {/* export */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Upload className="h-5 w-5 text-wormhole-hunter-light" />
             config export
           </h3>
-          <p className="text-zinc-300">Export configuration to a file.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Export configuration to a file.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole config export <PATH> [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole config export <PATH> [OPTIONS]
 
 OPTIONS:
   --include-secrets    Include sensitive values
@@ -336,19 +336,19 @@ Exported configuration (including secrets) to full-backup.toml`}</code>
 
       {/* Configuration Reference */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Configuration Reference</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Configuration Reference</h2>
+        <p className="text-muted-foreground">
           For a complete reference of all configuration options, see the{" "}
           <Link href="/docs/configuration" className="text-wormhole-hunter-light hover:underline">
             Configuration Reference
           </Link>.
         </p>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Example config.toml</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Example config.toml</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`# Wormhole Configuration
+              <code className="text-muted-foreground">{`# Wormhole Configuration
 # ~/.config/wormhole/config.toml
 
 [general]
@@ -387,14 +387,14 @@ auto_accept_local = true`}</code>
 
       {/* Environment Variables */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Environment Variables</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Environment Variables</h2>
+        <p className="text-muted-foreground">
           Configuration can also be set via environment variables, which override file settings:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
-              <code className="text-zinc-300">{`# Override signal server
+              <code className="text-muted-foreground">{`# Override signal server
 export WORMHOLE_SIGNAL_SERVER="wss://my-server.example.com"
 
 # Override cache settings
@@ -411,20 +411,20 @@ export WORMHOLE_MAX_CONNECTIONS=20`}</code>
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/configuration">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Configuration Reference
             </Badge>
           </Link>
           <Link href="/docs/cli/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole cache
             </Badge>
           </Link>
           <Link href="/docs/self-hosting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Self-Hosting
             </Badge>
           </Link>

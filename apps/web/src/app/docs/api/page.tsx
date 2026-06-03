@@ -13,33 +13,33 @@ export default function ApiPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs" className="hover:text-white">Docs</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs" className="hover:text-foreground">Docs</Link>
           <span>/</span>
-          <span className="text-zinc-400">API Reference</span>
+          <span className="text-muted-foreground">API Reference</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           API Reference
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Technical documentation for integrating with Wormhole programmatically.
         </p>
       </div>
 
       {/* Overview */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Overview</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Overview</h2>
+        <p className="text-muted-foreground">
           Wormhole provides several integration points for developers:
         </p>
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-3">
                 <Terminal className="h-6 w-6 text-green-400" />
-                <h3 className="font-semibold text-white">CLI Interface</h3>
+                <h3 className="font-semibold text-foreground">CLI Interface</h3>
               </div>
-              <p className="text-zinc-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 All Wormhole functionality is available via the command-line interface.
                 Use <code>--format json</code> for machine-readable output.
               </p>
@@ -48,13 +48,13 @@ export default function ApiPage() {
               </Link>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-3">
                 <FileCode className="h-6 w-6 text-blue-400" />
-                <h3 className="font-semibold text-white">Wire Protocol</h3>
+                <h3 className="font-semibold text-foreground">Wire Protocol</h3>
               </div>
-              <p className="text-zinc-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 The binary protocol used for peer-to-peer communication.
                 Documented for implementers of compatible clients.
               </p>
@@ -63,13 +63,13 @@ export default function ApiPage() {
               </Link>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-3">
                 <Webhook className="h-6 w-6 text-wormhole-hunter-light" />
-                <h3 className="font-semibold text-white">Signal Server API</h3>
+                <h3 className="font-semibold text-foreground">Signal Server API</h3>
               </div>
-              <p className="text-zinc-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 WebSocket API for the signal/rendezvous server. Used for peer
                 discovery and NAT traversal.
               </p>
@@ -78,13 +78,13 @@ export default function ApiPage() {
               </Link>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-3">
                 <Code className="h-6 w-6 text-orange-400" />
-                <h3 className="font-semibold text-white">Rust Crates</h3>
+                <h3 className="font-semibold text-foreground">Rust Crates</h3>
               </div>
-              <p className="text-zinc-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 The Wormhole Rust libraries can be used directly in your
                 Rust applications for embedding functionality.
               </p>
@@ -98,14 +98,14 @@ export default function ApiPage() {
 
       {/* CLI JSON Output */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">CLI JSON Output</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">CLI JSON Output</h2>
+        <p className="text-muted-foreground">
           All CLI commands support JSON output for scripting and automation:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm overflow-x-auto">
-              <code className="text-zinc-300">{`# Get status as JSON
+              <code className="text-muted-foreground">{`# Get status as JSON
 wormhole status --format json | jq '.connections[0].id'
 
 # List with JSON output
@@ -121,56 +121,56 @@ echo "Join code: $CODE"`}</code>
 
       {/* Exit Codes */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Exit Codes</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Exit Codes</h2>
+        <p className="text-muted-foreground">
           Standard exit codes used across all CLI commands:
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Code</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Meaning</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Description</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Code</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Meaning</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">0</td>
                 <td className="py-3 px-4">Success</td>
                 <td className="py-3 px-4">Command completed successfully</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-yellow-400">1</td>
                 <td className="py-3 px-4">General Error</td>
                 <td className="py-3 px-4">Unspecified error occurred</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-yellow-400">2</td>
                 <td className="py-3 px-4">Usage Error</td>
                 <td className="py-3 px-4">Invalid arguments or options</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-red-400">3</td>
                 <td className="py-3 px-4">Connection Error</td>
                 <td className="py-3 px-4">Network or connection failure</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-red-400">4</td>
                 <td className="py-3 px-4">Authentication Error</td>
                 <td className="py-3 px-4">Invalid code, password, or certificate</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-red-400">5</td>
                 <td className="py-3 px-4">Permission Denied</td>
                 <td className="py-3 px-4">Access denied by host or system</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-red-400">6</td>
                 <td className="py-3 px-4">FUSE Error</td>
                 <td className="py-3 px-4">Filesystem mount/unmount failure</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-red-400">10</td>
                 <td className="py-3 px-4">Timeout</td>
                 <td className="py-3 px-4">Operation timed out</td>
@@ -182,59 +182,59 @@ echo "Join code: $CODE"`}</code>
 
       {/* Environment Variables */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Environment Variables</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Environment Variables</h2>
+        <p className="text-muted-foreground">
           Configure Wormhole behavior via environment variables:
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Variable</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Description</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Default</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Variable</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Default</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_SIGNAL_SERVER</td>
                 <td className="py-3 px-4">Default signal server URL</td>
-                <td className="py-3 px-4 text-zinc-500">wss://signal.wormhole.app</td>
+                <td className="py-3 px-4 text-muted-foreground">wss://signal.wormhole.app</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_PORT</td>
                 <td className="py-3 px-4">Default QUIC port</td>
-                <td className="py-3 px-4 text-zinc-500">4433</td>
+                <td className="py-3 px-4 text-muted-foreground">4433</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DIR</td>
                 <td className="py-3 px-4">Disk cache directory</td>
-                <td className="py-3 px-4 text-zinc-500">~/.cache/wormhole</td>
+                <td className="py-3 px-4 text-muted-foreground">~/.cache/wormhole</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CONFIG_DIR</td>
                 <td className="py-3 px-4">Config directory</td>
-                <td className="py-3 px-4 text-zinc-500">~/.config/wormhole</td>
+                <td className="py-3 px-4 text-muted-foreground">~/.config/wormhole</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_LOG_LEVEL</td>
                 <td className="py-3 px-4">Logging verbosity</td>
-                <td className="py-3 px-4 text-zinc-500">info</td>
+                <td className="py-3 px-4 text-muted-foreground">info</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_RAM_MB</td>
                 <td className="py-3 px-4">RAM cache size (MB)</td>
-                <td className="py-3 px-4 text-zinc-500">512</td>
+                <td className="py-3 px-4 text-muted-foreground">512</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DISK_GB</td>
                 <td className="py-3 px-4">Disk cache size (GB)</td>
-                <td className="py-3 px-4 text-zinc-500">10</td>
+                <td className="py-3 px-4 text-muted-foreground">10</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">NO_COLOR</td>
                 <td className="py-3 px-4">Disable colored output</td>
-                <td className="py-3 px-4 text-zinc-500">-</td>
+                <td className="py-3 px-4 text-muted-foreground">-</td>
               </tr>
             </tbody>
           </table>
@@ -243,14 +243,14 @@ echo "Join code: $CODE"`}</code>
 
       {/* Error Messages */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Error Codes Reference</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Error Codes Reference</h2>
+        <p className="text-muted-foreground">
           Common error codes and their meanings:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// Connection errors
+              <code className="text-muted-foreground">{`// Connection errors
 E1001: Connection refused - host not reachable
 E1002: Connection timeout - no response from host
 E1003: Connection reset - host closed connection
@@ -281,14 +281,14 @@ E4004: Too many clients - connection limit reached`}</code>
 
       {/* Signal Server Protocol */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Signal Server WebSocket API</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Signal Server WebSocket API</h2>
+        <p className="text-muted-foreground">
           The signal server uses JSON over WebSocket for simplicity:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// Connect to signal server
+              <code className="text-muted-foreground">{`// Connect to signal server
 ws://signal.example.com:8080
 
 // Register a share (host)
@@ -313,25 +313,25 @@ ws://signal.example.com:8080
 
       {/* Related Pages */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Related Documentation</h2>
+        <h2 className="text-2xl font-bold text-foreground">Related Documentation</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/all-commands">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               All CLI Commands
             </Badge>
           </Link>
           <Link href="/docs/architecture/protocol">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Wire Protocol
             </Badge>
           </Link>
           <Link href="/docs/self-hosting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Self-Hosting
             </Badge>
           </Link>
           <Link href="/docs/troubleshooting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Troubleshooting
             </Badge>
           </Link>

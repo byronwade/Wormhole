@@ -13,27 +13,27 @@ export default function AllCommandsPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/cli" className="hover:text-white">CLI Reference</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
           <span>/</span>
-          <span className="text-zinc-400">All Commands</span>
+          <span className="text-muted-foreground">All Commands</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           Complete CLI Reference
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Every command, subcommand, and option available in the Wormhole CLI.
         </p>
       </div>
 
       {/* wormhole host */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole host</h2>
-        <p className="text-zinc-400">Share a local folder with others.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole host</h2>
+        <p className="text-muted-foreground">Share a local folder with others.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole host <PATH> [OPTIONS]
 
 ARGUMENTS:
@@ -77,12 +77,12 @@ OTHER OPTIONS:
 
       {/* wormhole mount */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole mount</h2>
-        <p className="text-zinc-400">Mount a remote folder locally.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole mount</h2>
+        <p className="text-muted-foreground">Mount a remote folder locally.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole mount <TARGET> [MOUNTPOINT] [OPTIONS]
 
 ARGUMENTS:
@@ -130,12 +130,12 @@ FUSE OPTIONS:
 
       {/* wormhole status */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole status</h2>
-        <p className="text-zinc-400">Show connection status and statistics.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole status</h2>
+        <p className="text-muted-foreground">Show connection status and statistics.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole status [ID] [OPTIONS]
 
 ARGUMENTS:
@@ -157,12 +157,12 @@ OPTIONS:
 
       {/* wormhole unmount */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole unmount</h2>
-        <p className="text-zinc-400">Unmount a mounted share.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole unmount</h2>
+        <p className="text-muted-foreground">Unmount a mounted share.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole unmount <TARGET> [OPTIONS]
 
 ARGUMENTS:
@@ -179,12 +179,12 @@ OPTIONS:
 
       {/* wormhole cache */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole cache</h2>
-        <p className="text-zinc-400">Manage local file cache.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole cache</h2>
+        <p className="text-muted-foreground">Manage local file cache.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole cache <COMMAND>
 
 COMMANDS:
@@ -233,12 +233,12 @@ COMMANDS:
 
       {/* wormhole config */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole config</h2>
-        <p className="text-zinc-400">Manage configuration.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole config</h2>
+        <p className="text-muted-foreground">Manage configuration.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole config <COMMAND>
 
 COMMANDS:
@@ -272,12 +272,12 @@ COMMANDS:
 
       {/* wormhole peers */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole peers</h2>
-        <p className="text-zinc-400">Manage known peers and trust.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole peers</h2>
+        <p className="text-muted-foreground">Manage known peers and trust.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole peers <COMMAND>
 
 COMMANDS:
@@ -309,15 +309,15 @@ COMMANDS:
 
       {/* wormhole sync */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-foreground font-mono flex items-center gap-2">
           wormhole sync
           <Badge variant="outline" className="border-wormhole-hunter/50 text-wormhole-hunter-light text-xs">Phase 7</Badge>
         </h2>
-        <p className="text-zinc-400">Bidirectional synchronization.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <p className="text-muted-foreground">Bidirectional synchronization.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole sync <COMMAND>
 
 COMMANDS:
@@ -350,12 +350,12 @@ COMMANDS:
 
       {/* wormhole signal */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white font-mono">wormhole signal</h2>
-        <p className="text-zinc-400">Run the signal/rendezvous server.</p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground font-mono">wormhole signal</h2>
+        <p className="text-muted-foreground">Run the signal/rendezvous server.</p>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole signal [OPTIONS]
 
 OPTIONS:
@@ -381,12 +381,12 @@ OPTIONS:
 
       {/* Utilities */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Utility Commands</h2>
+        <h2 className="text-2xl font-bold text-foreground">Utility Commands</h2>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole ping <TARGET>              Ping a remote host
   --count <N>                       Number of pings [default: 4]
   --interval <SECS>                 Interval [default: 1]
@@ -436,11 +436,11 @@ wormhole update                     Check for updates
 
       {/* Global Options */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Global Options</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Global Options</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-xs overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`These options work with all commands:
 
   -v, --verbose             Increase verbosity (-v, -vv, -vvv)

@@ -174,13 +174,13 @@ export default function JoinPage() {
   if (!isValid) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
-        <Card className="max-w-md w-full bg-zinc-900 border-zinc-800">
+        <Card className="max-w-md w-full bg-card border-border">
           <CardContent className="p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6">
               <Share2 className="w-8 h-8 text-red-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Invalid Join Code</h1>
-            <p className="text-zinc-400 mb-6">
+            <h1 className="text-2xl font-bold text-foreground mb-2">Invalid Join Code</h1>
+            <p className="text-muted-foreground mb-6">
               The join code &quot;{rawCode}&quot; doesn&apos;t appear to be valid.
             </p>
             <Button className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/" />}>Go to Homepage</Button>
@@ -193,13 +193,13 @@ export default function JoinPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       {/* Navigation */}
-      <nav className="border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-sm">
+      <nav className="border-b border-border/10 bg-[#0a0a0a]/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3" aria-label="Wormhole Home">
             <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center" aria-hidden="true">
-              <Share2 className="w-4 h-4 text-white" />
+              <Share2 className="w-4 h-4 text-foreground" />
             </div>
-            <span className="font-bold text-lg text-white">Wormhole</span>
+            <span className="font-bold text-lg text-foreground">Wormhole</span>
             <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs font-medium">
               ALPHA
             </Badge>
@@ -211,16 +211,16 @@ export default function JoinPage() {
       <main className="flex items-center justify-center min-h-[calc(100vh-64px)] p-6">
         <div className="max-w-lg w-full">
           {/* Join Code Card */}
-          <Card className="bg-zinc-900 border-zinc-800 mb-6">
+          <Card className="bg-card border-border mb-6">
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 rounded-full bg-wormhole-hunter/20 flex items-center justify-center mx-auto mb-6" aria-hidden="true">
                   <Share2 className="w-8 h-8 text-wormhole-hunter-light" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Join Shared Folder
                 </h1>
-                <p className="text-zinc-400">
+                <p className="text-muted-foreground">
                   Someone is sharing files with you via Wormhole
                 </p>
               </div>
@@ -228,22 +228,22 @@ export default function JoinPage() {
               {/* Join Code Display */}
               <div className="bg-wormhole-hunter/10 border border-wormhole-hunter/30 rounded-xl p-6 mb-6">
                 <div className="text-center">
-                  <p className="text-sm text-zinc-400 mb-2">Join Code</p>
+                  <p className="text-sm text-muted-foreground mb-2">Join Code</p>
                   <div className="flex items-center justify-center gap-3">
-                    <span className="text-4xl font-mono font-bold tracking-wider text-white tabular-nums">
+                    <span className="text-4xl font-mono font-bold tracking-wider text-foreground tabular-nums">
                       {joinCode}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handleCopyCode}
-                      className="bg-zinc-800 hover:bg-zinc-700"
+                      className="bg-muted hover:bg-muted"
                       aria-label={copied ? "Copied!" : "Copy join code"}
                     >
                       {copied ? (
                         <Check className="w-5 h-5 text-green-400" aria-hidden="true" />
                       ) : (
-                        <Copy className="w-5 h-5 text-zinc-400" aria-hidden="true" />
+                        <Copy className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
                       )}
                     </Button>
                   </div>
@@ -252,7 +252,7 @@ export default function JoinPage() {
 
               {/* Status Message - AGENTS.md: Use polite aria-live for status */}
               {!deepLinkFailed && mounted && (
-                <div className="flex items-center justify-center gap-2 text-sm text-zinc-400 mb-6" role="status" aria-live="polite">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-6" role="status" aria-live="polite">
                   <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                   <span>Opening Wormhole app…</span>
                 </div>
@@ -271,7 +271,7 @@ export default function JoinPage() {
                 <Button
                   variant="outline"
                   onClick={handleCopyLink}
-                  className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 h-12"
+                  className="w-full border-border text-muted-foreground hover:bg-muted h-12"
                 >
                   <Copy className="w-4 h-4 mr-2" />
                   Copy Share Link
@@ -281,9 +281,9 @@ export default function JoinPage() {
           </Card>
 
           {/* Download Section */}
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card/50 border-border">
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold text-white mb-4 text-center">
+              <h2 className="text-lg font-semibold text-foreground mb-4 text-center">
                 Don&apos;t have Wormhole installed?
               </h2>
 
@@ -303,8 +303,8 @@ export default function JoinPage() {
                   variant="outline"
                   className={`h-auto py-4 flex-col gap-2 ${
                     platform === "mac"
-                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
-                      : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                   render={<a href={getDownloadUrl("mac")} />}
                 >
@@ -315,8 +315,8 @@ export default function JoinPage() {
                   variant="outline"
                   className={`h-auto py-4 flex-col gap-2 ${
                     platform === "windows"
-                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
-                      : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                   render={<a href={getDownloadUrl("windows")} />}
                 >
@@ -327,8 +327,8 @@ export default function JoinPage() {
                   variant="outline"
                   className={`h-auto py-4 flex-col gap-2 ${
                     platform === "linux"
-                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
-                      : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
                   }`}
                   render={<a href={getDownloadUrl("linux")} />}
                 >
@@ -339,8 +339,8 @@ export default function JoinPage() {
 
               {/* CLI Alternative */}
               <div className="text-center">
-                <p className="text-xs text-zinc-500 mb-2">Or use the CLI:</p>
-                <code className="text-xs bg-zinc-800 px-3 py-1.5 rounded text-zinc-300 font-mono">
+                <p className="text-xs text-muted-foreground mb-2">Or use the CLI:</p>
+                <code className="text-xs bg-muted px-3 py-1.5 rounded text-muted-foreground font-mono">
                   wormhole mount {joinCode}
                 </code>
               </div>
@@ -349,24 +349,24 @@ export default function JoinPage() {
 
           {/* How it works */}
           <div className="mt-8 text-center">
-            <p className="text-sm text-zinc-500 mb-4">How it works</p>
-            <div className="flex items-center justify-center gap-4 text-xs text-zinc-400">
+            <p className="text-sm text-muted-foreground mb-4">How it works</p>
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-wormhole-hunter-light font-bold">
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-wormhole-hunter-light font-bold">
                   1
                 </div>
                 <span>Install Wormhole</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-zinc-600" />
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-wormhole-hunter-light font-bold">
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-wormhole-hunter-light font-bold">
                   2
                 </div>
                 <span>Click link</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-zinc-600" />
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-wormhole-hunter-light font-bold">
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-wormhole-hunter-light font-bold">
                   3
                 </div>
                 <span>Access files</span>
