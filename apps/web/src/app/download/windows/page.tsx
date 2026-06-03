@@ -109,17 +109,15 @@ export default function WindowsDownloadPage() {
           <Button
             size="lg"
             className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white px-8 py-6 text-lg h-auto rounded-xl shadow-lg shadow-wormhole-hunter/20"
-            asChild
+            render={<a href={installerAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} />}
           >
-            <a href={installerAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`}>
-              <Download className="w-5 h-5 mr-3" />
-              Download for Windows
-              {installerAsset && (
-                <span className="ml-3 text-wormhole-hunter-light text-sm font-normal">
-                  {formatBytes(installerAsset.size)}
-                </span>
-              )}
-            </a>
+            <Download className="w-5 h-5 mr-3" />
+            Download for Windows
+            {installerAsset && (
+              <span className="ml-3 text-wormhole-hunter-light text-sm font-normal">
+                {formatBytes(installerAsset.size)}
+              </span>
+            )}
           </Button>
         </div>
 
@@ -213,17 +211,13 @@ export default function WindowsDownloadPage() {
               </p>
 
               <div className="flex flex-wrap items-center gap-3 mb-4">
-                <Button className="bg-blue-600 hover:bg-blue-700" asChild>
-                  <a href="https://winfsp.dev/rel/" target="_blank" rel="noopener noreferrer">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download WinFSP
-                  </a>
+                <Button className="bg-blue-600 hover:bg-blue-700" render={<a href="https://winfsp.dev/rel/" target="_blank" rel="noopener noreferrer" />}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download WinFSP
                 </Button>
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href="https://winfsp.dev/" target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    WinFSP Website
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href="https://winfsp.dev/" target="_blank" rel="noopener noreferrer" />}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  WinFSP Website
                 </Button>
               </div>
 
@@ -276,17 +270,13 @@ export default function WindowsDownloadPage() {
                 Windows code signing certificates cost <strong className="text-zinc-300">$200-400/year</strong>. As a free, open-source project, we can&apos;t justify that cost. The entire codebase is public and all releases are built by GitHub Actions with full transparency.
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer">
-                    <Github className="w-4 h-4 mr-2" />
-                    View Source
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" />}>
+                  <Github className="w-4 h-4 mr-2" />
+                  View Source
                 </Button>
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Build Logs
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`} target="_blank" rel="noopener noreferrer" />}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Build Logs
                 </Button>
               </div>
             </div>
@@ -297,17 +287,13 @@ export default function WindowsDownloadPage() {
         <div className="mt-12 text-center">
           <p className="text-zinc-500 mb-4">Looking for a different platform?</p>
           <div className="flex justify-center gap-3">
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-              <Link href="/download/macos">
-                macOS
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/macos" />}>
+              macOS
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-              <Link href="/download/linux">
-                Linux
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/linux" />}>
+              Linux
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>

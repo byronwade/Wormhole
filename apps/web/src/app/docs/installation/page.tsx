@@ -465,16 +465,12 @@ $ wormhole doctor
       <section className="space-y-4 pt-8 border-t border-zinc-800">
         <h2 className="text-2xl font-bold text-white">Next Steps</h2>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button asChild size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark">
-            <Link href="/docs/quickstart">
-              Quick Start Guide
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
+          <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/docs/quickstart" />}>
+            Quick Start Guide
+            <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
-          <Button asChild variant="outline" size="lg" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
-            <Link href="/docs/requirements">
-              System Requirements
-            </Link>
+          <Button variant="outline" size="lg" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" render={<Link href="/docs/requirements" />}>
+            System Requirements
           </Button>
         </div>
       </section>

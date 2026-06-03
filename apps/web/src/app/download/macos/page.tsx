@@ -152,17 +152,15 @@ export default function MacOSDownloadPage() {
           <Button
             size="lg"
             className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white px-8 py-6 text-lg h-auto rounded-xl shadow-lg shadow-wormhole-hunter/20"
-            asChild
+            render={<a href={dmgAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} />}
           >
-            <a href={dmgAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`}>
-              <Download className="w-5 h-5 mr-3" />
-              Download for macOS
-              {dmgAsset && (
-                <span className="ml-3 text-wormhole-hunter-light text-sm font-normal">
-                  {formatBytes(dmgAsset.size)}
-                </span>
-              )}
-            </a>
+            <Download className="w-5 h-5 mr-3" />
+            Download for macOS
+            {dmgAsset && (
+              <span className="ml-3 text-wormhole-hunter-light text-sm font-normal">
+                {formatBytes(dmgAsset.size)}
+              </span>
+            )}
           </Button>
         </div>
 
@@ -273,11 +271,9 @@ export default function MacOSDownloadPage() {
 
               <div className="flex items-center gap-4 mt-4">
                 <span className="text-zinc-500 text-sm">Or download from:</span>
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href="https://osxfuse.github.io/" target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    macFUSE Website
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href="https://osxfuse.github.io/" target="_blank" rel="noopener noreferrer" />}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  macFUSE Website
                 </Button>
               </div>
 
@@ -318,17 +314,13 @@ export default function MacOSDownloadPage() {
                 Apple charges <strong className="text-zinc-300">$99/year</strong> for code signing. As a free, open-source project, we can&apos;t justify that cost. The entire codebase is public and all releases are built by GitHub Actions with full transparency.
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer">
-                    <Github className="w-4 h-4 mr-2" />
-                    View Source
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" />}>
+                  <Github className="w-4 h-4 mr-2" />
+                  View Source
                 </Button>
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Build Logs
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions`} target="_blank" rel="noopener noreferrer" />}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Build Logs
                 </Button>
               </div>
             </div>
@@ -339,17 +331,13 @@ export default function MacOSDownloadPage() {
         <div className="mt-12 text-center">
           <p className="text-zinc-500 mb-4">Looking for a different platform?</p>
           <div className="flex justify-center gap-3">
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-              <Link href="/download/windows">
-                Windows
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/windows" />}>
+              Windows
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-              <Link href="/download/linux">
-                Linux
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/linux" />}>
+              Linux
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>

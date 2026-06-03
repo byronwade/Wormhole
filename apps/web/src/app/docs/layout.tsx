@@ -223,11 +223,9 @@ function MobileNav() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden text-zinc-400 hover:text-white">
-          <Menu className="w-5 h-5" />
-          <span className="sr-only">Toggle menu</span>
-        </Button>
+      <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden text-zinc-400 hover:text-white" />}>
+        <Menu className="w-5 h-5" />
+        <span className="sr-only">Toggle menu</span>
       </SheetTrigger>
       <SheetContent side="left" className="w-80 p-0 bg-[#0a0a0a] border-zinc-800/50">
         <div className="p-6 border-b border-zinc-800/50">
@@ -309,12 +307,10 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             <Button
               size="sm"
               className="h-9 px-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white shadow-lg shadow-wormhole-hunter/20"
-              asChild
+              render={<Link href="/#download" />}
             >
-              <Link href="/#download">
-                <Download className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Download</span>
-              </Link>
+              <Download className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Download</span>
             </Button>
           </div>
         </div>

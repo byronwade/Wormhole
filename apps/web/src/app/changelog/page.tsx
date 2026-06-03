@@ -87,9 +87,7 @@ export default function ChangelogPage() {
             <Link href="/docs" className="text-sm text-zinc-400 hover:text-white transition-colors">
               Docs
             </Link>
-            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" asChild>
-              <Link href="/#download">Download</Link>
-            </Button>
+            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/#download" />}>Download</Button>
           </div>
         </div>
       </nav>
@@ -108,12 +106,10 @@ export default function ChangelogPage() {
             Follow our progress as we build towards v1.0.
           </p>
           <div className="flex items-center gap-4 mt-6">
-            <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" asChild>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer">
-                <Github className="w-4 h-4 mr-2" />
-                View on GitHub
-                <ExternalLink className="w-3 h-3 ml-2" />
-              </a>
+            <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" />}>
+              <Github className="w-4 h-4 mr-2" />
+              View on GitHub
+              <ExternalLink className="w-3 h-3 ml-2" />
             </Button>
           </div>
         </div>
@@ -132,11 +128,9 @@ export default function ChangelogPage() {
           {error && (
             <div className="text-center py-12">
               <p className="text-zinc-400 mb-4">{error}</p>
-              <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" asChild>
-                <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer">
-                  View Releases on GitHub
-                  <ExternalLink className="w-3 h-3 ml-2" />
-                </a>
+              <Button variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" />}>
+                View Releases on GitHub
+                <ExternalLink className="w-3 h-3 ml-2" />
               </Button>
             </div>
           )}
@@ -226,17 +220,13 @@ export default function ChangelogPage() {
             or follow the project&apos;s progress on our discussions board.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" asChild>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer">
-                <Github className="w-4 h-4 mr-2" />
-                Watch on GitHub
-              </a>
+            <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" />}>
+              <Github className="w-4 h-4 mr-2" />
+              Watch on GitHub
             </Button>
-            <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" asChild>
-              <Link href="/#download">
-                Download Latest
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+            <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" render={<Link href="/#download" />}>
+              Download Latest
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>

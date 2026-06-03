@@ -183,9 +183,7 @@ export default function JoinPage() {
             <p className="text-zinc-400 mb-6">
               The join code &quot;{rawCode}&quot; doesn&apos;t appear to be valid.
             </p>
-            <Button asChild className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark">
-              <Link href="/">Go to Homepage</Link>
-            </Button>
+            <Button className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/" />}>Go to Homepage</Button>
           </CardContent>
         </Card>
       </div>
@@ -293,12 +291,10 @@ export default function JoinPage() {
               {platform !== "unknown" && (
                 <Button
                   className="w-full mb-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark h-12"
-                  asChild
+                  render={<a href={getDownloadUrl(platform)} />}
                 >
-                  <a href={getDownloadUrl(platform)}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Download for {platform === "mac" ? "macOS" : platform === "windows" ? "Windows" : "Linux"}
-                  </a>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download for {platform === "mac" ? "macOS" : platform === "windows" ? "Windows" : "Linux"}
                 </Button>
               )}
 
@@ -310,12 +306,10 @@ export default function JoinPage() {
                       ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
                       : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                   }`}
-                  asChild
+                  render={<a href={getDownloadUrl("mac")} />}
                 >
-                  <a href={getDownloadUrl("mac")}>
-                    <Apple className="w-6 h-6" />
-                    <span className="text-xs">macOS</span>
-                  </a>
+                  <Apple className="w-6 h-6" />
+                  <span className="text-xs">macOS</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -324,12 +318,10 @@ export default function JoinPage() {
                       ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
                       : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                   }`}
-                  asChild
+                  render={<a href={getDownloadUrl("windows")} />}
                 >
-                  <a href={getDownloadUrl("windows")}>
-                    <Monitor className="w-6 h-6" />
-                    <span className="text-xs">Windows</span>
-                  </a>
+                  <Monitor className="w-6 h-6" />
+                  <span className="text-xs">Windows</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -338,12 +330,10 @@ export default function JoinPage() {
                       ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
                       : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                   }`}
-                  asChild
+                  render={<a href={getDownloadUrl("linux")} />}
                 >
-                  <a href={getDownloadUrl("linux")}>
-                    <Terminal className="w-6 h-6" />
-                    <span className="text-xs">Linux</span>
-                  </a>
+                  <Terminal className="w-6 h-6" />
+                  <span className="text-xs">Linux</span>
                 </Button>
               </div>
 

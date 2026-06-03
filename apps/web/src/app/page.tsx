@@ -272,14 +272,12 @@ export default function Home() {
               </a>
 
               {/* Download Button */}
-              <Button size="sm" className="h-9 px-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white shadow-lg shadow-wormhole-hunter/20 hover:shadow-wormhole-hunter/30 transition-all" asChild>
-                <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"} className="flex items-center gap-2">
-                  {mounted && <PlatformIcon platform={platform} />}
-                  <span className="hidden sm:inline">{mounted ? platformLabels[platform] : "Download"}</span>
-                  <span className="sm:hidden">
-                    <Download className="w-4 h-4" aria-hidden="true" />
-                  </span>
-                </a>
+              <Button size="sm" className="h-9 px-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white shadow-lg shadow-wormhole-hunter/20 hover:shadow-wormhole-hunter/30 transition-all" render={<a href={mounted ? getPlatformDownloadUrl(platform) : "#download"} className="flex items-center gap-2" />}>
+                {mounted && <PlatformIcon platform={platform} />}
+                <span className="hidden sm:inline">{mounted ? platformLabels[platform] : "Download"}</span>
+                <span className="sm:hidden">
+                  <Download className="w-4 h-4" aria-hidden="true" />
+                </span>
               </Button>
 
               {/* Mobile Menu Button */}
@@ -335,20 +333,16 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             {mounted && (
-              <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white px-8 h-14 text-lg shadow-lg shadow-wormhole-hunter/25 hover:shadow-wormhole-hunter/40 transition-all" asChild>
-                <a href={getPlatformDownloadUrl(platform)}>
-                  <PlatformIcon platform={platform} />
-                  <span className="ml-2">{platformLabels[platform]}</span>
-                  {release && <span className="ml-2 text-wormhole-hunter-light text-sm">{release.tag_name}</span>}
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </a>
+              <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white px-8 h-14 text-lg shadow-lg shadow-wormhole-hunter/25 hover:shadow-wormhole-hunter/40 transition-all" render={<a href={getPlatformDownloadUrl(platform)} />}>
+                <PlatformIcon platform={platform} />
+                <span className="ml-2">{platformLabels[platform]}</span>
+                {release && <span className="ml-2 text-wormhole-hunter-light text-sm">{release.tag_name}</span>}
+                <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             )}
-            <Button variant="outline" size="lg" className="border-zinc-600 bg-zinc-900/50 backdrop-blur-sm text-zinc-300 hover:bg-zinc-800 hover:text-wormhole-off-white h-14 text-lg" asChild>
-              <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer">
-                <Github className="w-5 h-5 mr-2" />
-                View Source
-              </a>
+            <Button variant="outline" size="lg" className="border-zinc-600 bg-zinc-900/50 backdrop-blur-sm text-zinc-300 hover:bg-zinc-800 hover:text-wormhole-off-white h-14 text-lg" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" />}>
+              <Github className="w-5 h-5 mr-2" />
+              View Source
             </Button>
           </div>
 
@@ -1179,10 +1173,8 @@ export default function Home() {
                     Community support
                   </li>
                 </ul>
-                <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-wormhole-off-white" asChild>
-                  <a href={mounted ? getPlatformDownloadUrl(platform) : "#download"}>
-                    Download Free
-                  </a>
+                <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-wormhole-off-white" render={<a href={mounted ? getPlatformDownloadUrl(platform) : "#download"} />}>
+                  Download Free
                 </Button>
               </CardContent>
             </Card>
@@ -1392,24 +1384,20 @@ export default function Home() {
               <Button
                 size="lg"
                 className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-wormhole-off-white h-14 px-8 text-lg shadow-lg shadow-wormhole-hunter/20 hover:shadow-wormhole-hunter/30 transition-all"
-                asChild
+                render={<a href={getPlatformDownloadUrl(platform)} className="flex items-center gap-3" />}
               >
-                <a href={getPlatformDownloadUrl(platform)} className="flex items-center gap-3">
-                  <PlatformIcon platform={platform} />
-                  <span>{platformLabels[platform]}</span>
-                  <ArrowRight className="w-5 h-5" aria-hidden="true" />
-                </a>
+                <PlatformIcon platform={platform} />
+                <span>{platformLabels[platform]}</span>
+                <ArrowRight className="w-5 h-5" aria-hidden="true" />
               </Button>
               <Button
                 variant="outline"
                 size="lg"
                 className="h-14 px-8 text-lg border-zinc-700 text-zinc-300 hover:bg-zinc-800/50 hover:text-wormhole-off-white"
-                asChild
+                render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3" />}
               >
-                <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
-                  <Github className="w-5 h-5" aria-hidden="true" />
-                  <span>View Source</span>
-                </a>
+                <Github className="w-5 h-5" aria-hidden="true" />
+                <span>View Source</span>
               </Button>
             </div>
           )}

@@ -94,9 +94,7 @@ export default function PricingPage() {
             <Link href="/docs" className="text-sm text-zinc-400 hover:text-white transition-colors">
               Docs
             </Link>
-            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" asChild>
-              <Link href="/#download">Download</Link>
-            </Button>
+            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/#download" />}>Download</Button>
           </div>
         </div>
       </nav>
@@ -161,12 +159,10 @@ export default function PricingPage() {
                         ? "bg-wormhole-hunter hover:bg-wormhole-hunter-dark"
                         : "bg-zinc-800 hover:bg-zinc-700"
                     }`}
-                    asChild
+                    render={<Link href={plan.ctaHref} />}
                   >
-                    <Link href={plan.ctaHref}>
-                      {plan.cta}
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Link>
+                    {plan.cta}
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </CardContent>
               </Card>
@@ -228,17 +224,13 @@ export default function PricingPage() {
             helps us dedicate more time to development and keep the project alive.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="bg-pink-500 hover:bg-pink-600 text-white" asChild>
-              <a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer">
-                <Heart className="w-4 h-4 mr-2" />
-                Become a Sponsor
-              </a>
+            <Button size="lg" className="bg-pink-500 hover:bg-pink-600 text-white" render={<a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer" />}>
+              <Heart className="w-4 h-4 mr-2" />
+              Become a Sponsor
             </Button>
-            <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" asChild>
-              <a href="https://github.com/byronwade/wormhole" target="_blank" rel="noopener noreferrer">
-                <Github className="w-4 h-4 mr-2" />
-                Star on GitHub
-              </a>
+            <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" render={<a href="https://github.com/byronwade/wormhole" target="_blank" rel="noopener noreferrer" />}>
+              <Github className="w-4 h-4 mr-2" />
+              Star on GitHub
             </Button>
           </div>
         </div>

@@ -144,29 +144,25 @@ export default function LinuxDownloadPage() {
           <Button
             size="lg"
             className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white h-auto py-6 flex-col gap-2 rounded-xl shadow-lg shadow-wormhole-hunter/20"
-            asChild
+            render={<a href={appImageAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} />}
           >
-            <a href={appImageAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`}>
-              <Package className="w-6 h-6" />
-              <span className="font-medium">Download AppImage</span>
-              <span className="text-xs text-wormhole-hunter-light">
-                {appImageAsset ? formatBytes(appImageAsset.size) : "Universal • Works on any distro"}
-              </span>
-            </a>
+            <Package className="w-6 h-6" />
+            <span className="font-medium">Download AppImage</span>
+            <span className="text-xs text-wormhole-hunter-light">
+              {appImageAsset ? formatBytes(appImageAsset.size) : "Universal • Works on any distro"}
+            </span>
           </Button>
           <Button
             size="lg"
             variant="outline"
             className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 h-auto py-6 flex-col gap-2 rounded-xl"
-            asChild
+            render={<a href={debAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} />}
           >
-            <a href={debAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`}>
-              <Download className="w-6 h-6" />
-              <span className="font-medium">Download .deb</span>
-              <span className="text-xs text-zinc-500">
-                {debAsset ? formatBytes(debAsset.size) : "Debian, Ubuntu, Mint"}
-              </span>
-            </a>
+            <Download className="w-6 h-6" />
+            <span className="font-medium">Download .deb</span>
+            <span className="text-xs text-zinc-500">
+              {debAsset ? formatBytes(debAsset.size) : "Debian, Ubuntu, Mint"}
+            </span>
           </Button>
         </div>
 
@@ -312,17 +308,13 @@ export default function LinuxDownloadPage() {
                 Prefer command-line tools without the GUI? Download the CLI binaries directly from GitHub releases or build from source.
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} target="_blank" rel="noopener noreferrer">
-                    <Download className="w-4 h-4 mr-2" />
-                    CLI Binary
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} target="_blank" rel="noopener noreferrer" />}>
+                  <Download className="w-4 h-4 mr-2" />
+                  CLI Binary
                 </Button>
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-                  <a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#build-from-source`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Build from Source
-                  </a>
+                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#build-from-source`} target="_blank" rel="noopener noreferrer" />}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Build from Source
                 </Button>
               </div>
             </div>
@@ -333,17 +325,13 @@ export default function LinuxDownloadPage() {
         <div className="mt-12 text-center">
           <p className="text-zinc-500 mb-4">Looking for a different platform?</p>
           <div className="flex justify-center gap-3">
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-              <Link href="/download/macos">
-                macOS
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/macos" />}>
+              macOS
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" asChild>
-              <Link href="/download/windows">
-                Windows
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/windows" />}>
+              Windows
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>
