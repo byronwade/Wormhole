@@ -22,42 +22,42 @@ export default function ConfigurationPage() {
         <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Configuration
         </Badge>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           Configuration Reference
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Complete reference for Wormhole configuration file, environment variables, and all available options.
         </p>
       </div>
 
       {/* Config File Location */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Configuration File</h2>
-        <p className="text-zinc-400">
+        <h2 className="text-2xl font-bold text-foreground">Configuration File</h2>
+        <p className="text-muted-foreground">
           Wormhole reads its configuration from a TOML file. The location depends on your operating system:
         </p>
 
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium">Platform</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Path</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium">Platform</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Path</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 text-white">macOS</td>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2 text-foreground">macOS</td>
                     <td className="py-2 font-mono text-xs">~/Library/Application Support/wormhole/config.toml</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 text-white">Linux</td>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2 text-foreground">Linux</td>
                     <td className="py-2 font-mono text-xs">~/.config/wormhole/config.toml</td>
                   </tr>
                   <tr>
-                    <td className="py-2 text-white">Windows</td>
+                    <td className="py-2 text-foreground">Windows</td>
                     <td className="py-2 font-mono text-xs">%APPDATA%\wormhole\config.toml</td>
                   </tr>
                 </tbody>
@@ -66,13 +66,13 @@ export default function ConfigurationPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Terminal</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Terminal</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# View config file path
 $ wormhole config path
 /Users/you/.config/wormhole/config.toml
@@ -90,15 +90,15 @@ $ wormhole config edit`}
 
       {/* Complete Configuration Example */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Complete Configuration Example</h2>
+        <h2 className="text-2xl font-bold text-foreground">Complete Configuration Example</h2>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">config.toml</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">config.toml</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Wormhole Configuration
 # All values shown are defaults unless noted
 
@@ -269,38 +269,38 @@ theme = "system"`}
 
       {/* Configuration Sections */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Configuration Sections</h2>
+        <h2 className="text-2xl font-bold text-foreground">Configuration Sections</h2>
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Link href="/docs/configuration/cache">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
+            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-white mb-1">[cache]</h3>
-                <p className="text-sm text-zinc-400">RAM and disk cache settings, TTL, garbage collection</p>
+                <h3 className="font-semibold text-foreground mb-1">[cache]</h3>
+                <p className="text-sm text-muted-foreground">RAM and disk cache settings, TTL, garbage collection</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/configuration/network">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
+            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-white mb-1">[network]</h3>
-                <p className="text-sm text-zinc-400">Timeouts, QUIC settings, signal server, STUN</p>
+                <h3 className="font-semibold text-foreground mb-1">[network]</h3>
+                <p className="text-sm text-muted-foreground">Timeouts, QUIC settings, signal server, STUN</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/configuration/env">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
+            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-white mb-1">Environment Variables</h3>
-                <p className="text-sm text-zinc-400">Override config with env vars, useful for containers</p>
+                <h3 className="font-semibold text-foreground mb-1">Environment Variables</h3>
+                <p className="text-sm text-muted-foreground">Override config with env vars, useful for containers</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/configuration/examples">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
+            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-white mb-1">Example Configurations</h3>
-                <p className="text-sm text-zinc-400">Pre-built configs for common scenarios</p>
+                <h3 className="font-semibold text-foreground mb-1">Example Configurations</h3>
+                <p className="text-sm text-muted-foreground">Pre-built configs for common scenarios</p>
               </CardContent>
             </Card>
           </Link>
@@ -309,12 +309,12 @@ theme = "system"`}
 
       {/* CLI Config Commands */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">CLI Config Commands</h2>
+        <h2 className="text-2xl font-bold text-foreground">CLI Config Commands</h2>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Show current configuration
 $ wormhole config show
 [host]
@@ -357,54 +357,54 @@ $ wormhole config export ~/wormhole-backup.toml`}
 
       {/* Environment Variables */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Environment Variables</h2>
-        <p className="text-zinc-400">
+        <h2 className="text-2xl font-bold text-foreground">Environment Variables</h2>
+        <p className="text-muted-foreground">
           Environment variables override config file settings. Useful for Docker deployments and CI/CD.
         </p>
 
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium">Variable</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Description</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Example</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium">Variable</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Example</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CONFIG</td>
                     <td className="py-2">Config file path</td>
                     <td className="py-2 font-mono text-xs">/etc/wormhole/config.toml</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DIR</td>
                     <td className="py-2">Cache directory</td>
                     <td className="py-2 font-mono text-xs">/var/cache/wormhole</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_LOG_LEVEL</td>
                     <td className="py-2">Logging level</td>
                     <td className="py-2 font-mono text-xs">debug</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_SIGNAL_SERVER</td>
                     <td className="py-2">Signal server URL</td>
                     <td className="py-2 font-mono text-xs">wss://signal.example.com</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_HOST_PORT</td>
                     <td className="py-2">Default host port</td>
                     <td className="py-2 font-mono text-xs">5000</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_RAM_MB</td>
                     <td className="py-2">RAM cache size (MB)</td>
                     <td className="py-2 font-mono text-xs">1024</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DISK_GB</td>
                     <td className="py-2">Disk cache size (GB)</td>
                     <td className="py-2 font-mono text-xs">20</td>
@@ -420,13 +420,13 @@ $ wormhole config export ~/wormhole-backup.toml`}
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Example: Docker Compose</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Example: Docker Compose</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`services:
   wormhole:
     image: wormhole/daemon:latest
@@ -445,27 +445,27 @@ $ wormhole config export ~/wormhole-backup.toml`}
 
       {/* Priority Order */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Configuration Priority</h2>
-        <p className="text-zinc-400">
+        <h2 className="text-2xl font-bold text-foreground">Configuration Priority</h2>
+        <p className="text-muted-foreground">
           Configuration values are resolved in this order (highest priority first):
         </p>
 
-        <ol className="list-decimal list-inside space-y-2 text-zinc-400">
-          <li><strong className="text-white">Command-line flags</strong> (<code className="bg-zinc-800 px-1 rounded">--port 5000</code>)</li>
-          <li><strong className="text-white">Environment variables</strong> (<code className="bg-zinc-800 px-1 rounded">WORMHOLE_HOST_PORT=5000</code>)</li>
-          <li><strong className="text-white">Config file</strong> (<code className="bg-zinc-800 px-1 rounded">~/.config/wormhole/config.toml</code>)</li>
-          <li><strong className="text-white">Built-in defaults</strong></li>
+        <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
+          <li><strong className="text-foreground">Command-line flags</strong> (<code className="bg-muted px-1 rounded">--port 5000</code>)</li>
+          <li><strong className="text-foreground">Environment variables</strong> (<code className="bg-muted px-1 rounded">WORMHOLE_HOST_PORT=5000</code>)</li>
+          <li><strong className="text-foreground">Config file</strong> (<code className="bg-muted px-1 rounded">~/.config/wormhole/config.toml</code>)</li>
+          <li><strong className="text-foreground">Built-in defaults</strong></li>
         </ol>
       </section>
 
       {/* Next Steps */}
-      <section className="space-y-4 pt-8 border-t border-zinc-800">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+      <section className="space-y-4 pt-8 border-t border-border">
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/configuration/examples" className="text-wormhole-hunter-light hover:underline">Example Configurations</Link>
-          <span className="text-zinc-600">•</span>
+          <span className="text-muted-foreground">•</span>
           <Link href="/docs/cli/config" className="text-wormhole-hunter-light hover:underline">CLI config command</Link>
-          <span className="text-zinc-600">•</span>
+          <span className="text-muted-foreground">•</span>
           <Link href="/docs/self-hosting" className="text-wormhole-hunter-light hover:underline">Self-Hosting Guide</Link>
         </div>
       </section>

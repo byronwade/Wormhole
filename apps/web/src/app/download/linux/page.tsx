@@ -54,7 +54,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="p-2 rounded hover:bg-zinc-700 transition-colors text-zinc-400 hover:text-white"
+      className="p-2 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
       title="Copy to clipboard"
     >
       {copied ? (
@@ -68,7 +68,7 @@ function CopyButton({ text }: { text: string }) {
 
 function CodeBlock({ code }: { code: string }) {
   return (
-    <div className="flex items-center justify-between bg-black/50 rounded-lg border border-zinc-800 px-4 py-3">
+    <div className="flex items-center justify-between bg-background/50 rounded-lg border border-border px-4 py-3">
       <code className="text-green-400 font-mono text-sm">{code}</code>
       <CopyButton text={code} />
     </div>
@@ -96,23 +96,23 @@ export default function LinuxDownloadPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       {/* Navigation */}
-      <nav className="border-b border-white/10 sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm">
+      <nav className="border-b border-border/10 sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center">
-                <Share2 className="w-4 h-4 text-white" />
+                <Share2 className="w-4 h-4 text-foreground" />
               </div>
-              <span className="font-bold text-lg text-white">Wormhole</span>
+              <span className="font-bold text-lg text-foreground">Wormhole</span>
             </Link>
-            <ChevronRight className="w-4 h-4 text-zinc-600" />
-            <span className="text-zinc-400">Download for Linux</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Download for Linux</span>
           </div>
           <a
             href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-zinc-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <Github className="w-5 h-5" />
           </a>
@@ -122,17 +122,17 @@ export default function LinuxDownloadPage() {
       <div className="max-w-3xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-zinc-700 to-zinc-800 mb-6 shadow-lg">
-            <Terminal className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-muted to-muted mb-6 shadow-lg">
+            <Terminal className="w-10 h-10 text-foreground" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
             Wormhole for Linux
           </h1>
-          <p className="text-lg text-zinc-400 max-w-lg mx-auto">
+          <p className="text-lg text-muted-foreground max-w-lg mx-auto">
             Mount remote folders as local drives. Share files instantly without uploads.
           </p>
           {release && (
-            <p className="text-sm text-zinc-500 mt-4">
+            <p className="text-sm text-muted-foreground mt-4">
               Version{" "}
               <span className="text-wormhole-hunter-light font-mono">{release.tag_name}</span>
             </p>
@@ -143,7 +143,7 @@ export default function LinuxDownloadPage() {
         <div className="grid sm:grid-cols-2 gap-4 mb-16">
           <Button
             size="lg"
-            className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white h-auto py-6 flex-col gap-2 rounded-xl shadow-lg shadow-wormhole-hunter/20"
+            className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-foreground h-auto py-6 flex-col gap-2 rounded-xl shadow-lg shadow-wormhole-hunter/20"
             render={<a href={appImageAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} />}
           >
             <Package className="w-6 h-6" />
@@ -155,12 +155,12 @@ export default function LinuxDownloadPage() {
           <Button
             size="lg"
             variant="outline"
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 h-auto py-6 flex-col gap-2 rounded-xl"
+            className="border-border text-muted-foreground hover:bg-muted h-auto py-6 flex-col gap-2 rounded-xl"
             render={<a href={debAsset?.browser_download_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} />}
           >
             <Download className="w-6 h-6" />
             <span className="font-medium">Download .deb</span>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-muted-foreground">
               {debAsset ? formatBytes(debAsset.size) : "Debian, Ubuntu, Mint"}
             </span>
           </Button>
@@ -168,19 +168,19 @@ export default function LinuxDownloadPage() {
 
         {/* Installation Steps */}
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold text-white mb-8">Installation Steps</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-8">Installation Steps</h2>
 
           {/* Step 1 - Install FUSE */}
           <div className="relative pl-12">
-            <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-white font-bold text-sm">
+            <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-foreground font-bold text-sm">
               1
             </div>
-            <div className="bg-zinc-900/50 rounded-xl border border-zinc-800 p-6">
-              <h3 className="text-lg font-semibold text-white mb-2">
+            <div className="bg-card/50 rounded-xl border border-border p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Install FUSE3
-                <span className="ml-2 text-sm font-normal text-zinc-500">(Required)</span>
+                <span className="ml-2 text-sm font-normal text-muted-foreground">(Required)</span>
               </h3>
-              <p className="text-zinc-400 mb-6">
+              <p className="text-muted-foreground mb-6">
                 FUSE enables Wormhole to mount remote folders as local drives. Install using your package manager:
               </p>
 
@@ -230,14 +230,14 @@ export default function LinuxDownloadPage() {
 
           {/* Step 2 - Install Wormhole */}
           <div className="relative pl-12">
-            <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-white font-bold text-sm">
+            <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-foreground font-bold text-sm">
               2
             </div>
-            <div className="bg-zinc-900/50 rounded-xl border border-zinc-800 p-6">
-              <h3 className="text-lg font-semibold text-white mb-2">
+            <div className="bg-card/50 rounded-xl border border-border p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Install Wormhole
               </h3>
-              <p className="text-zinc-400 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Choose your preferred installation method:
               </p>
 
@@ -245,12 +245,12 @@ export default function LinuxDownloadPage() {
               <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <Package className="w-5 h-5 text-wormhole-hunter-light" />
-                  <span className="font-medium text-white">AppImage</span>
+                  <span className="font-medium text-foreground">AppImage</span>
                   <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/30 text-xs">
                     Recommended
                   </Badge>
                 </div>
-                <p className="text-zinc-400 text-sm mb-3 ml-8">
+                <p className="text-muted-foreground text-sm mb-3 ml-8">
                   Works on any Linux distribution. Download, make executable, and run.
                 </p>
                 <div className="ml-8 space-y-2">
@@ -259,15 +259,15 @@ export default function LinuxDownloadPage() {
                 </div>
               </div>
 
-              <div className="border-t border-zinc-800 my-6" />
+              <div className="border-t border-border my-6" />
 
               {/* .deb */}
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <Download className="w-5 h-5 text-zinc-400" />
-                  <span className="font-medium text-white">.deb Package</span>
+                  <Download className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-medium text-foreground">.deb Package</span>
                 </div>
-                <p className="text-zinc-400 text-sm mb-3 ml-8">
+                <p className="text-muted-foreground text-sm mb-3 ml-8">
                   For Debian-based distributions (Ubuntu, Mint, Pop!_OS, etc.)
                 </p>
                 <div className="ml-8">
@@ -280,39 +280,39 @@ export default function LinuxDownloadPage() {
           {/* Step 3 - Done */}
           <div className="relative pl-12">
             <div className="absolute left-0 top-0 w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4 text-white" />
+              <CheckCircle2 className="w-4 h-4 text-foreground" />
             </div>
-            <div className="bg-zinc-900/50 rounded-xl border border-zinc-800 p-6">
-              <h3 className="text-lg font-semibold text-white mb-2">
+            <div className="bg-card/50 rounded-xl border border-border p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 You&apos;re Ready!
               </h3>
-              <p className="text-zinc-400 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Launch Wormhole from your application menu or run it from the terminal. The app will guide you through sharing your first folder or connecting to someone else&apos;s share.
               </p>
-              <p className="text-sm text-zinc-500">
-                <strong className="text-zinc-400">CLI users:</strong> The GUI app includes the CLI tools. Run <code className="text-wormhole-hunter-light bg-zinc-800 px-1.5 py-0.5 rounded">wormhole --help</code> after installation.
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-muted-foreground">CLI users:</strong> The GUI app includes the CLI tools. Run <code className="text-wormhole-hunter-light bg-muted px-1.5 py-0.5 rounded">wormhole --help</code> after installation.
               </p>
             </div>
           </div>
         </div>
 
         {/* CLI-Only Installation */}
-        <div className="mt-16 p-6 rounded-xl bg-zinc-900/30 border border-zinc-800">
+        <div className="mt-16 p-6 rounded-xl bg-card/30 border border-border">
           <div className="flex items-start gap-4">
-            <Terminal className="w-6 h-6 text-zinc-500 flex-shrink-0" />
+            <Terminal className="w-6 h-6 text-muted-foreground flex-shrink-0" />
             <div>
-              <h3 className="text-base font-semibold text-white mb-2">
+              <h3 className="text-base font-semibold text-foreground mb-2">
                 CLI-Only Installation
               </h3>
-              <p className="text-zinc-400 text-sm mb-4">
+              <p className="text-muted-foreground text-sm mb-4">
                 Prefer command-line tools without the GUI? Download the CLI binaries directly from GitHub releases or build from source.
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} target="_blank" rel="noopener noreferrer" />}>
+                <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-foreground" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`} target="_blank" rel="noopener noreferrer" />}>
                   <Download className="w-4 h-4 mr-2" />
                   CLI Binary
                 </Button>
-                <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#build-from-source`} target="_blank" rel="noopener noreferrer" />}>
+                <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-foreground" render={<a href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}#build-from-source`} target="_blank" rel="noopener noreferrer" />}>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Build from Source
                 </Button>
@@ -323,13 +323,13 @@ export default function LinuxDownloadPage() {
 
         {/* Other Platforms */}
         <div className="mt-12 text-center">
-          <p className="text-zinc-500 mb-4">Looking for a different platform?</p>
+          <p className="text-muted-foreground mb-4">Looking for a different platform?</p>
           <div className="flex justify-center gap-3">
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/macos" />}>
+            <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-foreground" render={<Link href="/download/macos" />}>
               macOS
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white" render={<Link href="/download/windows" />}>
+            <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-foreground" render={<Link href="/download/windows" />}>
               Windows
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
@@ -338,8 +338,8 @@ export default function LinuxDownloadPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800 py-8 px-6 mt-16">
-        <div className="max-w-3xl mx-auto text-center text-sm text-zinc-600">
+      <footer className="border-t border-border py-8 px-6 mt-16">
+        <div className="max-w-3xl mx-auto text-center text-sm text-muted-foreground">
           <p>Open source under MIT License. Free during alpha.</p>
         </div>
       </footer>

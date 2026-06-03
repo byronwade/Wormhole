@@ -13,27 +13,27 @@ export default function CacheCommandPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/cli" className="hover:text-white">CLI Reference</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
           <span>/</span>
-          <span className="text-zinc-400">cache</span>
+          <span className="text-muted-foreground">cache</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight font-mono">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight font-mono">
           wormhole cache
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Manage local file cache for offline access and improved performance.
         </p>
       </div>
 
       {/* Synopsis */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Synopsis</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Synopsis</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
               <code className="text-green-400">wormhole cache</code>
-              <code className="text-zinc-400"> &lt;COMMAND&gt; [OPTIONS]</code>
+              <code className="text-muted-foreground"> &lt;COMMAND&gt; [OPTIONS]</code>
             </pre>
           </CardContent>
         </Card>
@@ -41,34 +41,34 @@ export default function CacheCommandPage() {
 
       {/* Description */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Description</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Description</h2>
+        <p className="text-muted-foreground">
           Wormhole uses a two-tier caching system to improve performance and enable offline access:
         </p>
-        <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
+        <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
           <li><strong>L1 (RAM cache)</strong> - Fast in-memory cache for recently accessed chunks</li>
           <li><strong>L2 (Disk cache)</strong> - Persistent cache stored in <code className="text-wormhole-hunter-light">~/.cache/wormhole</code></li>
         </ul>
-        <p className="text-zinc-300 mt-4">
+        <p className="text-muted-foreground mt-4">
           The cache command provides tools to inspect, clear, resize, and manage this cache.
         </p>
       </section>
 
       {/* Subcommands */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Subcommands</h2>
+        <h2 className="text-2xl font-bold text-foreground">Subcommands</h2>
 
         {/* stats */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Database className="h-5 w-5 text-wormhole-hunter-light" />
             cache stats
           </h3>
-          <p className="text-zinc-300">Display cache statistics and usage information.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Display cache statistics and usage information.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache stats [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache stats [OPTIONS]
 
 OPTIONS:
   --detailed      Breakdown by share
@@ -76,10 +76,10 @@ OPTIONS:
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole cache stats
+                <code className="text-muted-foreground">{`$ wormhole cache stats
 Cache Statistics
 ──────────────────────────────────────────────────────────────────
 RAM Cache (L1):
@@ -108,15 +108,15 @@ Cache saves: ~18.4 GB network transfer`}</code>
 
         {/* clear */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Trash2 className="h-5 w-5 text-red-400" />
             cache clear
           </h3>
-          <p className="text-zinc-300">Clear cached data to free up space.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Clear cached data to free up space.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache clear [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache clear [OPTIONS]
 
 OPTIONS:
   --ram-only              Clear only RAM cache (L1)
@@ -127,10 +127,10 @@ OPTIONS:
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Clear all cache (with confirmation)
+                <code className="text-muted-foreground">{`# Clear all cache (with confirmation)
 wormhole cache clear
 
 # Clear only RAM cache
@@ -151,15 +151,15 @@ wormhole cache clear --force`}</code>
 
         {/* path */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <HardDrive className="h-5 w-5 text-wormhole-hunter-light" />
             cache path
           </h3>
-          <p className="text-zinc-300">Show the cache directory location.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Show the cache directory location.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`$ wormhole cache path
+                <code className="text-muted-foreground">{`$ wormhole cache path
 /Users/alice/.cache/wormhole
 
 # Platform-specific defaults:
@@ -173,15 +173,15 @@ wormhole cache clear --force`}</code>
 
         {/* resize */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-wormhole-hunter-light" />
             cache resize
           </h3>
-          <p className="text-zinc-300">Change cache size limits.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Change cache size limits.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache resize [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache resize [OPTIONS]
 
 OPTIONS:
   --ram-mb <MB>     Set RAM cache size in megabytes
@@ -189,10 +189,10 @@ OPTIONS:
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Increase RAM cache to 1GB
+                <code className="text-muted-foreground">{`# Increase RAM cache to 1GB
 wormhole cache resize --ram-mb 1024
 
 # Increase disk cache to 50GB
@@ -207,15 +207,15 @@ wormhole cache resize --ram-mb 2048 --disk-gb 100`}</code>
 
         {/* warm */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Download className="h-5 w-5 text-green-400" />
             cache warm
           </h3>
-          <p className="text-zinc-300">Pre-fetch files to cache for offline use.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Pre-fetch files to cache for offline use.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache warm <SHARE> [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache warm <SHARE> [OPTIONS]
 
 OPTIONS:
   --path <PATTERN>        Path pattern to warm (e.g., "project/src/**")
@@ -225,10 +225,10 @@ OPTIONS:
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Cache all files from a share (up to cache limit)
+                <code className="text-muted-foreground">{`# Cache all files from a share (up to cache limit)
 wormhole cache warm remote-work
 
 # Cache specific directory
@@ -255,15 +255,15 @@ wormhole cache warm project-files --path "src/**" --max-size-mb 2000`}</code>
 
         {/* verify */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-400" />
             cache verify
           </h3>
-          <p className="text-zinc-300">Verify cache integrity using BLAKE3 checksums.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Verify cache integrity using BLAKE3 checksums.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache verify [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache verify [OPTIONS]
 
 OPTIONS:
   --fix         Automatically remove corrupted entries
@@ -271,10 +271,10 @@ OPTIONS:
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole cache verify
+                <code className="text-muted-foreground">{`$ wormhole cache verify
 Verifying cache integrity...
 Checked: 33,792 chunks
 Valid:   33,790 (99.99%)
@@ -293,15 +293,15 @@ Cache integrity verified: 33,790 valid chunks`}</code>
 
         {/* gc */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Trash2 className="h-5 w-5 text-yellow-400" />
             cache gc
           </h3>
-          <p className="text-zinc-300">Run garbage collection to reclaim space.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Run garbage collection to reclaim space.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache gc [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache gc [OPTIONS]
 
 OPTIONS:
   --target-gb <GB>    Target size after GC
@@ -309,10 +309,10 @@ OPTIONS:
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Reduce cache to 5GB
+                <code className="text-muted-foreground">{`# Reduce cache to 5GB
 wormhole cache gc --target-gb 5
 
 # See what would be deleted
@@ -324,15 +324,15 @@ wormhole cache gc --target-gb 2 --dry-run`}</code>
 
         {/* export */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Upload className="h-5 w-5 text-wormhole-hunter-light" />
             cache export
           </h3>
-          <p className="text-zinc-300">Export cache to an archive for backup or transfer.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Export cache to an archive for backup or transfer.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache export <OUTPUT> [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache export <OUTPUT> [OPTIONS]
 
 OPTIONS:
   --share <SHARE>     Export only specific share's cache
@@ -340,10 +340,10 @@ OPTIONS:
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Export all cache
+                <code className="text-muted-foreground">{`# Export all cache
 wormhole cache export backup.tar
 
 # Export compressed
@@ -358,25 +358,25 @@ wormhole cache export project-cache.tar --share project-files`}</code>
 
         {/* import */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Download className="h-5 w-5 text-wormhole-hunter-light" />
             cache import
           </h3>
-          <p className="text-zinc-300">Import cache from an archive.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Import cache from an archive.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole cache import <INPUT> [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole cache import <INPUT> [OPTIONS]
 
 OPTIONS:
   --verify      Verify checksums after import`}</code>
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Import cache
+                <code className="text-muted-foreground">{`# Import cache
 wormhole cache import backup.tar
 
 # Import and verify
@@ -389,46 +389,46 @@ wormhole cache import backup.tar --verify`}</code>
 
       {/* Cache Modes */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Cache Modes</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Cache Modes</h2>
+        <p className="text-muted-foreground">
           When mounting, you can specify the cache mode with <code className="text-wormhole-hunter-light">--cache-mode</code>:
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Mode</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">L1 (RAM)</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">L2 (Disk)</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Use Case</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Mode</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">L1 (RAM)</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">L2 (Disk)</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Use Case</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">none</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Always-fresh data, testing</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">ram</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Fast access, no disk usage</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">disk</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4">Offline access, low RAM</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">hybrid</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4"><strong>Default</strong> - best of both</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">aggressive</td>
                 <td className="py-3 px-4 text-green-400">On (large)</td>
                 <td className="py-3 px-4 text-green-400">On (large)</td>
@@ -441,20 +441,20 @@ wormhole cache import backup.tar --verify`}</code>
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/mount">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole mount
             </Badge>
           </Link>
           <Link href="/docs/performance/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Cache Performance
             </Badge>
           </Link>
           <Link href="/docs/configuration">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Configuration
             </Badge>
           </Link>

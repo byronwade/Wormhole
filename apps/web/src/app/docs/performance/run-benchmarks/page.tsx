@@ -21,26 +21,26 @@ export default function RunBenchmarksPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/performance" className="hover:text-white">Performance</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/performance" className="hover:text-foreground">Performance</Link>
           <span>/</span>
-          <span className="text-zinc-400">Run Benchmarks</span>
+          <span className="text-muted-foreground">Run Benchmarks</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           Run Your Own Benchmarks
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Verify Wormhole performance on your specific hardware and network configuration.
         </p>
       </div>
 
       {/* Why Benchmark */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Why Run Your Own Benchmarks?</h2>
-        <p className="text-zinc-400">
+        <h2 className="text-2xl font-bold text-foreground">Why Run Your Own Benchmarks?</h2>
+        <p className="text-muted-foreground">
           Published benchmarks are run on specific hardware. Your results will vary based on:
         </p>
-        <ul className="list-disc list-inside text-zinc-400 space-y-1">
+        <ul className="list-disc list-inside text-muted-foreground space-y-1">
           <li>Network speed and latency between peers</li>
           <li>Disk I/O speed (SSD vs HDD)</li>
           <li>Available RAM for caching</li>
@@ -51,18 +51,18 @@ export default function RunBenchmarksPage() {
 
       {/* Method 1: Built-in Benchmark */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Method 1: Built-in Benchmark Command</h2>
-        <p className="text-zinc-400">
+        <h2 className="text-2xl font-bold text-foreground">Method 1: Built-in Benchmark Command</h2>
+        <p className="text-muted-foreground">
           Wormhole includes a built-in benchmark command that tests all aspects of performance.
         </p>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Terminal</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Terminal</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# On the HOST machine, start sharing a folder
 $ wormhole host ~/test-data --no-signal
 Listening on 0.0.0.0:4433
@@ -103,31 +103,31 @@ Bottleneck: None detected`}
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white">Benchmark Options</h3>
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground">Benchmark Options</h3>
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium">Option</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Description</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium">Option</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">--test &lt;TYPE&gt;</td>
                     <td className="py-2">all, read, write, latency, metadata (default: all)</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">--duration &lt;SECS&gt;</td>
                     <td className="py-2">Duration per test (default: 10)</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">--parallel &lt;N&gt;</td>
                     <td className="py-2">Parallel streams (default: 4)</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">--signal &lt;URL&gt;</td>
                     <td className="py-2">Signal server URL</td>
                   </tr>
@@ -144,18 +144,18 @@ Bottleneck: None detected`}
 
       {/* Method 2: Benchmark Script */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Method 2: Benchmark Script</h2>
-        <p className="text-zinc-400">
+        <h2 className="text-2xl font-bold text-foreground">Method 2: Benchmark Script</h2>
+        <p className="text-muted-foreground">
           For more detailed benchmarks, use the benchmark script from the repository:
         </p>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Terminal</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Terminal</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Download the benchmark script
 curl -O https://raw.githubusercontent.com/byronwade/wormhole/main/scripts/benchmark.sh
 chmod +x benchmark.sh
@@ -176,18 +176,18 @@ chmod +x benchmark.sh
 
       {/* Method 3: DIY with Standard Tools */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Method 3: Standard Unix Tools</h2>
-        <p className="text-zinc-400">
+        <h2 className="text-2xl font-bold text-foreground">Method 3: Standard Unix Tools</h2>
+        <p className="text-muted-foreground">
           Use familiar tools to verify performance independently:
         </p>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Sequential Read with dd</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Sequential Read with dd</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Mount first
 wormhole mount 192.168.1.42:4433 ~/mnt --cache-mode none
 
@@ -203,13 +203,13 @@ dd if=~/mnt/largefile.bin of=/dev/null bs=1M
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Metadata Performance</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Metadata Performance</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Time a recursive file listing
 time find ~/mnt -type f | wc -l
 # real    0m0.182s  (for 10k files)
@@ -222,13 +222,13 @@ time find ~/mnt -type f -exec stat {} \\; > /dev/null
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Copy Speed Test</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Copy Speed Test</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Time a file copy
 time cp ~/mnt/video.mp4 /tmp/
 
@@ -239,13 +239,13 @@ pv ~/mnt/video.mp4 > /tmp/video.mp4`}
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50">
-              <span className="text-xs text-zinc-500 font-mono">Random Read with fio</span>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
+              <span className="text-xs text-muted-foreground font-mono">Random Read with fio</span>
             </div>
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Install fio: brew install fio (macOS) or apt install fio (Linux)
 
 # Random 4K reads
@@ -266,12 +266,12 @@ fio --name=randread \\
 
       {/* Cache Performance */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Measuring Cache Effectiveness</h2>
+        <h2 className="text-2xl font-bold text-foreground">Measuring Cache Effectiveness</h2>
 
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Check cache statistics
 $ wormhole cache stats --detailed
 
@@ -299,55 +299,55 @@ Avg fetch time: 15.3ms`}
         <Alert className="bg-blue-500/10 border-blue-500/30">
           <Info className="h-4 w-4 text-blue-400" />
           <AlertTitle className="text-blue-400">Cache Hit Rate</AlertTitle>
-          <AlertDescription className="text-zinc-400">
-            A good cache hit rate is above 90%. If you&apos;re seeing lower rates, consider increasing cache size with <code className="bg-zinc-800 px-1 rounded">--ram-cache-mb</code> and <code className="bg-zinc-800 px-1 rounded">--disk-cache-gb</code>.
+          <AlertDescription className="text-muted-foreground">
+            A good cache hit rate is above 90%. If you&apos;re seeing lower rates, consider increasing cache size with <code className="bg-muted px-1 rounded">--ram-cache-mb</code> and <code className="bg-muted px-1 rounded">--disk-cache-gb</code>.
           </AlertDescription>
         </Alert>
       </section>
 
       {/* Expected Results */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Expected Results</h2>
+        <h2 className="text-2xl font-bold text-foreground">Expected Results</h2>
 
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-3 text-zinc-400 font-medium">Metric</th>
-                    <th className="text-left py-3 text-zinc-400 font-medium">LAN (1Gbps)</th>
-                    <th className="text-left py-3 text-zinc-400 font-medium">WAN (100Mbps)</th>
-                    <th className="text-left py-3 text-zinc-400 font-medium">Poor</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 text-muted-foreground font-medium">Metric</th>
+                    <th className="text-left py-3 text-muted-foreground font-medium">LAN (1Gbps)</th>
+                    <th className="text-left py-3 text-muted-foreground font-medium">WAN (100Mbps)</th>
+                    <th className="text-left py-3 text-muted-foreground font-medium">Poor</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 text-white">Sequential read</td>
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-3 text-foreground">Sequential read</td>
                     <td className="py-3 text-green-400">&gt;100 MB/s</td>
                     <td className="py-3 text-green-400">&gt;10 MB/s</td>
                     <td className="py-3 text-red-400">&lt;5 MB/s</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 text-white">Random read (4K)</td>
+                  <tr className="border-b border-border/50">
+                    <td className="py-3 text-foreground">Random read (4K)</td>
                     <td className="py-3 text-green-400">&gt;40 MB/s</td>
                     <td className="py-3 text-green-400">&gt;5 MB/s</td>
                     <td className="py-3 text-red-400">&lt;1 MB/s</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 text-white">First byte latency</td>
+                  <tr className="border-b border-border/50">
+                    <td className="py-3 text-foreground">First byte latency</td>
                     <td className="py-3 text-green-400">&lt;20ms</td>
                     <td className="py-3 text-green-400">&lt;100ms</td>
                     <td className="py-3 text-red-400">&gt;500ms</td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 text-white">Metadata (ls)</td>
+                  <tr className="border-b border-border/50">
+                    <td className="py-3 text-foreground">Metadata (ls)</td>
                     <td className="py-3 text-green-400">&lt;50ms</td>
                     <td className="py-3 text-green-400">&lt;200ms</td>
                     <td className="py-3 text-red-400">&gt;1s</td>
                   </tr>
                   <tr>
-                    <td className="py-3 text-white">Cache hit rate</td>
+                    <td className="py-3 text-foreground">Cache hit rate</td>
                     <td className="py-3 text-green-400">&gt;90%</td>
                     <td className="py-3 text-green-400">&gt;90%</td>
                     <td className="py-3 text-red-400">&lt;50%</td>
@@ -361,27 +361,27 @@ Avg fetch time: 15.3ms`}
 
       {/* Troubleshooting Poor Results */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">If Results Are Poor</h2>
+        <h2 className="text-2xl font-bold text-foreground">If Results Are Poor</h2>
         <div className="space-y-4">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card/50 border-border">
             <CardContent className="p-6">
-              <h3 className="font-semibold text-white mb-3">Check These First</h3>
-              <ul className="text-sm text-zinc-400 space-y-2">
+              <h3 className="font-semibold text-foreground mb-3">Check These First</h3>
+              <ul className="text-sm text-muted-foreground space-y-2">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span><strong className="text-white">Network:</strong> Run <code className="bg-zinc-800 px-1 rounded">iperf3</code> between machines to verify base network speed</span>
+                  <span><strong className="text-foreground">Network:</strong> Run <code className="bg-muted px-1 rounded">iperf3</code> between machines to verify base network speed</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span><strong className="text-white">Latency:</strong> Run <code className="bg-zinc-800 px-1 rounded">wormhole ping TARGET</code> to check round-trip time</span>
+                  <span><strong className="text-foreground">Latency:</strong> Run <code className="bg-muted px-1 rounded">wormhole ping TARGET</code> to check round-trip time</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span><strong className="text-white">Cache:</strong> Check hit rate with <code className="bg-zinc-800 px-1 rounded">wormhole cache stats</code></span>
+                  <span><strong className="text-foreground">Cache:</strong> Check hit rate with <code className="bg-muted px-1 rounded">wormhole cache stats</code></span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span><strong className="text-white">Disk:</strong> Verify disk cache is on SSD, not HDD</span>
+                  <span><strong className="text-foreground">Disk:</strong> Verify disk cache is on SSD, not HDD</span>
                 </li>
               </ul>
             </CardContent>
@@ -395,15 +395,15 @@ Avg fetch time: 15.3ms`}
       </section>
 
       {/* Share Your Results */}
-      <section className="space-y-6 pt-8 border-t border-zinc-800">
-        <h2 className="text-2xl font-bold text-white">Share Your Results</h2>
-        <p className="text-zinc-400">
+      <section className="space-y-6 pt-8 border-t border-border">
+        <h2 className="text-2xl font-bold text-foreground">Share Your Results</h2>
+        <p className="text-muted-foreground">
           Help improve Wormhole by sharing your benchmark results:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`# Generate a shareable benchmark report
 wormhole bench TARGET --format json > benchmark-results.json
 

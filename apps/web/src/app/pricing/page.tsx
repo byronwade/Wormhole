@@ -82,16 +82,16 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       {/* Header */}
-      <nav className="border-b border-zinc-800 sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-sm">
+      <nav className="border-b border-border sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center">
-              <Share2 className="w-4 h-4 text-white" />
+              <Share2 className="w-4 h-4 text-foreground" />
             </div>
-            <span className="font-bold text-lg text-white">Wormhole</span>
+            <span className="font-bold text-lg text-foreground">Wormhole</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/docs" className="text-sm text-zinc-400 hover:text-white transition-colors">
+            <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Docs
             </Link>
             <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/#download" />}>Download</Button>
@@ -105,10 +105,10 @@ export default function PricingPage() {
           <Badge className="mb-6 bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
             Simple Pricing
           </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 tracking-tight">
             Free while in alpha
           </h1>
-          <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Wormhole is currently free for everyone during our alpha phase.
             Pro features are coming soon for those who need more.
           </p>
@@ -122,34 +122,34 @@ export default function PricingPage() {
             {plans.map((plan) => (
               <Card
                 key={plan.name}
-                className={`bg-zinc-900/50 border-zinc-800 relative ${
+                className={`bg-card/50 border-border relative ${
                   plan.highlight ? "ring-2 ring-wormhole-hunter" : ""
                 }`}
               >
                 {plan.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-wormhole-hunter text-white border-0">
+                    <Badge className="bg-wormhole-hunter text-foreground border-0">
                       Most Popular
                     </Badge>
                   </div>
                 )}
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <CardTitle className="text-xl text-white">{plan.name}</CardTitle>
+                    <CardTitle className="text-xl text-foreground">{plan.name}</CardTitle>
                     <Badge className={plan.badgeColor}>{plan.badge}</Badge>
                   </div>
-                  <p className="text-sm text-zinc-400">{plan.description}</p>
+                  <p className="text-sm text-muted-foreground">{plan.description}</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">{plan.price}</span>
-                    <span className="text-zinc-400">{plan.period}</span>
+                    <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                    <span className="text-muted-foreground">{plan.period}</span>
                   </div>
                   <ul className="space-y-3">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-center gap-2 text-sm">
                         <Check className="w-4 h-4 text-wormhole-hunter-light flex-shrink-0" />
-                        <span className="text-zinc-300">{feature}</span>
+                        <span className="text-muted-foreground">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -157,7 +157,7 @@ export default function PricingPage() {
                     className={`w-full ${
                       plan.highlight
                         ? "bg-wormhole-hunter hover:bg-wormhole-hunter-dark"
-                        : "bg-zinc-800 hover:bg-zinc-700"
+                        : "bg-muted hover:bg-muted"
                     }`}
                     render={<Link href={plan.ctaHref} />}
                   >
@@ -172,39 +172,39 @@ export default function PricingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16 px-6 border-t border-zinc-800">
+      <section className="py-16 px-6 border-t border-border">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold text-white mb-8 text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-8 text-center">
             Frequently Asked Questions
           </h2>
           <div className="space-y-6">
-            <div className="p-6 rounded-lg bg-zinc-900/50 border border-zinc-800">
-              <h3 className="text-white font-medium mb-2">Will Free always be free?</h3>
-              <p className="text-zinc-400 text-sm">
+            <div className="p-6 rounded-lg bg-card/50 border border-border">
+              <h3 className="text-foreground font-medium mb-2">Will Free always be free?</h3>
+              <p className="text-muted-foreground text-sm">
                 Yes. Core file sharing functionality will always be free. We believe
                 essential tools shouldn&apos;t be locked behind paywalls. Pro features
                 will offer advanced capabilities for power users.
               </p>
             </div>
-            <div className="p-6 rounded-lg bg-zinc-900/50 border border-zinc-800">
-              <h3 className="text-white font-medium mb-2">What happens after alpha?</h3>
-              <p className="text-zinc-400 text-sm">
+            <div className="p-6 rounded-lg bg-card/50 border border-border">
+              <h3 className="text-foreground font-medium mb-2">What happens after alpha?</h3>
+              <p className="text-muted-foreground text-sm">
                 When we launch out of alpha, the Free tier will remain free. Pro and
                 Team plans will become available with the features listed above.
                 Early adopters may receive special perks.
               </p>
             </div>
-            <div className="p-6 rounded-lg bg-zinc-900/50 border border-zinc-800">
-              <h3 className="text-white font-medium mb-2">Can I self-host Wormhole?</h3>
-              <p className="text-zinc-400 text-sm">
+            <div className="p-6 rounded-lg bg-card/50 border border-border">
+              <h3 className="text-foreground font-medium mb-2">Can I self-host Wormhole?</h3>
+              <p className="text-muted-foreground text-sm">
                 Absolutely. Wormhole is open source under the MIT license. You can
                 run your own signal server and have complete control over your
                 infrastructure. See our self-hosting docs for details.
               </p>
             </div>
-            <div className="p-6 rounded-lg bg-zinc-900/50 border border-zinc-800">
-              <h3 className="text-white font-medium mb-2">How can I support the project?</h3>
-              <p className="text-zinc-400 text-sm">
+            <div className="p-6 rounded-lg bg-card/50 border border-border">
+              <h3 className="text-foreground font-medium mb-2">How can I support the project?</h3>
+              <p className="text-muted-foreground text-sm">
                 You can sponsor the project on GitHub, contribute code, report bugs,
                 or simply spread the word. Every bit helps us keep Wormhole free
                 and make it better for everyone.
@@ -215,20 +215,20 @@ export default function PricingPage() {
       </section>
 
       {/* Sponsor CTA */}
-      <section className="py-16 px-6 border-t border-zinc-800 bg-zinc-900/30">
+      <section className="py-16 px-6 border-t border-border bg-card/30">
         <div className="max-w-4xl mx-auto text-center">
           <Heart className="w-12 h-12 text-pink-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-4">Support Open Source</h2>
-          <p className="text-zinc-400 mb-8 max-w-xl mx-auto">
+          <h2 className="text-2xl font-bold text-foreground mb-4">Support Open Source</h2>
+          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
             Wormhole is built by a small team in our spare time. Your sponsorship
             helps us dedicate more time to development and keep the project alive.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="bg-pink-500 hover:bg-pink-600 text-white" render={<a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer" />}>
+            <Button size="lg" className="bg-pink-500 hover:bg-pink-600 text-foreground" render={<a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer" />}>
               <Heart className="w-4 h-4 mr-2" />
               Become a Sponsor
             </Button>
-            <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" render={<a href="https://github.com/byronwade/wormhole" target="_blank" rel="noopener noreferrer" />}>
+            <Button size="lg" variant="outline" className="border-border text-muted-foreground hover:bg-muted" render={<a href="https://github.com/byronwade/wormhole" target="_blank" rel="noopener noreferrer" />}>
               <Github className="w-4 h-4 mr-2" />
               Star on GitHub
             </Button>

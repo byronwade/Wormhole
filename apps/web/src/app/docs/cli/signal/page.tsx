@@ -13,27 +13,27 @@ export default function SignalCommandPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/cli" className="hover:text-white">CLI Reference</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
           <span>/</span>
-          <span className="text-zinc-400">signal</span>
+          <span className="text-muted-foreground">signal</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight font-mono">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight font-mono">
           wormhole signal
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Run a signal/rendezvous server for peer discovery and NAT traversal.
         </p>
       </div>
 
       {/* Synopsis */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Synopsis</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Synopsis</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
               <code className="text-green-400">wormhole signal</code>
-              <code className="text-zinc-400"> [OPTIONS]</code>
+              <code className="text-muted-foreground"> [OPTIONS]</code>
             </pre>
           </CardContent>
         </Card>
@@ -41,13 +41,13 @@ export default function SignalCommandPage() {
 
       {/* Description */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Description</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Description</h2>
+        <p className="text-muted-foreground">
           The signal server is a lightweight WebSocket service that helps Wormhole peers
           discover each other using join codes. It facilitates the initial connection
           handshake but never sees your file data.
         </p>
-        <p className="text-zinc-300">
+        <p className="text-muted-foreground">
           By default, Wormhole uses the public signal server at{" "}
           <code className="text-wormhole-hunter-light">wss://signal.wormhole.app</code>. You can run
           your own for privacy, reliability, or air-gapped networks.
@@ -56,12 +56,12 @@ export default function SignalCommandPage() {
 
       {/* What the Signal Server Does */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">What It Does</h2>
+        <h2 className="text-2xl font-bold text-foreground">What It Does</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="text-lg font-semibold text-green-400 mb-2">Does</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>- Maps join codes to IP addresses</li>
                 <li>- Facilitates NAT hole punching</li>
                 <li>- Relays PAKE handshake messages</li>
@@ -69,10 +69,10 @@ export default function SignalCommandPage() {
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="text-lg font-semibold text-red-400 mb-2">Does NOT</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>- See your files or file names</li>
                 <li>- Decrypt your traffic</li>
                 <li>- Store any user data</li>
@@ -85,85 +85,85 @@ export default function SignalCommandPage() {
 
       {/* Options */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Options</h2>
+        <h2 className="text-2xl font-bold text-foreground">Options</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Option</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Default</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Description</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Option</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Default</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--port &lt;PORT&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">8080</td>
+                <td className="py-3 px-4 text-muted-foreground">8080</td>
                 <td className="py-3 px-4">WebSocket listen port</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--bind &lt;ADDR&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">0.0.0.0</td>
+                <td className="py-3 px-4 text-muted-foreground">0.0.0.0</td>
                 <td className="py-3 px-4">Network interface to bind</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--max-connections &lt;N&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">1000</td>
+                <td className="py-3 px-4 text-muted-foreground">1000</td>
                 <td className="py-3 px-4">Maximum concurrent WebSocket connections</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--code-expiry &lt;SECS&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">3600</td>
+                <td className="py-3 px-4 text-muted-foreground">3600</td>
                 <td className="py-3 px-4">How long join codes remain valid (seconds)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--rate-limit</td>
-                <td className="py-3 px-4 text-zinc-500">false</td>
+                <td className="py-3 px-4 text-muted-foreground">false</td>
                 <td className="py-3 px-4">Enable rate limiting per IP</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--rate-limit-rpm &lt;N&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">60</td>
+                <td className="py-3 px-4 text-muted-foreground">60</td>
                 <td className="py-3 px-4">Requests per minute per IP (with rate limiting)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--daemon</td>
-                <td className="py-3 px-4 text-zinc-500">false</td>
+                <td className="py-3 px-4 text-muted-foreground">false</td>
                 <td className="py-3 px-4">Run in background as daemon</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--tls-cert &lt;PATH&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">-</td>
+                <td className="py-3 px-4 text-muted-foreground">-</td>
                 <td className="py-3 px-4">TLS certificate file (enables wss://)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--tls-key &lt;PATH&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">-</td>
+                <td className="py-3 px-4 text-muted-foreground">-</td>
                 <td className="py-3 px-4">TLS private key file</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--enable-stun</td>
-                <td className="py-3 px-4 text-zinc-500">false</td>
+                <td className="py-3 px-4 text-muted-foreground">false</td>
                 <td className="py-3 px-4">Enable STUN server for NAT traversal</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--enable-turn</td>
-                <td className="py-3 px-4 text-zinc-500">false</td>
+                <td className="py-3 px-4 text-muted-foreground">false</td>
                 <td className="py-3 px-4">Enable TURN relay for restrictive NATs</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--admin-port &lt;PORT&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">-</td>
+                <td className="py-3 px-4 text-muted-foreground">-</td>
                 <td className="py-3 px-4">Admin API port (disabled by default)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--metrics</td>
-                <td className="py-3 px-4 text-zinc-500">false</td>
+                <td className="py-3 px-4 text-muted-foreground">false</td>
                 <td className="py-3 px-4">Enable Prometheus metrics endpoint</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--metrics-port &lt;PORT&gt;</td>
-                <td className="py-3 px-4 text-zinc-500">9090</td>
+                <td className="py-3 px-4 text-muted-foreground">9090</td>
                 <td className="py-3 px-4">Port for metrics endpoint</td>
               </tr>
             </tbody>
@@ -173,17 +173,17 @@ export default function SignalCommandPage() {
 
       {/* Examples */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Examples</h2>
+        <h2 className="text-2xl font-bold text-foreground">Examples</h2>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Radio className="h-5 w-5 text-wormhole-hunter-light" />
             Basic Usage
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Start signal server on default port
+                <code className="text-muted-foreground">{`# Start signal server on default port
 wormhole signal
 
 # Custom port
@@ -197,14 +197,14 @@ wormhole signal --daemon`}</code>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Lock className="h-5 w-5 text-wormhole-hunter-light" />
             With TLS (Production)
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Enable TLS for secure WebSocket (wss://)
+                <code className="text-muted-foreground">{`# Enable TLS for secure WebSocket (wss://)
 wormhole signal \\
   --port 443 \\
   --tls-cert /etc/letsencrypt/live/signal.example.com/fullchain.pem \\
@@ -218,14 +218,14 @@ wormhole signal \\
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Shield className="h-5 w-5 text-wormhole-hunter-light" />
             With Rate Limiting
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Enable rate limiting for public deployment
+                <code className="text-muted-foreground">{`# Enable rate limiting for public deployment
 wormhole signal \\
   --rate-limit \\
   --rate-limit-rpm 30 \\
@@ -236,14 +236,14 @@ wormhole signal \\
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Activity className="h-5 w-5 text-wormhole-hunter-light" />
             With Monitoring
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`# Enable Prometheus metrics
+                <code className="text-muted-foreground">{`# Enable Prometheus metrics
 wormhole signal \\
   --metrics \\
   --metrics-port 9090 \\
@@ -257,14 +257,14 @@ wormhole signal \\
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Settings className="h-5 w-5 text-wormhole-hunter-light" />
             Full Production Setup
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole signal \\
+                <code className="text-muted-foreground">{`wormhole signal \\
   --port 443 \\
   --tls-cert /etc/ssl/signal.crt \\
   --tls-key /etc/ssl/signal.key \\
@@ -283,14 +283,14 @@ wormhole signal \\
 
       {/* Client Configuration */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Client Configuration</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Client Configuration</h2>
+        <p className="text-muted-foreground">
           To use your own signal server, configure clients:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
-              <code className="text-zinc-300">{`# Per-command
+              <code className="text-muted-foreground">{`# Per-command
 wormhole host ~/folder --signal-server wss://signal.example.com
 wormhole mount WORM-XXXX --signal wss://signal.example.com
 
@@ -306,11 +306,11 @@ export WORMHOLE_SIGNAL_SERVER="wss://signal.example.com"`}</code>
 
       {/* Output */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Output</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Output</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`$ wormhole signal --metrics
+              <code className="text-muted-foreground">{`$ wormhole signal --metrics
 2024-01-15T10:30:00Z INFO  Starting Wormhole Signal Server
 2024-01-15T10:30:00Z INFO  Version: 0.1.0
 2024-01-15T10:30:00Z INFO  Listening on ws://0.0.0.0:8080
@@ -331,14 +331,14 @@ export WORMHOLE_SIGNAL_SERVER="wss://signal.example.com"`}</code>
 
       {/* Metrics */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Prometheus Metrics</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Prometheus Metrics</h2>
+        <p className="text-muted-foreground">
           When <code className="text-wormhole-hunter-light">--metrics</code> is enabled:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`# HELP wormhole_signal_connections_total Total WebSocket connections
+              <code className="text-muted-foreground">{`# HELP wormhole_signal_connections_total Total WebSocket connections
 # TYPE wormhole_signal_connections_total counter
 wormhole_signal_connections_total 1247
 
@@ -369,20 +369,20 @@ wormhole_signal_request_duration_seconds_bucket{le="0.01"} 5892`}</code>
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/self-hosting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Self-Hosting Guide
             </Badge>
           </Link>
           <Link href="/docs/architecture/signal-server">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Signal Server Architecture
             </Badge>
           </Link>
           <Link href="/docs/security">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Security
             </Badge>
           </Link>

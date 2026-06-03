@@ -22,26 +22,26 @@ export default function MountCommandPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/cli" className="hover:text-white">CLI Reference</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
           <span>/</span>
-          <span className="text-zinc-400">mount</span>
+          <span className="text-muted-foreground">mount</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight font-mono">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight font-mono">
           wormhole mount
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Mount a remote folder locally via join code or direct IP address.
         </p>
       </div>
 
       {/* Synopsis */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Synopsis</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Synopsis</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm overflow-x-auto">
-              <code className="text-zinc-300">
+              <code className="text-muted-foreground">
 {`wormhole mount <TARGET> [MOUNTPOINT] [OPTIONS]`}
               </code>
             </pre>
@@ -51,30 +51,30 @@ export default function MountCommandPage() {
 
       {/* Description */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Description</h2>
-        <p className="text-zinc-400">
-          The <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-wormhole-hunter-light">mount</code> command connects to a remote Wormhole host and mounts the shared folder locally. You can connect using a join code (which uses the signal server for NAT traversal) or directly via IP address.
+        <h2 className="text-2xl font-bold text-foreground">Description</h2>
+        <p className="text-muted-foreground">
+          The <code className="bg-muted px-1.5 py-0.5 rounded text-wormhole-hunter-light">mount</code> command connects to a remote Wormhole host and mounts the shared folder locally. You can connect using a join code (which uses the signal server for NAT traversal) or directly via IP address.
         </p>
-        <p className="text-zinc-400">
+        <p className="text-muted-foreground">
           Once mounted, the remote folder appears as a local directory. All standard file operations work transparently - files are streamed on-demand without downloading the entire folder.
         </p>
       </section>
 
       {/* Arguments */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Arguments</h2>
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Arguments</h2>
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium">Argument</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Description</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium">Argument</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
                     <td className="py-2 font-mono text-wormhole-hunter-light">&lt;TARGET&gt;</td>
                     <td className="py-2">Join code (e.g., WORM-XXXX-YYYY) or IP:PORT (e.g., 192.168.1.42:4433)</td>
                   </tr>
@@ -91,56 +91,56 @@ export default function MountCommandPage() {
 
       {/* Connection Options */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Connection Options</h2>
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Connection Options</h2>
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium w-1/3">Option</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Description</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium w-1/3">Option</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--signal &lt;URL&gt;</td>
                     <td className="py-3">
                       <p>Signal server URL for join code resolution.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: ws://localhost:8080</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: ws://localhost:8080</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--password &lt;PASS&gt;</td>
                     <td className="py-3">
                       <p>Password if the host requires one.</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--timeout &lt;SECS&gt;</td>
                     <td className="py-3">
                       <p>Connection timeout in seconds.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 30</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 30</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--auto-reconnect</td>
                     <td className="py-3">
                       <p>Automatically reconnect on connection loss.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: true</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: true</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--max-reconnect &lt;N&gt;</td>
                     <td className="py-3">
                       <p>Maximum reconnection attempts. 0 for infinite.</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--reconnect-delay &lt;SECS&gt;</td>
                     <td className="py-3">
                       <p>Initial delay between reconnection attempts.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 1 (with exponential backoff)</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 1 (with exponential backoff)</p>
                     </td>
                   </tr>
                   <tr>
@@ -158,40 +158,40 @@ export default function MountCommandPage() {
 
       {/* Cache Options */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Database className="w-6 h-6 text-wormhole-hunter-light" />
           Cache Options
         </h2>
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium w-1/3">Option</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Description</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium w-1/3">Option</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--cache-mode &lt;MODE&gt;</td>
                     <td className="py-3">
                       <p>Cache strategy: none, ram, disk, hybrid, aggressive.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: hybrid</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: hybrid</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--ram-cache-mb &lt;MB&gt;</td>
                     <td className="py-3">
                       <p>RAM cache size in megabytes.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 512</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 512</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--disk-cache-gb &lt;GB&gt;</td>
                     <td className="py-3">
                       <p>Disk cache size in gigabytes.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 10</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 10</p>
                     </td>
                   </tr>
                   <tr>
@@ -207,10 +207,10 @@ export default function MountCommandPage() {
         </Card>
 
         <div className="grid sm:grid-cols-2 gap-4">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card/50 border-border">
             <CardContent className="p-4">
-              <h4 className="font-medium text-white mb-2">Cache Modes</h4>
-              <ul className="text-sm text-zinc-400 space-y-1">
+              <h4 className="font-medium text-foreground mb-2">Cache Modes</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li><code className="text-wormhole-hunter-light">none</code> - No caching, always fetch from host</li>
                 <li><code className="text-wormhole-hunter-light">ram</code> - RAM only, cleared on unmount</li>
                 <li><code className="text-wormhole-hunter-light">disk</code> - Disk only, persists across sessions</li>
@@ -219,15 +219,15 @@ export default function MountCommandPage() {
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card/50 border-border">
             <CardContent className="p-4">
-              <h4 className="font-medium text-white mb-2">Cache Location</h4>
-              <p className="text-sm text-zinc-400">
+              <h4 className="font-medium text-foreground mb-2">Cache Location</h4>
+              <p className="text-sm text-muted-foreground">
                 Disk cache is stored at:
               </p>
-              <ul className="text-sm text-zinc-400 space-y-1 mt-2">
-                <li><code className="text-xs bg-zinc-800 px-1 rounded">~/.cache/wormhole/</code> (Linux)</li>
-                <li><code className="text-xs bg-zinc-800 px-1 rounded">~/Library/Caches/wormhole/</code> (macOS)</li>
+              <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                <li><code className="text-xs bg-muted px-1 rounded">~/.cache/wormhole/</code> (Linux)</li>
+                <li><code className="text-xs bg-muted px-1 rounded">~/Library/Caches/wormhole/</code> (macOS)</li>
               </ul>
             </CardContent>
           </Card>
@@ -236,39 +236,39 @@ export default function MountCommandPage() {
 
       {/* Performance Options */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Zap className="w-6 h-6 text-wormhole-hunter-light" />
           Performance Options
         </h2>
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium w-1/3">Option</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Description</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium w-1/3">Option</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--prefetch</td>
                     <td className="py-3">
                       <p>Enable prefetching for sequential reads.</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--prefetch-lookahead &lt;N&gt;</td>
                     <td className="py-3">
                       <p>Number of chunks to prefetch ahead.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 4</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 4</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--bandwidth-limit &lt;MB/s&gt;</td>
                     <td className="py-3">
                       <p>Rate limit in MB/s. 0 for unlimited.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 0</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 0</p>
                     </td>
                   </tr>
                   <tr>
@@ -286,81 +286,81 @@ export default function MountCommandPage() {
 
       {/* FUSE Options */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <HardDrive className="w-6 h-6 text-wormhole-hunter-light" />
           FUSE / Mount Options
         </h2>
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="text-left py-2 text-zinc-400 font-medium w-1/3">Option</th>
-                    <th className="text-left py-2 text-zinc-400 font-medium">Description</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 text-muted-foreground font-medium w-1/3">Option</th>
+                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
                   </tr>
                 </thead>
-                <tbody className="text-zinc-400">
-                  <tr className="border-b border-zinc-800/50">
+                <tbody className="text-muted-foreground">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--read-only</td>
                     <td className="py-3">
                       <p>Mount in read-only mode (even if host allows writes).</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--use-kext</td>
                     <td className="py-3">
                       <p>Use kernel extension backend instead of FSKit (macOS).</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--fsname &lt;NAME&gt;</td>
                     <td className="py-3">
                       <p>Filesystem name shown in mount output.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: wormhole</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: wormhole</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--attr-timeout &lt;SECS&gt;</td>
                     <td className="py-3">
                       <p>Attribute cache timeout.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 1</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 1</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--entry-timeout &lt;SECS&gt;</td>
                     <td className="py-3">
                       <p>Entry (directory) cache timeout.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: 1</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: 1</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--uid &lt;UID&gt;</td>
                     <td className="py-3">
                       <p>User ID for mounted files.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: current user</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: current user</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--gid &lt;GID&gt;</td>
                     <td className="py-3">
                       <p>Group ID for mounted files.</p>
-                      <p className="text-zinc-600 text-xs mt-1">Default: current group</p>
+                      <p className="text-muted-foreground text-xs mt-1">Default: current group</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--umask &lt;MASK&gt;</td>
                     <td className="py-3">
                       <p>Permission mask for files.</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">--enable-xattr</td>
                     <td className="py-3">
                       <p>Enable extended attributes support.</p>
                     </td>
                   </tr>
-                  <tr className="border-b border-zinc-800/50">
+                  <tr className="border-b border-border/50">
                     <td className="py-3 font-mono text-wormhole-hunter-light">-o &lt;OPTIONS&gt;</td>
                     <td className="py-3">
                       <p>Additional FUSE mount options (passed through).</p>
@@ -381,15 +381,15 @@ export default function MountCommandPage() {
 
       {/* Examples */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Examples</h2>
+        <h2 className="text-2xl font-bold text-foreground">Examples</h2>
 
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-white mb-2">Basic Usage with Join Code</h3>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Basic Usage with Join Code</h3>
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <pre className="p-4 text-sm overflow-x-auto">
-                  <code className="text-zinc-300">
+                  <code className="text-muted-foreground">
 {`# Mount using join code
 $ wormhole mount WORM-7X9K-BETA ~/mnt/project
 
@@ -408,11 +408,11 @@ README.md  src/  assets/  package.json`}
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-white mb-2">Direct IP Connection</h3>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Direct IP Connection</h3>
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <pre className="p-4 text-sm overflow-x-auto">
-                  <code className="text-zinc-300">
+                  <code className="text-muted-foreground">
 {`# Mount directly via IP (LAN)
 $ wormhole mount 192.168.1.42:4433 ~/mnt/remote
 
@@ -424,11 +424,11 @@ $ wormhole mount 192.168.1.42:4433 ~/mnt/remote
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-white mb-2">Optimized for Video Streaming</h3>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Optimized for Video Streaming</h3>
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <pre className="p-4 text-sm overflow-x-auto">
-                  <code className="text-zinc-300">
+                  <code className="text-muted-foreground">
 {`# Large cache + aggressive prefetching for video editing
 $ wormhole mount WORM-XXXX-YYYY ~/mnt/video \\
     --cache-mode aggressive \\
@@ -443,11 +443,11 @@ $ wormhole mount WORM-XXXX-YYYY ~/mnt/video \\
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-white mb-2">Offline-Ready Mount</h3>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Offline-Ready Mount</h3>
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <pre className="p-4 text-sm overflow-x-auto">
-                  <code className="text-zinc-300">
+                  <code className="text-muted-foreground">
 {`# Enable offline mode for intermittent connectivity
 $ wormhole mount WORM-XXXX-YYYY ~/mnt/docs \\
     --cache-mode aggressive \\
@@ -462,11 +462,11 @@ $ wormhole mount WORM-XXXX-YYYY ~/mnt/docs \\
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-white mb-2">Background Daemon with Password</h3>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Background Daemon with Password</h3>
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <pre className="p-4 text-sm overflow-x-auto">
-                  <code className="text-zinc-300">
+                  <code className="text-muted-foreground">
 {`# Run as daemon with password
 $ wormhole mount WORM-XXXX-YYYY ~/mnt/secure \\
     --password "secret123" \\
@@ -483,20 +483,20 @@ Mounted in background (PID: 12345)`}
 
       {/* Notes */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Notes</h2>
+        <h2 className="text-2xl font-bold text-foreground">Notes</h2>
         <div className="space-y-4">
           <Alert className="bg-blue-500/10 border-blue-500/30">
             <Info className="h-4 w-4 text-blue-400" />
             <AlertTitle className="text-blue-400">Mount Point Creation</AlertTitle>
-            <AlertDescription className="text-zinc-400">
-              The mount point directory is created automatically if it doesn&apos;t exist. If not specified, mounts are created under <code className="bg-zinc-800 px-1 rounded">~/wormhole/</code>.
+            <AlertDescription className="text-muted-foreground">
+              The mount point directory is created automatically if it doesn&apos;t exist. If not specified, mounts are created under <code className="bg-muted px-1 rounded">~/wormhole/</code>.
             </AlertDescription>
           </Alert>
 
           <Alert className="bg-amber-500/10 border-amber-500/30">
             <AlertTriangle className="h-4 w-4 text-amber-400" />
             <AlertTitle className="text-amber-400">macOS System Extension</AlertTitle>
-            <AlertDescription className="text-zinc-400">
+            <AlertDescription className="text-muted-foreground">
               On macOS, you may need to approve the FUSE system extension in System Preferences → Security & Privacy the first time you mount. A reboot might be required.
             </AlertDescription>
           </Alert>
@@ -504,15 +504,15 @@ Mounted in background (PID: 12345)`}
       </section>
 
       {/* See Also */}
-      <section className="space-y-4 pt-8 border-t border-zinc-800">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+      <section className="space-y-4 pt-8 border-t border-border">
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/host" className="text-wormhole-hunter-light hover:underline">wormhole host</Link>
-          <span className="text-zinc-600">•</span>
+          <span className="text-muted-foreground">•</span>
           <Link href="/docs/cli/cache" className="text-wormhole-hunter-light hover:underline">wormhole cache</Link>
-          <span className="text-zinc-600">•</span>
+          <span className="text-muted-foreground">•</span>
           <Link href="/docs/performance" className="text-wormhole-hunter-light hover:underline">Performance Tuning</Link>
-          <span className="text-zinc-600">•</span>
+          <span className="text-muted-foreground">•</span>
           <Link href="/docs/troubleshooting/fuse" className="text-wormhole-hunter-light hover:underline">FUSE Troubleshooting</Link>
         </div>
       </section>
