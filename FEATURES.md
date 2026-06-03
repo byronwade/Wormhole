@@ -264,7 +264,13 @@ log_file = "/var/log/wormhole.log"
 
 ---
 
-## 8. Development Phases
+## 8. Top Features Research
+
+For detailed analysis of proposed features and implementation priorities, see:
+- [Feature Research & Analysis](docs/development/feature-research-analysis.md) - Comprehensive evaluation of 10 proposed features
+- [Top Features Summary](docs/development/top-features-summary.md) - Executive summary of priority features
+
+## 9. Development Phases
 
 | Phase | Name | Status | Key Features |
 |-------|------|--------|--------------|
@@ -288,8 +294,8 @@ wormhole/
 │   ├── teleport-daemon/   # FUSE driver + QUIC Host/Client
 │   └── teleport-signal/   # WebSocket rendezvous server
 ├── apps/
-│   └── teleport-ui/       # Tauri + React frontend
-└── doc/                   # Documentation
+│   └── desktop/       # Tauri + React frontend
+└── docs/                  # Documentation
 ```
 
 ### Wire Protocol
@@ -402,10 +408,10 @@ cat ~/mnt/project/README.md
 
 ## Learn More
 
-- [Master Implementation Plan](doc/development/00-master-implementation-plan.md)
-- [Security Guide](doc/development/02-security-guide.md)
-- [Testing Strategy](doc/development/01-testing-strategy.md)
-- [Brand Identity](doc/marketing/02-brand-identity.md)
+- [Master Implementation Plan](docs/development/00-master-implementation-plan.md)
+- [Security Guide](docs/development/02-security-guide.md)
+- [Testing Strategy](docs/development/01-testing-strategy.md)
+- [Brand Identity](docs/marketing/02-brand-identity.md)
 
 ---
 

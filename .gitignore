@@ -1,7 +1,6 @@
 # Rust build artifacts
 /target/
 **/*.rs.bk
-Cargo.lock
 
 # Node.js
 node_modules/
@@ -10,8 +9,12 @@ node_modules/
 npm-debug.log*
 pnpm-debug.log*
 
+# Next.js
+.next/
+out/
+
 # Tauri
-apps/teleport-ui/src-tauri/target/
+apps/desktop/src-tauri/target/
 
 # IDE
 .idea/
@@ -40,3 +43,6 @@ build/
 # Coverage
 coverage/
 .nyc_output/
+
+# Vercel
+.vercel/

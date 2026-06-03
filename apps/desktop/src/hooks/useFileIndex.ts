@@ -133,6 +133,8 @@ export function useFileIndex(
 
   // Auto-index when shares/connections change
   useEffect(() => {
+    let cancelled = false;
+
     // Check if we need to re-index
     const currentPaths = new Set([
       ...activeShares.map((s) => s.path),
@@ -144,9 +146,49 @@ export function useFileIndex(
       [...currentPaths].some((p) => !indexedPathsRef.current.has(p));
 
     if (needsReindex) {
-      refreshIndex();
+      // Wrap refreshIndex to check cancellation
+      const doRefresh = async () => {
+        setIsIndexing(true);
+        const newIndex: IndexEntry[] = [];
+        const sources: string[] = [];
+        const indexedPaths = new Set<string>();
+
+        // Index all active shares
+        for (const share of activeShares) {
+          if (cancelled) return;
+          const folderName = share.path.split("/").pop() || "Shared Folder";
+          const entries = await indexDirectory(share.path, folderName, "share");
+          newIndex.push(...entries);
+          sources.push(share.path);
+          indexedPaths.add(share.path);
+        }
+
+        // Index all active connections
+        for (const conn of activeConnections) {
+          if (cancelled) return;
+          const mountName = conn.mountPoint.split("/").pop() || "Remote Share";
+          const entries = await indexDirectory(conn.mountPoint, mountName, "connection");
+          newIndex.push(...entries);
+          sources.push(conn.mountPoint);
+          indexedPaths.add(conn.mountPoint);
+        }
+
+        // Only update state if not cancelled
+        if (!cancelled) {
+          setIndex(newIndex);
+          setIndexedSources(sources);
+          indexedPathsRef.current = indexedPaths;
+          setIsIndexing(false);
+        }
+      };
+
+      doRefresh();
     }
-  }, [activeShares, activeConnections, refreshIndex]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeShares, activeConnections, indexDirectory]);
 
   // Fast search using pre-computed lowercase names (with debouncing)
   const searchResults = useMemo(() => {

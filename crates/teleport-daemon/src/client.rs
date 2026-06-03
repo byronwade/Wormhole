@@ -163,13 +163,16 @@ impl WormholeClient {
             capabilities: vec!["read".into()],
         });
 
-        send_message(&mut send, &hello)
+        // Send Hello with timeout
+        tokio::time::timeout(self.config.request_timeout, send_message(&mut send, &hello))
             .await
+            .map_err(|_| ClientError::Connection("timeout sending Hello".into()))?
             .map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
 
-        // Receive HelloAck
-        let response = recv_message(&mut recv)
+        // Receive HelloAck with timeout
+        let response = tokio::time::timeout(self.config.request_timeout, recv_message(&mut recv))
             .await
+            .map_err(|_| ClientError::Connection("timeout waiting for HelloAck".into()))?
             .map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
 
         match response {

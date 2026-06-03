@@ -311,7 +311,7 @@ COMMANDS:
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white font-mono flex items-center gap-2">
           wormhole sync
-          <Badge variant="outline" className="border-violet-500/50 text-violet-400 text-xs">Phase 7</Badge>
+          <Badge variant="outline" className="border-wormhole-hunter/50 text-wormhole-hunter-light text-xs">Phase 7</Badge>
         </h2>
         <p className="text-zinc-400">Bidirectional synchronization.</p>
         <Card className="bg-zinc-900 border-zinc-800">

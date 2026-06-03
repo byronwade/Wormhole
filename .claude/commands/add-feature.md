@@ -19,7 +19,7 @@ Implement the feature: $ARGUMENTS
 - [ ] Update FUSE ops if filesystem-related
 - [ ] Add QUIC message handling
 
-### 4. UI Changes (teleport-ui)
+### 4. UI Changes (apps/desktop)
 - [ ] Add Tauri command in `commands.rs`
 - [ ] Create React component
 - [ ] Update Zustand store

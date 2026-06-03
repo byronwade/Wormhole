@@ -51,7 +51,7 @@ export default function FuseArchitecturePage() {
                   FUSE Module
                 </div>
                 <ArrowRight className="h-5 w-5 text-zinc-600" />
-                <div className="px-4 py-2 bg-violet-500/20 border border-violet-500/30 rounded">
+                <div className="px-4 py-2 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded">
                   Wormhole Daemon
                 </div>
               </div>
@@ -95,9 +95,9 @@ export default function FuseArchitecturePage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Wormhole&apos;s FUSE Implementation</h2>
         <p className="text-zinc-300">
-          Wormhole uses the <code className="text-violet-400">fuser</code> crate (Rust bindings for
+          Wormhole uses the <code className="text-wormhole-hunter-light">fuser</code> crate (Rust bindings for
           libfuse) to implement FUSE operations. The implementation is in{" "}
-          <code className="text-violet-400">crates/teleport-daemon/src/fuse.rs</code>.
+          <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/fuse.rs</code>.
         </p>
 
         <h3 className="text-lg font-semibold text-white mt-6">Key Operations</h3>
@@ -112,37 +112,37 @@ export default function FuseArchitecturePage() {
             </thead>
             <tbody className="text-zinc-300">
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">lookup</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">lookup</td>
                 <td className="py-3 px-4">Resolve path to inode</td>
                 <td className="py-3 px-4">Query inode map, fetch from host if not cached</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">getattr</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">getattr</td>
                 <td className="py-3 px-4">Get file attributes</td>
                 <td className="py-3 px-4">Return cached attrs with configured TTL</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">readdir</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">readdir</td>
                 <td className="py-3 px-4">List directory contents</td>
                 <td className="py-3 px-4">Return cached entries, fetch if expired</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">open</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">open</td>
                 <td className="py-3 px-4">Open file for read/write</td>
                 <td className="py-3 px-4">Create file handle, track open files</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">read</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">read</td>
                 <td className="py-3 px-4">Read bytes from file</td>
                 <td className="py-3 px-4">Return from cache or fetch chunks via QUIC</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">write</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">write</td>
                 <td className="py-3 px-4">Write bytes to file</td>
                 <td className="py-3 px-4">Buffer writes, sync to host (Phase 7)</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">release</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">release</td>
                 <td className="py-3 px-4">Close file handle</td>
                 <td className="py-3 px-4">Flush pending writes, cleanup handle</td>
               </tr>
@@ -241,7 +241,7 @@ const ROOT_INODE: u64 = 1;`}</code>
           </CardContent>
         </Card>
         <p className="text-zinc-300 mt-4">
-          The inode map is protected by <code className="text-violet-400">RwLock</code> since
+          The inode map is protected by <code className="text-wormhole-hunter-light">RwLock</code> since
           reads are much more frequent than writes. Inode numbers are assigned incrementally
           and never reused during a session.
         </p>
@@ -251,7 +251,7 @@ const ROOT_INODE: u64 = 1;`}</code>
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Attribute Caching</h2>
         <p className="text-zinc-300">
-          FUSE calls <code className="text-violet-400">getattr</code> extremely frequently
+          FUSE calls <code className="text-wormhole-hunter-light">getattr</code> extremely frequently
           (often before every operation). Wormhole caches attributes with a configurable TTL:
         </p>
         <Card className="bg-zinc-900 border-zinc-800">
@@ -281,7 +281,7 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <HardDrive className="h-5 w-5 text-violet-400" />
+                <HardDrive className="h-5 w-5 text-wormhole-hunter-light" />
                 <h3 className="font-semibold text-white">macOS</h3>
               </div>
               <ul className="space-y-1 text-zinc-300 text-sm">
@@ -356,17 +356,17 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/architecture/quic">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               QUIC Protocol
             </Badge>
           </Link>
           <Link href="/docs/architecture/caching">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Caching System
             </Badge>
           </Link>
           <Link href="/docs/troubleshooting/fuse">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               FUSE Troubleshooting
             </Badge>
           </Link>

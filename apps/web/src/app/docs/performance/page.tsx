@@ -25,7 +25,7 @@ export default function PerformancePage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Performance
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -42,28 +42,28 @@ export default function PerformancePage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Timer className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Timer className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <div className="text-3xl font-bold text-white mb-1">&lt;10s</div>
               <p className="text-sm text-zinc-400">Time to access 50GB folder</p>
             </CardContent>
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Zap className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Zap className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <div className="text-3xl font-bold text-white mb-1">&lt;100ms</div>
               <p className="text-sm text-zinc-400">First byte latency</p>
             </CardContent>
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <TrendingUp className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <TrendingUp className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <div className="text-3xl font-bold text-white mb-1">100+ MB/s</div>
               <p className="text-sm text-zinc-400">LAN throughput</p>
             </CardContent>
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Database className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Database className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <div className="text-3xl font-bold text-white mb-1">&lt;50 MB</div>
               <p className="text-sm text-zinc-400">Memory (idle)</p>
             </CardContent>
@@ -215,7 +215,7 @@ export default function PerformancePage() {
       {/* Run Your Own Benchmarks */}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Terminal className="w-6 h-6 text-violet-400" />
+          <Terminal className="w-6 h-6 text-wormhole-hunter-light" />
           Run Your Own Benchmarks
         </h2>
         <p className="text-zinc-400">
@@ -273,19 +273,19 @@ Bottleneck: None detected`}
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--test &lt;TYPE&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--test &lt;TYPE&gt;</td>
                     <td className="py-2">Test type: all, read, write, latency, metadata</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--duration &lt;SECS&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--duration &lt;SECS&gt;</td>
                     <td className="py-2">Duration per test (default: 10)</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--parallel &lt;N&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--parallel &lt;N&gt;</td>
                     <td className="py-2">Parallel streams (default: 4)</td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">--format json</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--format json</td>
                     <td className="py-2">Output as JSON for scripting</td>
                   </tr>
                 </tbody>
@@ -446,7 +446,7 @@ wormhole mount CODE ~/mnt/remote \\
           </CardContent>
         </Card>
 
-        <Link href="/docs/performance/tuning" className="inline-flex items-center text-violet-400 hover:underline">
+        <Link href="/docs/performance/tuning" className="inline-flex items-center text-wormhole-hunter-light hover:underline">
           Complete tuning guide
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>
@@ -463,7 +463,7 @@ wormhole mount CODE ~/mnt/remote \\
                 <thead>
                   <tr className="border-b border-zinc-800">
                     <th className="text-left py-3 text-zinc-400 font-medium">Metric</th>
-                    <th className="text-left py-3 text-violet-400 font-medium">Wormhole</th>
+                    <th className="text-left py-3 text-wormhole-hunter-light font-medium">Wormhole</th>
                     <th className="text-left py-3 text-zinc-400 font-medium">sshfs</th>
                     <th className="text-left py-3 text-zinc-400 font-medium">NFS</th>
                     <th className="text-left py-3 text-zinc-400 font-medium">SMB</th>

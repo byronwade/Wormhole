@@ -50,7 +50,7 @@ export default function QuicArchitecturePage() {
           </Card>
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4 text-center">
-              <Layers className="h-8 w-8 text-violet-400 mx-auto mb-2" />
+              <Layers className="h-8 w-8 text-wormhole-hunter-light mx-auto mb-2" />
               <h3 className="font-semibold text-white">Multiplexing</h3>
               <p className="text-zinc-400 text-sm mt-1">Multiple streams, no HOL blocking</p>
             </CardContent>
@@ -149,9 +149,9 @@ export default function QuicArchitecturePage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Wormhole&apos;s Implementation</h2>
         <p className="text-zinc-300">
-          Wormhole uses the <code className="text-violet-400">quinn</code> crate for QUIC
-          and <code className="text-violet-400">rustls</code> for TLS. The implementation
-          is in <code className="text-violet-400">crates/teleport-daemon/src/net.rs</code>.
+          Wormhole uses the <code className="text-wormhole-hunter-light">quinn</code> crate for QUIC
+          and <code className="text-wormhole-hunter-light">rustls</code> for TLS. The implementation
+          is in <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/net.rs</code>.
         </p>
 
         <h3 className="text-lg font-semibold text-white mt-6">Connection Setup</h3>
@@ -224,22 +224,22 @@ send.write_all(&notification_data).await?;`}</code>
             </thead>
             <tbody className="text-zinc-300">
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">Control Stream</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Control Stream</td>
                 <td className="py-3 px-4">Bidirectional</td>
                 <td className="py-3 px-4">Handshake, metadata queries, keepalives</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">Data Streams</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Data Streams</td>
                 <td className="py-3 px-4">Bidirectional</td>
                 <td className="py-3 px-4">Chunk requests and responses</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">Notification Stream</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Notification Stream</td>
                 <td className="py-3 px-4">Unidirectional (host→client)</td>
                 <td className="py-3 px-4">File change notifications, invalidations</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">Write Stream</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">Write Stream</td>
                 <td className="py-3 px-4">Unidirectional (client→host)</td>
                 <td className="py-3 px-4">File writes (Phase 7)</td>
               </tr>
@@ -296,7 +296,7 @@ TransportConfig {
                   Client<br/><span className="text-zinc-500 text-xs">192.168.1.42</span>
                 </div>
                 <ArrowLeftRight className="h-5 w-5 text-green-400" />
-                <div className="px-4 py-2 bg-violet-500/20 border border-violet-500/30 rounded">
+                <div className="px-4 py-2 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded">
                   Host<br/><span className="text-zinc-500 text-xs">Connection ID: abc123</span>
                 </div>
               </div>
@@ -306,7 +306,7 @@ TransportConfig {
                   Client<br/><span className="text-zinc-500 text-xs">10.0.0.15</span>
                 </div>
                 <ArrowLeftRight className="h-5 w-5 text-green-400" />
-                <div className="px-4 py-2 bg-violet-500/20 border border-violet-500/30 rounded">
+                <div className="px-4 py-2 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded">
                   Host<br/><span className="text-zinc-500 text-xs">Connection ID: abc123</span>
                 </div>
               </div>
@@ -352,17 +352,17 @@ RSA-PSS
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/architecture/protocol">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Wire Protocol
             </Badge>
           </Link>
           <Link href="/docs/security/encryption">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Encryption Details
             </Badge>
           </Link>
           <Link href="/docs/performance/network">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Network Performance
             </Badge>
           </Link>

@@ -10,23 +10,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Start Here
 ```
-doc/development/00-master-implementation-plan.md  ← SOURCE OF TRUTH
+docs/development/00-master-implementation-plan.md  ← SOURCE OF TRUTH
 ```
 
 ### Documentation Map
 
 | Need | Read This |
 |------|-----------|
-| **Any coding task** | `doc/development/00-master-implementation-plan.md` |
-| **Phase X work** | `doc/development/phase-X/*.md` (all 10 files) |
-| **Writing tests** | `doc/development/01-testing-strategy.md` |
-| **Security work** | `doc/development/02-security-guide.md` |
-| **UI/UX design** | `doc/marketing/02-brand-identity.md` |
-| **Copy/messaging** | `doc/marketing/01-target-audience-strategy.md` |
-| **Pricing questions** | `doc/marketing/08-monetization-strategy.md` |
+| **Any coding task** | `docs/development/00-master-implementation-plan.md` |
+| **Phase X work** | `docs/development/phase-X/*.md` (all 10 files) |
+| **Writing tests** | `docs/development/01-testing-strategy.md` |
+| **Security work** | `docs/development/02-security-guide.md` |
+| **UI/UX design** | `docs/marketing/02-brand-identity.md` |
+| **Copy/messaging** | `docs/marketing/01-target-audience-strategy.md` |
+| **Pricing questions** | `docs/marketing/08-monetization-strategy.md` |
 
 ### Phase Documentation Structure
-Each `doc/development/phase-X/` contains:
+Each `docs/development/phase-X/` contains:
 - `1-overview.md` → What & why
 - `2-goals.md` → Success criteria
 - `3-architecture.md` → Technical design
@@ -63,8 +63,8 @@ wormhole/
 │   ├── teleport-daemon/   # FUSE driver + QUIC Host/Client
 │   └── teleport-signal/   # WebSocket rendezvous server
 ├── apps/
-│   └── teleport-ui/       # Tauri + React + Tailwind frontend
-└── doc/
+│   └── desktop/       # Tauri + React + Tailwind frontend
+└── docs/
     ├── development/       # Technical implementation docs
     └── marketing/         # Business strategy docs
 ```
@@ -102,7 +102,7 @@ cargo run -p teleport-daemon -- host <folder>
 cargo run -p teleport-daemon -- mount <mountpoint> <host_ip>
 
 # Frontend development
-cd apps/teleport-ui && pnpm install && pnpm tauri dev
+cd apps/desktop && pnpm install && pnpm tauri dev
 
 # Lint and format
 cargo fmt && cargo clippy -D warnings
@@ -206,13 +206,13 @@ blake3 = "1.5"
 
 ## Documentation Reference
 
-### Development Docs (`doc/development/`)
+### Development Docs (`docs/development/`)
 - `00-master-implementation-plan.md` - Complete build guide, all dependencies
 - `01-testing-strategy.md` - Test pyramid, examples
 - `02-security-guide.md` - Threat model, mitigations
 - `phase-1/` through `phase-7/` - Phase-specific architecture
 
-### Marketing Docs (`doc/marketing/`)
+### Marketing Docs (`docs/marketing/`)
 - `00-marketing-overview.md` - Summary and quick reference
 - `01-target-audience-strategy.md` - Personas, positioning
 - `02-brand-identity.md` - Colors (#7C3AED purple), typography, messaging
@@ -244,12 +244,12 @@ blake3 = "1.5"
 3. Update tests for round-trip encoding
 
 ### Adding a Tauri Command
-1. Define in `apps/teleport-ui/src-tauri/src/commands.rs`
+1. Define in `apps/desktop/src-tauri/src/commands.rs`
 2. Register in `main.rs` with `.invoke_handler()`
 3. Call from React via `invoke("command_name", { args })`
 
 ### Adding a New Phase Feature
-1. Check phase dependencies in `doc/development/`
+1. Check phase dependencies in `docs/development/`
 2. Implement in appropriate crate
 3. Add tests
 4. Update this file if architecture changes

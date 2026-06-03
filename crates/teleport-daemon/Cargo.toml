@@ -77,3 +77,8 @@ winfsp = { workspace = true }
 [dev-dependencies]
 tempfile = { workspace = true }
 tokio-test = "0.4"
+criterion = { workspace = true }
+
+[[bench]]
+name = "throughput"
+harness = false

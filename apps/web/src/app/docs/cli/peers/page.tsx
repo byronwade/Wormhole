@@ -60,7 +60,7 @@ export default function PeersCommandPage() {
         {/* list */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Users className="h-5 w-5 text-violet-400" />
+            <Users className="h-5 w-5 text-wormhole-hunter-light" />
             peers list
           </h3>
           <p className="text-zinc-300">List all known peers.</p>
@@ -159,7 +159,7 @@ Removed peer "abc123def456"`}</code>
         {/* show */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Eye className="h-5 w-5 text-violet-400" />
+            <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             peers show
           </h3>
           <p className="text-zinc-300">Show detailed information about a peer.</p>
@@ -244,7 +244,7 @@ Unblocked peer "spammer". They can connect again with a valid code.`}</code>
         {/* trust */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Shield className="h-5 w-5 text-violet-400" />
+            <Shield className="h-5 w-5 text-wormhole-hunter-light" />
             peers trust
           </h3>
           <p className="text-zinc-300">Set trust level for a peer.</p>
@@ -270,7 +270,7 @@ Set trust level for "bob" to limited`}</code>
         {/* rename */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Eye className="h-5 w-5 text-violet-400" />
+            <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             peers rename
           </h3>
           <p className="text-zinc-300">Rename a peer for easier identification.</p>
@@ -397,17 +397,17 @@ Or as QR code:
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/host">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole host
             </Badge>
           </Link>
           <Link href="/docs/security">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Security
             </Badge>
           </Link>
           <Link href="/docs/security/access-control">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Access Control
             </Badge>
           </Link>

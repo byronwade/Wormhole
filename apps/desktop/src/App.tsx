@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { open } from "@tauri-apps/plugin-dialog";
+import { startDrag } from "@crabnebula/tauri-plugin-drag";
 import {
   Files,
   Upload,
@@ -35,14 +36,66 @@ import {
   ExternalLink,
   Eye,
   Timer,
+  Link2,
+  Plus,
+  ChevronDown,
 } from "lucide-react";
 import { SetupWizard } from "@/components/SetupWizard";
+import { Homepage } from "@/components/Homepage";
+import { TransferPanel } from "@/components/TransferProgress";
 import { useWormholeHistory } from "@/hooks/useWormholeHistory";
 import { useFileIndex, type IndexEntry } from "@/hooks/useFileIndex";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useProjects } from "@/hooks/useProjects";
+import { useTransfers } from "@/hooks/useTransfers";
+import { useTelemetry } from "@/hooks/useTelemetry";
+import {
+  TELEMETRY_COLLECTED_DATA,
+  TELEMETRY_NEVER_COLLECTED,
+} from "@/types/telemetry";
+import type { Project } from "@/types/projects";
 import type { ShareHistoryItem, ConnectionHistoryItem, ShareStatus, ConnectionStatus, ExpirationOption } from "@/types/history";
 import { expirationToMs } from "@/types/history";
+
+// Cross-platform path utilities
+const pathSeparatorRegex = /[/\\]/;
+
+function getFileName(path: string): string {
+  // Handle both forward and backslashes for cross-platform compatibility
+  const parts = path.split(pathSeparatorRegex).filter(Boolean);
+  return parts[parts.length - 1] || path;
+}
+
+function getParentPath(path: string, rootPath: string): string {
+  // Normalize separators for comparison
+  const parts = path.split(pathSeparatorRegex).filter(Boolean);
+  if (parts.length <= 1) return rootPath;
+
+  // Check if we're on Windows (path starts with drive letter)
+  const isWindows = /^[a-zA-Z]:/.test(path);
+  const separator = isWindows ? "\\" : "/";
+  const prefix = isWindows ? "" : "/";
+
+  parts.pop();
+  const parent = prefix + parts.join(separator);
+
+  // Don't go above root path
+  if (parent.length < rootPath.length) return rootPath;
+  return parent;
+}
+
+function joinPath(...parts: string[]): string {
+  const isWindows = parts.some(p => /^[a-zA-Z]:/.test(p));
+  const separator = isWindows ? "\\" : "/";
+  return parts.filter(Boolean).join(separator);
+}
+
+function getRelativePath(fullPath: string, rootPath: string): string[] {
+  // Remove root from path and split into parts
+  const relative = fullPath.replace(rootPath, "");
+  return relative.split(pathSeparatorRegex).filter(Boolean);
+}
 
 // shadcn components
 import { Button } from "@/components/ui/button";
@@ -72,7 +125,7 @@ import {
 } from "@/components/ui/context-menu";
 
 // Wormhole base URL for share links
-const WORMHOLE_BASE_URL = "https://wormhole.dev";
+const WORMHOLE_BASE_URL = "https://wormhole.byronwade.com";
 
 // Extract join code from URL or return as-is
 function extractJoinCode(input: string): string | null {
@@ -136,6 +189,21 @@ type NavigationView =
   | "favorites"
   | "settings";
 type DialogType = "share" | "connect" | null;
+type MediaFilter = "all" | "video" | "image" | "audio";
+
+// Media file extensions for quick filters
+const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".wmv", ".flv", ".mpg", ".mpeg"]);
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".tif", ".ico", ".heic", ".heif"]);
+const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".aiff", ".alac"]);
+
+// Get media type from file name
+function getMediaType(fileName: string): MediaFilter {
+  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+  if (VIDEO_EXTENSIONS.has(ext)) return "video";
+  if (IMAGE_EXTENSIONS.has(ext)) return "image";
+  if (AUDIO_EXTENSIONS.has(ext)) return "audio";
+  return "all";
+}
 
 interface ServiceEvent {
   type: "HostStarted" | "ClientConnected" | "MountReady" | "Error";
@@ -155,12 +223,12 @@ interface FileEntry {
   modified?: number;
 }
 
-// Helper to format file sizes
+// Helper to format file sizes - AGENTS.md: Non-breaking spaces between number and unit
 function formatSize(bytes: number): string {
   if (bytes === 0) return "—";
   const units = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)}\u00A0${units[i]}`;
 }
 
 // Helper to format dates
@@ -213,7 +281,7 @@ function formatExpirationCountdown(expiresAt: number | null): string | null {
 
 // Helper to get file icon based on extension
 function getFileIcon(name: string, isDir: boolean, className = "w-5 h-5") {
-  if (isDir) return <Folder className={`${className} text-violet-400`} />;
+  if (isDir) return <Folder className={`${className} text-emerald-400`} />;
 
   const ext = name.split(".").pop()?.toLowerCase() || "";
 
@@ -221,7 +289,7 @@ function getFileIcon(name: string, isDir: boolean, className = "w-5 h-5") {
     return <Image className={`${className} text-pink-400`} />;
   }
   if (["mp4", "mov", "avi", "mkv", "webm"].includes(ext)) {
-    return <Film className={`${className} text-purple-400`} />;
+    return <Film className={`${className} text-emerald-400`} />;
   }
   if (["mp3", "wav", "flac", "aac", "m4a"].includes(ext)) {
     return <Music className={`${className} text-green-400`} />;
@@ -281,9 +349,19 @@ function ShareCard({
 }) {
   const [copied, setCopied] = useState(false);
   const [countdown, setCountdown] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isActive = share.status === "active";
   const isExpired = share.status === "expired";
-  const folderName = share.path.split("/").pop() || "Shared Folder";
+  const folderName = getFileName(share.path) || "Shared Folder";
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Update countdown every second for expiring shares
   useEffect(() => {
@@ -306,7 +384,11 @@ function ShareCard({
     try {
       await navigator.clipboard.writeText(share.shareLink);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Clear any existing timeout before setting a new one
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -314,93 +396,116 @@ function ShareCard({
 
   return (
     <div
-      className={`group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-        isActive ? "hover:bg-violet-500/10" : isExpired ? "hover:bg-amber-500/10" : "hover:bg-zinc-800/50"
+      className={`group rounded-lg transition-colors ${
+        isActive ? "hover:bg-emerald-500/5" : isExpired ? "hover:bg-amber-500/5" : "hover:bg-zinc-800/30"
       }`}
-      onClick={isActive ? onBrowse : undefined}
     >
-      {/* Icon */}
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-        isActive ? "bg-violet-500/20" : isExpired ? "bg-amber-500/20" : "bg-zinc-700/50"
-      }`}>
-        <FolderUp className={`w-4 h-4 ${isActive ? "text-violet-400" : isExpired ? "text-amber-400" : "text-zinc-500"}`} />
-      </div>
+      {/* Main row - clickable to browse */}
+      <div
+        className="flex items-center gap-3 px-3 py-2 cursor-pointer"
+        onClick={isActive ? onBrowse : undefined}
+      >
+        {/* Icon */}
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          isActive ? "bg-emerald-500/20" : isExpired ? "bg-amber-500/20" : "bg-zinc-700/50"
+        }`}>
+          <FolderUp className={`w-4 h-4 ${isActive ? "text-emerald-400" : isExpired ? "text-amber-400" : "text-zinc-500"}`} />
+        </div>
 
-      {/* Main Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white truncate">{folderName}</span>
-          <StatusBadge status={share.status} />
-          {/* Expiration countdown */}
-          {countdown && isActive && (
-            <Badge className="bg-amber-500/20 text-amber-400 border-transparent text-[10px] px-1.5 py-0">
-              <Timer className="w-2.5 h-2.5 mr-1" />
-              {countdown}
-            </Badge>
+        {/* Main Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-white truncate">{folderName}</span>
+            <StatusBadge status={share.status} />
+            {/* Expiration countdown */}
+            {countdown && isActive && (
+              <Badge className="bg-amber-500/20 text-amber-400 border-transparent text-[10px] px-1.5 py-0">
+                <Timer className="w-2.5 h-2.5 mr-1" />
+                {countdown}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-zinc-500">
+            {share.port && <span>Port {share.port}</span>}
+            {share.lastActiveAt && <span>{formatRelativeTime(share.lastActiveAt)}</span>}
+          </div>
+        </div>
+
+        {/* Actions - Right side icons - AGENTS.md: aria-hidden on decorative icons */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isActive ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); onBrowse(); }}
+                className="h-7 w-7 hover:bg-zinc-700"
+                aria-label="Browse files"
+              >
+                <Folder className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); onStop(); }}
+                className="h-7 w-7 hover:bg-red-500/20 hover:text-red-400"
+                aria-label="Stop sharing"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); onResume(); }}
+                className="h-7 w-7 hover:bg-green-500/20 hover:text-green-400"
+                aria-label="Resume sharing"
+              >
+                <Play className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="h-7 w-7 hover:bg-red-500/20 hover:text-red-400"
+                aria-label="Remove from history"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
+              </Button>
+            </>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-zinc-500">
-          <code className="text-zinc-400">{share.joinCode}</code>
-          <span>Port {share.port}</span>
-          <span>{formatRelativeTime(share.lastActiveAt)}</span>
-        </div>
       </div>
 
-      {/* Actions - Right side icons */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {isActive ? (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={copyLink}
-              className="h-7 w-7 hover:bg-zinc-700"
-              aria-label={copied ? "Copied!" : "Copy share link"}
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-zinc-400" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => { e.stopPropagation(); onBrowse(); }}
-              className="h-7 w-7 hover:bg-zinc-700"
-              aria-label="Browse files"
-            >
-              <Folder className="w-3.5 h-3.5 text-zinc-400" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => { e.stopPropagation(); onStop(); }}
-              className="h-7 w-7 hover:bg-red-500/20 hover:text-red-400"
-              aria-label="Stop sharing"
-            >
-              <X className="w-3.5 h-3.5" />
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => { e.stopPropagation(); onResume(); }}
-              className="h-7 w-7 hover:bg-green-500/20 hover:text-green-400"
-              aria-label="Resume sharing"
-            >
-              <Play className="w-3.5 h-3.5 text-zinc-400" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="h-7 w-7 hover:bg-red-500/20 hover:text-red-400"
-              aria-label="Remove from history"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
-            </Button>
-          </>
-        )}
-      </div>
+      {/* Share Link Row - Always visible for active shares */}
+      {isActive && share.shareLink && (
+        <div className="flex items-center gap-2 px-3 pb-2 ml-11">
+          <div
+            onClick={copyLink}
+            className="flex-1 flex items-center gap-2 px-2.5 py-1.5 bg-zinc-800/80 hover:bg-zinc-700/80 rounded-md cursor-pointer transition-colors group/link"
+          >
+            <Link2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+            <code className="text-xs text-emerald-300 truncate flex-1 font-mono">
+              {share.shareLink}
+            </code>
+            <div className="flex items-center gap-1 text-xs">
+              {copied ? (
+                <span className="text-green-400 flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  Copied!
+                </span>
+              ) : (
+                <span className="text-zinc-500 group-hover/link:text-zinc-300 flex items-center gap-1">
+                  <Copy className="w-3 h-3" />
+                  Copy
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -424,7 +529,7 @@ function ConnectionCard({
 }) {
   const isConnected = connection.status === "connected";
   const isConnecting = connection.status === "connecting";
-  const mountName = connection.mountPoint.split("/").pop() || "Remote Share";
+  const mountName = getFileName(connection.mountPoint) || "Remote Share";
 
   return (
     <div
@@ -451,9 +556,9 @@ function ConnectionCard({
           <StatusBadge status={connection.status} />
         </div>
         <div className="flex items-center gap-3 text-xs text-zinc-500">
-          <code className="text-zinc-400">{connection.joinCode}</code>
-          {isConnected && <span className="truncate max-w-[200px]">{connection.mountPoint}</span>}
-          <span>{formatRelativeTime(connection.lastConnectedAt)}</span>
+          {connection.joinCode && <code className="text-green-400 font-medium">{connection.joinCode}</code>}
+          {isConnected && connection.mountPoint && <span className="truncate max-w-[200px]">{connection.mountPoint}</span>}
+          {connection.lastConnectedAt && <span>{formatRelativeTime(connection.lastConnectedAt)}</span>}
         </div>
         {/* Error message inline */}
         {connection.status === "error" && connection.errorMessage && (
@@ -524,6 +629,14 @@ function ConnectionCard({
 // Memoized ConnectionCard for performance
 const MemoizedConnectionCard = React.memo(ConnectionCard);
 
+// Active Transfer type for sidebar display
+interface SidebarTransfer {
+  id: string;
+  fileName: string;
+  direction: "upload" | "download";
+  progress: number; // 0-100
+}
+
 // Left Sidebar Component
 function Sidebar({
   activeView,
@@ -532,6 +645,11 @@ function Sidebar({
   connectionCount,
   recentCount,
   favoritesCount,
+  mediaFilter,
+  onMediaFilterChange,
+  projects,
+  onCreateProject,
+  activeTransfers,
 }: {
   activeView: NavigationView;
   onViewChange: (view: NavigationView) => void;
@@ -539,6 +657,11 @@ function Sidebar({
   connectionCount: number;
   recentCount: number;
   favoritesCount: number;
+  mediaFilter: MediaFilter;
+  onMediaFilterChange: (filter: MediaFilter) => void;
+  projects: Project[];
+  onCreateProject: (name: string) => void;
+  activeTransfers: SidebarTransfer[];
 }) {
   const mainNavItems = [
     { id: "all-files" as NavigationView, icon: Files, label: "All Files", count: 0 },
@@ -556,7 +679,7 @@ function Sidebar({
       {/* Logo & Brand */}
       <div className="px-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 bg-emerald-700 rounded-lg flex items-center justify-center flex-shrink-0">
             <Share2 className="w-4 h-4 text-white" />
           </div>
           <span className="text-base font-bold text-white">Wormhole</span>
@@ -572,7 +695,7 @@ function Sidebar({
             variant="ghost"
             className={`w-full justify-start gap-3 h-9 ${
               activeView === item.id
-                ? "bg-violet-500/15 text-violet-400"
+                ? "bg-emerald-500/15 text-emerald-400"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800"
             }`}
           >
@@ -584,6 +707,87 @@ function Sidebar({
           </Button>
         ))}
 
+        {/* Projects Section */}
+        <div className="pt-4">
+          <div className="px-3 flex items-center justify-between">
+            <span className="text-[10px] uppercase text-zinc-600 font-medium tracking-wider">Projects</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0 text-zinc-500 hover:text-white hover:bg-zinc-700"
+              onClick={() => {
+                const name = prompt("Enter project name:");
+                if (name?.trim()) {
+                  onCreateProject(name.trim());
+                }
+              }}
+              aria-label="Create project"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          <div className="mt-2 space-y-0.5 max-h-32 overflow-y-auto">
+            {projects.length > 0 ? (
+              projects.slice(0, 5).map((project) => (
+                <Button
+                  key={project.id}
+                  variant="ghost"
+                  className="w-full justify-start gap-2 h-8 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: project.color || "#355E3B" }}
+                  />
+                  <span className="text-sm truncate">{project.name}</span>
+                  <span className="text-xs text-zinc-600 ml-auto">
+                    {project.shareIds.length + project.connectionIds.length}
+                  </span>
+                </Button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-xs text-zinc-600">No projects yet</div>
+            )}
+          </div>
+        </div>
+
+        {/* Active Transfers Section - Only show when there are transfers */}
+        {activeTransfers.length > 0 && (
+          <div className="pt-4">
+            <span className="px-3 text-[10px] uppercase text-zinc-600 font-medium tracking-wider">Active Transfers</span>
+            <div className="mt-2 space-y-1">
+              {activeTransfers.slice(0, 3).map((transfer) => (
+                <div
+                  key={transfer.id}
+                  className="px-3 py-1.5 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    {transfer.direction === "upload" ? (
+                      <Upload className="w-3 h-3 text-green-400 flex-shrink-0" />
+                    ) : (
+                      <Download className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                    )}
+                    <span className="text-zinc-400 truncate flex-1">{transfer.fileName}</span>
+                    <span className="text-zinc-500">{transfer.progress}%</span>
+                  </div>
+                  <div className="mt-1 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        transfer.direction === "upload" ? "bg-green-500" : "bg-blue-500"
+                      }`}
+                      style={{ width: `${transfer.progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {activeTransfers.length > 3 && (
+                <div className="px-3 text-xs text-zinc-500">
+                  +{activeTransfers.length - 3} more
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Quick Filters - Media Types */}
         <div className="pt-4">
           <span className="px-3 text-[10px] uppercase text-zinc-600 font-medium tracking-wider">Quick Filters</span>
@@ -591,7 +795,15 @@ function Sidebar({
             <Button
               variant="ghost"
               size="sm"
-              className="flex-1 h-7 text-xs text-zinc-500 hover:text-purple-400 hover:bg-purple-500/10"
+              onClick={() => {
+                onMediaFilterChange(mediaFilter === "video" ? "all" : "video");
+                onViewChange("all-files");
+              }}
+              className={`flex-1 h-7 text-xs ${
+                mediaFilter === "video"
+                  ? "text-emerald-400 bg-emerald-500/20"
+                  : "text-zinc-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+              }`}
               aria-label="Videos"
             >
               <Film className="w-3.5 h-3.5" />
@@ -599,7 +811,15 @@ function Sidebar({
             <Button
               variant="ghost"
               size="sm"
-              className="flex-1 h-7 text-xs text-zinc-500 hover:text-pink-400 hover:bg-pink-500/10"
+              onClick={() => {
+                onMediaFilterChange(mediaFilter === "image" ? "all" : "image");
+                onViewChange("all-files");
+              }}
+              className={`flex-1 h-7 text-xs ${
+                mediaFilter === "image"
+                  ? "text-pink-400 bg-pink-500/20"
+                  : "text-zinc-500 hover:text-pink-400 hover:bg-pink-500/10"
+              }`}
               aria-label="Images"
             >
               <Image className="w-3.5 h-3.5" />
@@ -607,7 +827,15 @@ function Sidebar({
             <Button
               variant="ghost"
               size="sm"
-              className="flex-1 h-7 text-xs text-zinc-500 hover:text-green-400 hover:bg-green-500/10"
+              onClick={() => {
+                onMediaFilterChange(mediaFilter === "audio" ? "all" : "audio");
+                onViewChange("all-files");
+              }}
+              className={`flex-1 h-7 text-xs ${
+                mediaFilter === "audio"
+                  ? "text-green-400 bg-green-500/20"
+                  : "text-zinc-500 hover:text-green-400 hover:bg-green-500/10"
+              }`}
               aria-label="Audio"
             >
               <Music className="w-3.5 h-3.5" />
@@ -626,7 +854,7 @@ function Sidebar({
                 variant="ghost"
                 className={`w-full justify-start gap-3 h-9 ${
                   activeView === item.id
-                    ? "bg-violet-500/15 text-violet-400"
+                    ? "bg-emerald-500/15 text-emerald-400"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800"
                 }`}
               >
@@ -648,7 +876,7 @@ function Sidebar({
           variant="ghost"
           className={`w-full justify-start gap-3 h-9 ${
             activeView === "settings"
-              ? "bg-violet-500/15 text-violet-400"
+              ? "bg-emerald-500/15 text-emerald-400"
               : "text-zinc-400 hover:text-white hover:bg-zinc-800"
           }`}
         >
@@ -728,7 +956,7 @@ function FileBrowser({
   };
 
   const goUp = () => {
-    const parent = currentPath.split("/").slice(0, -1).join("/") || "/";
+    const parent = getParentPath(currentPath, rootPath);
     if (parent.length >= rootPath.length) {
       loadDirectory(parent);
     }
@@ -763,11 +991,25 @@ function FileBrowser({
     }
   };
 
-  const pathParts = currentPath.replace(rootPath, "").split("/").filter(Boolean);
+  const pathParts = getRelativePath(currentPath, rootPath);
 
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handle native drag start for file export
+  const handleDragStart = async (e: React.DragEvent, file: FileEntry) => {
+    e.preventDefault();
+    // Start native drag with the file path
+    try {
+      await startDrag({
+        item: [file.path],
+        icon: file.path, // Use file itself as icon (system will generate preview)
+      });
+    } catch (err) {
+      console.error("Drag failed:", err);
+    }
+  };
 
   // Render a file item with context menu
   const renderFileItem = (file: FileEntry, isGridView: boolean) => {
@@ -775,9 +1017,11 @@ function FileBrowser({
 
     const content = isGridView ? (
       <div
-        className={`flex flex-col items-center gap-2 p-4 h-auto rounded-md cursor-default ${
+        draggable
+        onDragStart={(e) => handleDragStart(e, file)}
+        className={`flex flex-col items-center gap-2 p-4 h-auto rounded-md cursor-grab active:cursor-grabbing ${
           isSelected
-            ? "bg-violet-500/20"
+            ? "bg-emerald-500/20"
             : "hover:bg-zinc-800/50"
         }`}
         onClick={() => handleFileClick(file, false)}
@@ -795,9 +1039,11 @@ function FileBrowser({
       </div>
     ) : (
       <div
-        className={`w-full grid grid-cols-[1fr_100px_80px] gap-4 items-center h-auto py-2 px-2 rounded-md cursor-default ${
+        draggable
+        onDragStart={(e) => handleDragStart(e, file)}
+        className={`w-full grid grid-cols-[1fr_100px_80px] gap-4 items-center h-auto py-2 px-2 rounded-md cursor-grab active:cursor-grabbing ${
           isSelected
-            ? "bg-violet-500/20"
+            ? "bg-emerald-500/20"
             : "hover:bg-zinc-800/50"
         }`}
         onClick={() => handleFileClick(file, false)}
@@ -875,14 +1121,15 @@ function FileBrowser({
       <div className="h-12 flex items-center px-5 gap-3 flex-shrink-0">
         {/* Breadcrumbs */}
         <div className="flex items-center gap-1 text-sm">
-          {/* All Files (root) */}
+          {/* All Files (root) - AGENTS.md: Icon-only buttons need aria-label */}
           <Button
             variant="ghost"
             size="sm"
             onClick={onBackToAllFiles}
             className="text-zinc-400 hover:text-white h-7 px-2"
+            aria-label="All Files"
           >
-            <Files className="w-3.5 h-3.5" />
+            <Files className="w-3.5 h-3.5" aria-hidden="true" />
           </Button>
           {/* Current share/connection root */}
           <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
@@ -902,7 +1149,7 @@ function FileBrowser({
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  loadDirectory(rootPath + "/" + pathParts.slice(0, i + 1).join("/"))
+                  loadDirectory(joinPath(rootPath, ...pathParts.slice(0, i + 1)))
                 }
                 className={`h-7 px-2 text-sm ${i === pathParts.length - 1 ? "text-white" : "text-zinc-400 hover:text-white"}`}
               >
@@ -914,15 +1161,19 @@ function FileBrowser({
 
         <div className="flex-1" />
 
-        {/* Search */}
+        {/* Search - AGENTS.md: spellcheck, autocomplete, aria-label */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
           <Input
-            type="text"
-            placeholder="Search..."
+            type="search"
+            name="search-files"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Search…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-48 h-8 bg-zinc-800 border-0 pl-8 text-sm text-white placeholder:text-zinc-500 rounded-md"
+            aria-label="Search files"
           />
         </div>
       </div>
@@ -1038,6 +1289,7 @@ function AllFilesView({
   onBrowseConnection,
   onOpenShareDialog,
   onOpenConnectDialog,
+  mediaFilter,
 }: {
   shares: ShareHistoryItem[];
   connections: ConnectionHistoryItem[];
@@ -1052,6 +1304,7 @@ function AllFilesView({
   onBrowseConnection: (mountPoint: string) => void;
   onOpenShareDialog: () => void;
   onOpenConnectDialog: () => void;
+  mediaFilter: MediaFilter;
 }) {
   // Note: totalFolders available for future use
   void totalFolders;
@@ -1063,7 +1316,7 @@ function AllFilesView({
   const allRootFolders = [
     ...activeShares.map((share) => ({
       id: share.id,
-      name: share.path.split("/").pop() || "Shared Folder",
+      name: getFileName(share.path) || "Shared Folder",
       path: share.path,
       type: "share" as const,
       code: share.joinCode,
@@ -1071,13 +1324,24 @@ function AllFilesView({
     })),
     ...activeConnections.map((conn) => ({
       id: conn.id,
-      name: conn.mountPoint.split("/").pop() || "Remote Share",
+      name: getFileName(conn.mountPoint) || "Remote Share",
       path: conn.mountPoint,
       type: "connection" as const,
       code: conn.joinCode,
       isDir: true,
     })),
   ];
+
+  // Apply media filter to search results
+  const filteredSearchResults = useMemo(() => {
+    if (mediaFilter === "all") return searchResults;
+    return searchResults.filter((entry) => {
+      // Always include directories when filtering
+      if (entry.is_dir) return true;
+      // Filter files by media type
+      return getMediaType(entry.name) === mediaFilter;
+    });
+  }, [searchResults, mediaFilter]);
 
   // Open file handler for search results
   const handleOpenFile = async (path: string) => {
@@ -1114,19 +1378,23 @@ function AllFilesView({
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-900 min-h-0">
-      {/* Search Bar */}
+      {/* Search Bar - AGENTS.md: spellcheck, autocomplete, aria-label */}
       <div className="h-12 flex items-center px-5 gap-3 flex-shrink-0">
         <div className="relative flex-1 max-w-xl">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" aria-hidden="true" />
           <Input
-            type="text"
-            placeholder={hasActiveSources ? `Search ${totalFiles.toLocaleString()} files...` : "Search files..."}
+            type="search"
+            name="search-all-files"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={hasActiveSources ? `Search ${totalFiles.toLocaleString()} files…` : "Search files…"}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-8 bg-zinc-800 border-0 pl-9 pr-8 text-sm text-white placeholder:text-zinc-500 rounded-md"
+            aria-label="Search all files"
           />
           {isIndexing && (
-            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-violet-400 animate-spin" />
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400 animate-spin" />
           )}
           {!isIndexing && searchQuery && (
             <Button
@@ -1142,15 +1410,16 @@ function AllFilesView({
       </div>
 
       {/* Content */}
-      {searchQuery ? (
-        // Search Results
+      {searchQuery || mediaFilter !== "all" ? (
+        // Search Results (also shown when media filter is active)
         <div className="flex-1 overflow-y-auto">
           <div className="px-5 py-2 text-xs text-zinc-500">
-            {searchResults.length} results for "{searchQuery}"
+            {filteredSearchResults.length} results{searchQuery ? ` for "${searchQuery}"` : ""}
+            {mediaFilter !== "all" && ` (${mediaFilter} files)`}
           </div>
-          {searchResults.length > 0 ? (
+          {filteredSearchResults.length > 0 ? (
             <div className="px-3 py-1">
-              {searchResults.slice(0, 100).map((entry) => (
+              {filteredSearchResults.slice(0, 100).map((entry) => (
                 <div
                   key={entry.path}
                   className="group flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-zinc-800/50 cursor-pointer"
@@ -1162,7 +1431,7 @@ function AllFilesView({
                   </div>
                   <Badge className={`text-[10px] px-1.5 py-0 ${
                     entry.root_type === "share"
-                      ? "bg-violet-500/20 text-violet-400 border-transparent"
+                      ? "bg-emerald-500/20 text-emerald-400 border-transparent"
                       : "bg-green-500/20 text-green-400 border-transparent"
                   }`}>
                     {entry.root_name}
@@ -1172,9 +1441,9 @@ function AllFilesView({
                   )}
                 </div>
               ))}
-              {searchResults.length > 100 && (
+              {filteredSearchResults.length > 100 && (
                 <p className="text-xs text-zinc-500 text-center py-3">
-                  Showing 100 of {searchResults.length} results
+                  Showing 100 of {filteredSearchResults.length} results
                 </p>
               )}
             </div>
@@ -1207,7 +1476,7 @@ function AllFilesView({
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className={`w-5 h-5 flex items-center justify-center ${
-                    folder.type === "share" ? "text-violet-400" : "text-green-400"
+                    folder.type === "share" ? "text-emerald-400" : "text-green-400"
                   }`}>
                     <Folder className="w-5 h-5" />
                   </div>
@@ -1216,7 +1485,7 @@ function AllFilesView({
                 <div className="text-xs">
                   <Badge className={`text-[10px] px-1.5 py-0 ${
                     folder.type === "share"
-                      ? "bg-violet-500/20 text-violet-400 border-transparent"
+                      ? "bg-emerald-500/20 text-emerald-400 border-transparent"
                       : "bg-green-500/20 text-green-400 border-transparent"
                   }`}>
                     {folder.type === "share" ? "My Share" : "Shared"}
@@ -1243,7 +1512,7 @@ function AllFilesView({
             <div className="flex gap-3 justify-center">
               <Button
                 onClick={onOpenConnectDialog}
-                className="gap-2 bg-violet-600 hover:bg-violet-700"
+                className="gap-2 bg-emerald-700 hover:bg-emerald-800"
               >
                 <Download className="w-4 h-4" />
                 Connect to Share
@@ -1303,6 +1572,16 @@ function ShareDialog({
   const [copied, setCopied] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [expirationOption, setExpirationOption] = useState<ExpirationOption>("forever");
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1392,10 +1671,18 @@ function ShareDialog({
 
   const shareLink = joinCode ? makeShareLink(joinCode) : "";
 
-  const copyShareLink = () => {
-    navigator.clipboard.writeText(shareLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+      // Clear any existing timeout before setting a new one
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy share link:", err);
+    }
   };
 
   return (
@@ -1418,7 +1705,7 @@ function ShareDialog({
               <div className="space-y-3">
                 {sharePath ? (
                   <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
-                    <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                    <Folder className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                     <span className="text-sm text-white flex-1 truncate">{sharePath}</span>
                     <Button
                       variant="ghost"
@@ -1433,7 +1720,7 @@ function ShareDialog({
                   <Button
                     variant="outline"
                     onClick={selectFolder}
-                    className="w-full h-24 border-2 border-dashed border-zinc-700/50 hover:border-violet-500/50 bg-transparent"
+                    className="w-full h-24 border-2 border-dashed border-zinc-700/50 hover:border-emerald-500/50 bg-transparent"
                   >
                     <div className="flex flex-col items-center gap-2">
                       <Folder className="w-8 h-8 text-zinc-600" />
@@ -1466,7 +1753,7 @@ function ShareDialog({
               <Button
                 onClick={handleStartHosting}
                 disabled={!sharePath}
-                className="w-full h-10 bg-violet-600 hover:bg-violet-700 text-white"
+                className="w-full h-10 bg-emerald-700 hover:bg-emerald-800 text-white"
               >
                 Start Sharing
               </Button>
@@ -1482,7 +1769,7 @@ function ShareDialog({
                     variant="ghost"
                     size="sm"
                     onClick={copyShareLink}
-                    className="h-8 px-3 bg-violet-600 hover:bg-violet-700 text-white"
+                    className="h-8 px-3 bg-emerald-700 hover:bg-emerald-800 text-white"
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </Button>
@@ -1500,7 +1787,7 @@ function ShareDialog({
               </div>
 
               <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
-                <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                <Folder className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                 <span className="text-sm text-zinc-300 truncate">{sharePath}</span>
               </div>
 
@@ -1668,12 +1955,16 @@ function ConnectDialog({
           {!isConnected ? (
             <>
               <div className="space-y-3">
+                {/* AGENTS.md: autocomplete, meaningful name, correct type */}
                 <div className="space-y-1.5">
                   <Input
                     type="text"
+                    name="join-code"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={hostAddress}
                     onChange={(e) => setHostAddress(e.target.value)}
-                    placeholder="Paste link or code..."
+                    placeholder="Paste link or code…"
                     className={`bg-zinc-800 border text-white text-center font-mono text-sm placeholder:text-zinc-500 ${
                       hostAddress.trim().length === 0
                         ? "border-transparent"
@@ -1681,32 +1972,35 @@ function ConnectDialog({
                         ? "border-green-500/50"
                         : "border-red-500/50"
                     }`}
+                    aria-label="Share link or join code"
+                    aria-describedby={hostAddress.trim().length > 0 && !isValidCode ? "join-code-error" : undefined}
                   />
                   {hostAddress.trim().length > 0 && !isValidCode && (
-                    <p className="text-xs text-red-400 text-center">
-                      Enter a valid share link (wormhole.dev/j/...) or join code (ABC-123)
+                    <p id="join-code-error" className="text-xs text-red-400 text-center" role="alert" aria-live="polite">
+                      Enter a valid share link (wormhole.byronwade.com/j/…) or join code (ABC-123)
                     </p>
                   )}
                 </div>
 
                 {mountPath ? (
                   <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
-                    <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                    <Folder className="w-4 h-4 text-emerald-400 flex-shrink-0" aria-hidden="true" />
                     <span className="text-sm text-white flex-1 truncate">{mountPath}</span>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setMountPath("")}
                       className="h-6 w-6 hover:bg-zinc-700"
+                      aria-label="Clear mount path"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3 h-3" aria-hidden="true" />
                     </Button>
                   </div>
                 ) : (
                   <Button
                     variant="outline"
                     onClick={selectFolder}
-                    className="w-full h-20 border-2 border-dashed border-zinc-700/50 hover:border-violet-500/50 bg-transparent"
+                    className="w-full h-20 border-2 border-dashed border-zinc-700/50 hover:border-emerald-500/50 bg-transparent"
                   >
                     <div className="flex flex-col items-center gap-1">
                       <Folder className="w-6 h-6 text-zinc-600" />
@@ -1719,7 +2013,7 @@ function ConnectDialog({
               <Button
                 onClick={handleConnect}
                 disabled={!hostAddress || !mountPath}
-                className="w-full h-10 bg-violet-600 hover:bg-violet-700 text-white"
+                className="w-full h-10 bg-emerald-700 hover:bg-emerald-800 text-white"
               >
                 Connect
               </Button>
@@ -1728,7 +2022,7 @@ function ConnectDialog({
             <>
               <div className="space-y-3">
                 <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
-                  <Folder className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                  <Folder className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                   <span className="text-sm text-white truncate">{mountPath}</span>
                 </div>
                 <div className="text-xs text-zinc-500 px-1">
@@ -1770,6 +2064,9 @@ function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<number | null>(null);
+  const [showTelemetryDetails, setShowTelemetryDetails] = useState(false);
+
+  const { settings: telemetrySettings, updateSettings: updateTelemetrySettings, enableAll, disableAll } = useTelemetry();
 
   const checkForUpdates = async () => {
     setCheckingUpdate(true);
@@ -1803,7 +2100,7 @@ function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
             <h2 className="text-lg font-semibold text-white">About</h2>
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-violet-600 rounded-2xl flex items-center justify-center">
+                <div className="w-16 h-16 bg-emerald-700 rounded-2xl flex items-center justify-center">
                   <Share2 className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -1847,7 +2144,7 @@ function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
                   {updateInfo && (
                     <Button
                       onClick={openReleasePage}
-                      className="gap-2 bg-violet-600 hover:bg-violet-700"
+                      className="gap-2 bg-emerald-700 hover:bg-emerald-800"
                     >
                       <ExternalLink className="w-4 h-4" />
                       Download
@@ -1942,6 +2239,121 @@ function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
               </div>
             </div>
           </div>
+
+          {/* Privacy & Telemetry Section */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">Privacy & Telemetry</h2>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-medium text-white">Help Improve Wormhole</h3>
+                  <p className="text-sm text-zinc-500">
+                    Optionally share anonymous usage data to help us make Wormhole better
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {telemetrySettings.enabled ? (
+                    <Button
+                      variant="outline"
+                      onClick={disableAll}
+                      className="gap-2 border-zinc-700 hover:bg-zinc-800"
+                    >
+                      <X className="w-4 h-4" />
+                      Opt Out
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={enableAll}
+                      className="gap-2 bg-emerald-700 hover:bg-emerald-800"
+                    >
+                      <Check className="w-4 h-4" />
+                      Opt In
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Telemetry status */}
+              <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-zinc-800/50">
+                <div className={`w-2 h-2 rounded-full ${telemetrySettings.enabled ? "bg-green-400" : "bg-zinc-500"}`} />
+                <span className="text-sm text-zinc-400">
+                  Telemetry is currently <span className={telemetrySettings.enabled ? "text-green-400" : "text-zinc-300"}>{telemetrySettings.enabled ? "enabled" : "disabled"}</span>
+                </span>
+              </div>
+
+              {/* Toggle details button */}
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-zinc-400 hover:text-white"
+                onClick={() => setShowTelemetryDetails(!showTelemetryDetails)}
+              >
+                {showTelemetryDetails ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                {showTelemetryDetails ? "Hide details" : "What data is collected?"}
+              </Button>
+
+              {/* Details panel */}
+              {showTelemetryDetails && (
+                <div className="pt-3 border-t border-zinc-800 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-white mb-2">We collect:</h4>
+                    <ul className="text-sm text-zinc-400 space-y-1">
+                      {TELEMETRY_COLLECTED_DATA.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-white mb-2">We NEVER collect:</h4>
+                    <ul className="text-sm text-zinc-400 space-y-1">
+                      {TELEMETRY_NEVER_COLLECTED.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <X className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Granular controls when enabled */}
+              {telemetrySettings.enabled && (
+                <div className="pt-3 border-t border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-white">Usage Analytics</h4>
+                      <p className="text-xs text-zinc-500">Share feature usage counts</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateTelemetrySettings({ shareUsageData: !telemetrySettings.shareUsageData })}
+                      className={`h-6 w-10 rounded-full p-0 ${telemetrySettings.shareUsageData ? "bg-emerald-700" : "bg-zinc-700"}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white transition-transform ${telemetrySettings.shareUsageData ? "translate-x-2" : "-translate-x-2"}`} />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-white">Error Reports</h4>
+                      <p className="text-xs text-zinc-500">Share anonymous error types</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateTelemetrySettings({ shareErrorReports: !telemetrySettings.shareErrorReports })}
+                      className={`h-6 w-10 rounded-full p-0 ${telemetrySettings.shareErrorReports ? "bg-emerald-700" : "bg-zinc-700"}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white transition-transform ${telemetrySettings.shareErrorReports ? "translate-x-2" : "-translate-x-2"}`} />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1957,11 +2369,24 @@ function App() {
   const [currentFolder, setCurrentFolder] = useState<string>("");
   const [currentFolderSource, setCurrentFolderSource] = useState<{ id: string; type: "share" | "connection" } | null>(null);
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(() => {
     const completed = localStorage.getItem(SETUP_COMPLETE_KEY);
     return completed !== "true";
   });
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+  const [localIp, setLocalIp] = useState<string>("");
+
+  // Fetch local IP on mount
+  useEffect(() => {
+    invoke<string[]>("get_local_ip")
+      .then((ips) => {
+        if (ips.length > 0) {
+          setLocalIp(ips[0]);
+        }
+      })
+      .catch((e) => console.error("Failed to get local IP:", e));
+  }, []);
 
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -2012,11 +2437,37 @@ function App() {
     totalFavorites,
   } = useFavorites(shares, connections);
 
+  // Use projects hook
+  const {
+    projects,
+    createProject,
+    // Note: updateProject, deleteProject, addToProject, removeFromProject available
+  } = useProjects(shares, connections);
+
+  // Use transfers hook
+  const { activeTransfers } = useTransfers(shares, connections);
+
+  // Convert active transfers to sidebar format
+  const sidebarTransfers = useMemo(
+    () =>
+      activeTransfers.map((t) => ({
+        id: t.id,
+        fileName: t.fileName,
+        direction: t.direction,
+        progress: t.totalBytes > 0 ? Math.round((t.bytesTransferred / t.totalBytes) * 100) : 0,
+      })),
+    [activeTransfers]
+  );
+
   // Handle deep link events
   useEffect(() => {
+    let isMounted = true;
+    let unlistenFn: (() => void) | undefined;
+
     const setupDeepLink = async () => {
       try {
         const unlisten = await onOpenUrl((urls: string[]) => {
+          if (!isMounted) return;
           for (const url of urls) {
             const code = extractJoinCode(url);
             if (code) {
@@ -2026,34 +2477,53 @@ function App() {
             }
           }
         });
-
-        return unlisten;
+        if (isMounted) {
+          unlistenFn = unlisten;
+        } else {
+          // Component unmounted before setup completed, clean up immediately
+          unlisten();
+        }
       } catch (e) {
         console.error("Failed to setup deep link handler:", e);
       }
     };
 
-    const cleanupPromise = setupDeepLink();
+    setupDeepLink();
     return () => {
-      cleanupPromise.then((unlisten) => unlisten?.());
+      isMounted = false;
+      unlistenFn?.();
     };
   }, []);
 
   // Also listen for backend-emitted deep link events
   useEffect(() => {
-    let unlisten: (() => void) | null = null;
+    let isMounted = true;
+    let unlistenFn: (() => void) | undefined;
 
     const setup = async () => {
-      unlisten = await listen<{ join_code: string; url: string }>("deep-link-join", (event) => {
-        const { join_code } = event.payload;
-        console.log("Received deep-link-join event:", join_code);
-        setPendingJoinCode(join_code);
-        setActiveDialog("connect");
-      });
+      try {
+        const unlisten = await listen<{ join_code: string; url: string }>("deep-link-join", (event) => {
+          if (!isMounted) return;
+          const { join_code } = event.payload;
+          console.log("Received deep-link-join event:", join_code);
+          setPendingJoinCode(join_code);
+          setActiveDialog("connect");
+        });
+        if (isMounted) {
+          unlistenFn = unlisten;
+        } else {
+          unlisten();
+        }
+      } catch (e) {
+        console.error("Failed to setup deep-link-join listener:", e);
+      }
     };
 
     setup();
-    return () => unlisten?.();
+    return () => {
+      isMounted = false;
+      unlistenFn?.();
+    };
   }, []);
 
   // Periodic sync with backend to keep state accurate
@@ -2127,7 +2597,7 @@ function App() {
 
   // Show delete confirmation for share
   const confirmDeleteShare = useCallback((share: ShareHistoryItem) => {
-    const folderName = share.path.split("/").pop() || "Shared Folder";
+    const folderName = getFileName(share.path) || "Shared Folder";
     setDeleteConfirm({ type: "share", id: share.id, name: folderName });
   }, []);
 
@@ -2184,7 +2654,7 @@ function App() {
 
   // Show delete confirmation for connection
   const confirmRemoveConnection = useCallback((connection: ConnectionHistoryItem) => {
-    const mountName = connection.mountPoint.split("/").pop() || "Remote Share";
+    const mountName = getFileName(connection.mountPoint) || "Remote Share";
     setDeleteConfirm({ type: "connection", id: connection.id, name: mountName });
   }, []);
 
@@ -2223,6 +2693,11 @@ function App() {
           connectionCount={connections.length}
           recentCount={totalRecent}
           favoritesCount={totalFavorites}
+          mediaFilter={mediaFilter}
+          onMediaFilterChange={setMediaFilter}
+          projects={projects}
+          onCreateProject={createProject}
+          activeTransfers={sidebarTransfers}
         />
 
         {/* Main Content */}
@@ -2250,7 +2725,7 @@ function App() {
                 <Button
                   size="sm"
                   onClick={() => setActiveDialog("share")}
-                  className="bg-violet-600 hover:bg-violet-700"
+                  className="bg-emerald-700 hover:bg-emerald-800"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Share
@@ -2265,7 +2740,7 @@ function App() {
               {currentFolder ? (
                 <FileBrowser
                   rootPath={currentFolder}
-                  rootName={currentFolder.split("/").pop() || "Folder"}
+                  rootName={getFileName(currentFolder) || "Folder"}
                   viewMode={viewMode}
                   sourceId={currentFolderSource?.id || ""}
                   sourceType={currentFolderSource?.type || "share"}
@@ -2277,29 +2752,39 @@ function App() {
                   }}
                 />
               ) : (
-                <AllFilesView
-                  shares={shares}
-                  connections={connections}
-                  searchQuery={globalSearchQuery}
-                  setSearchQuery={setGlobalSearchQuery}
-                  searchResults={searchResults}
-                  isIndexing={isIndexing}
-                  totalFiles={totalFiles}
-                  totalFolders={totalFolders}
-                  onRefreshIndex={refreshIndex}
-                  onBrowseShare={(path) => {
-                    const share = shares.find(s => s.path === path);
-                    setCurrentFolder(path);
-                    if (share) setCurrentFolderSource({ id: share.id, type: "share" });
-                  }}
-                  onBrowseConnection={(mountPoint) => {
-                    const conn = connections.find(c => c.mountPoint === mountPoint);
-                    setCurrentFolder(mountPoint);
-                    if (conn) setCurrentFolderSource({ id: conn.id, type: "connection" });
-                  }}
-                  onOpenShareDialog={() => setActiveDialog("share")}
-                  onOpenConnectDialog={() => setActiveDialog("connect")}
-                />
+                // Show Homepage when no active sources, otherwise show AllFilesView
+                shares.filter(s => s.status === "active").length === 0 &&
+                connections.filter(c => c.status === "connected").length === 0 ? (
+                  <Homepage
+                    onOpenShareDialog={() => setActiveDialog("share")}
+                    onOpenConnectDialog={() => setActiveDialog("connect")}
+                  />
+                ) : (
+                  <AllFilesView
+                    shares={shares}
+                    connections={connections}
+                    searchQuery={globalSearchQuery}
+                    setSearchQuery={setGlobalSearchQuery}
+                    searchResults={searchResults}
+                    isIndexing={isIndexing}
+                    totalFiles={totalFiles}
+                    totalFolders={totalFolders}
+                    onRefreshIndex={refreshIndex}
+                    onBrowseShare={(path) => {
+                      const share = shares.find(s => s.path === path);
+                      setCurrentFolder(path);
+                      if (share) setCurrentFolderSource({ id: share.id, type: "share" });
+                    }}
+                    onBrowseConnection={(mountPoint) => {
+                      const conn = connections.find(c => c.mountPoint === mountPoint);
+                      setCurrentFolder(mountPoint);
+                      if (conn) setCurrentFolderSource({ id: conn.id, type: "connection" });
+                    }}
+                    onOpenShareDialog={() => setActiveDialog("share")}
+                    onOpenConnectDialog={() => setActiveDialog("connect")}
+                    mediaFilter={mediaFilter}
+                  />
+                )
               )}
             </>
           )}
@@ -2308,18 +2793,8 @@ function App() {
             <div className="flex-1 flex flex-col bg-zinc-900 min-h-0">
               {connections.length > 0 ? (
                 <>
-                  {/* Column Headers */}
-                  <div className="px-5 py-2 flex items-center border-b border-zinc-800">
-                    <div className="flex-1 grid grid-cols-[1fr_120px_100px] gap-4 text-xs text-zinc-500">
-                      <div>Name</div>
-                      <div>Code</div>
-                      <div>Last Used</div>
-                    </div>
-                    <div className="w-20" /> {/* Space for action icons */}
-                  </div>
-
                   {/* Connection List */}
-                  <div className="flex-1 overflow-y-auto px-2 py-1">
+                  <div className="flex-1 overflow-y-auto px-2 py-2">
                     {connections.map((conn) => (
                       <MemoizedConnectionCard
                         key={conn.id}
@@ -2347,7 +2822,7 @@ function App() {
                       onClick={() => setActiveDialog("connect")}
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+                      className="h-6 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
                     >
                       <Download className="w-3 h-3 mr-1" />
                       New Connection
@@ -2366,7 +2841,7 @@ function App() {
                     </p>
                     <Button
                       onClick={() => setActiveDialog("connect")}
-                      className="gap-2 bg-violet-600 hover:bg-violet-700"
+                      className="gap-2 bg-emerald-700 hover:bg-emerald-800"
                     >
                       <Download className="w-4 h-4" />
                       Connect to Share
@@ -2379,21 +2854,32 @@ function App() {
 
           {activeView === "my-shares" && (
             <div className="flex-1 flex flex-col bg-zinc-900 min-h-0">
+              {/* Network Info Banner - show when there are active shares */}
+              {shares.some(s => s.status === "active") && (
+                <div className="mx-4 mt-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-white">Your IP:</span>
+                        <code className="text-sm text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded">
+                          {localIp || "Detecting..."}
+                        </code>
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Others can connect using the join code. On the same network, they connect directly to your IP.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {shares.length > 0 ? (
                 <>
-                  {/* Column Headers */}
-                  <div className="px-5 py-2 flex items-center border-b border-zinc-800">
-                    <div className="flex-1 grid grid-cols-[1fr_100px_80px_100px] gap-4 text-xs text-zinc-500">
-                      <div>Name</div>
-                      <div>Code</div>
-                      <div>Port</div>
-                      <div>Last Active</div>
-                    </div>
-                    <div className="w-24" /> {/* Space for action icons */}
-                  </div>
-
                   {/* Share List */}
-                  <div className="flex-1 overflow-y-auto px-2 py-1">
+                  <div className="flex-1 overflow-y-auto px-2 py-2">
                     {shares.map((share) => (
                       <MemoizedShareCard
                         key={share.id}
@@ -2421,7 +2907,7 @@ function App() {
                       onClick={() => setActiveDialog("share")}
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+                      className="h-6 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
                     >
                       <Upload className="w-3 h-3 mr-1" />
                       New Share
@@ -2440,7 +2926,7 @@ function App() {
                     </p>
                     <Button
                       onClick={() => setActiveDialog("share")}
-                      className="gap-2 bg-violet-600 hover:bg-violet-700"
+                      className="gap-2 bg-emerald-700 hover:bg-emerald-800"
                     >
                       <Upload className="w-4 h-4" />
                       Share a Folder
@@ -2572,7 +3058,7 @@ function App() {
               {favorites.length > 0 ? (
                 <>
                   {/* Column Headers */}
-                  <div className="px-5 py-2 flex items-center border-b border-zinc-800">
+                  <div className="px-5 py-2 flex items-center">
                     <div className="flex-1 grid grid-cols-[1fr_100px_80px] gap-4 text-xs text-zinc-500">
                       <div>Name</div>
                       <div>Source</div>
@@ -2608,7 +3094,7 @@ function App() {
                         <div className="text-xs">
                           <Badge className={`text-[10px] px-1.5 py-0 ${
                             entry.sourceType === "share"
-                              ? "bg-violet-500/20 text-violet-400 border-transparent"
+                              ? "bg-emerald-500/20 text-emerald-400 border-transparent"
                               : "bg-green-500/20 text-green-400 border-transparent"
                           }`}>
                             {entry.sourceType === "share" ? "My Share" : "Shared"}
@@ -2722,6 +3208,9 @@ function App() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Transfer progress panel - shows active file transfers */}
+      <TransferPanel />
     </div>
   );
 }

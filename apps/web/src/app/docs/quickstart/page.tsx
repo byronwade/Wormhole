@@ -26,7 +26,7 @@ export default function QuickStartPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Getting Started
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -74,7 +74,7 @@ export default function QuickStartPage() {
       {/* Step 1: Install */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold">
+          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-white font-bold">
             1
           </div>
           <h2 className="text-2xl font-bold text-white">Install Wormhole</h2>
@@ -161,14 +161,14 @@ sudo cp target/release/wormhole /usr/local/bin/`}
       {/* Step 2: Host a Folder */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold">
+          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-white font-bold">
             2
           </div>
           <h2 className="text-2xl font-bold text-white">Host a Folder</h2>
         </div>
 
         <p className="text-zinc-400">
-          On the machine with the files you want to share, run the <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-violet-400">host</code> command:
+          On the machine with the files you want to share, run the <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-wormhole-hunter-light">host</code> command:
         </p>
 
         <Card className="bg-zinc-900 border-zinc-800">
@@ -201,10 +201,10 @@ Waiting for connections...`}
             <CardContent className="p-4">
               <h4 className="font-medium text-white mb-2">Common Options</h4>
               <ul className="text-sm text-zinc-400 space-y-1">
-                <li><code className="text-violet-400">--port 5000</code> - Use a different port</li>
-                <li><code className="text-violet-400">--allow-write</code> - Enable write access</li>
-                <li><code className="text-violet-400">--daemon</code> - Run in background</li>
-                <li><code className="text-violet-400">--copy-code</code> - Copy code to clipboard</li>
+                <li><code className="text-wormhole-hunter-light">--port 5000</code> - Use a different port</li>
+                <li><code className="text-wormhole-hunter-light">--allow-write</code> - Enable write access</li>
+                <li><code className="text-wormhole-hunter-light">--daemon</code> - Run in background</li>
+                <li><code className="text-wormhole-hunter-light">--copy-code</code> - Copy code to clipboard</li>
               </ul>
             </CardContent>
           </Card>
@@ -212,10 +212,10 @@ Waiting for connections...`}
             <CardContent className="p-4">
               <h4 className="font-medium text-white mb-2">Security Options</h4>
               <ul className="text-sm text-zinc-400 space-y-1">
-                <li><code className="text-violet-400">--password</code> - Require password</li>
-                <li><code className="text-violet-400">--allow-ips</code> - IP whitelist</li>
-                <li><code className="text-violet-400">--expire-after 2h</code> - Auto-expire</li>
-                <li><code className="text-violet-400">--max-connections 5</code> - Limit peers</li>
+                <li><code className="text-wormhole-hunter-light">--password</code> - Require password</li>
+                <li><code className="text-wormhole-hunter-light">--allow-ips</code> - IP whitelist</li>
+                <li><code className="text-wormhole-hunter-light">--expire-after 2h</code> - Auto-expire</li>
+                <li><code className="text-wormhole-hunter-light">--max-connections 5</code> - Limit peers</li>
               </ul>
             </CardContent>
           </Card>
@@ -225,7 +225,7 @@ Waiting for connections...`}
       {/* Step 3: Mount on Another Machine */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold">
+          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-white font-bold">
             3
           </div>
           <h2 className="text-2xl font-bold text-white">Mount on Another Machine</h2>
@@ -264,10 +264,10 @@ $ open ~/mnt/project`}
             <CardContent className="p-4">
               <h4 className="font-medium text-white mb-2">Mount Options</h4>
               <ul className="text-sm text-zinc-400 space-y-1">
-                <li><code className="text-violet-400">--read-only</code> - Read-only mount</li>
-                <li><code className="text-violet-400">--cache-mode hybrid</code> - Caching strategy</li>
-                <li><code className="text-violet-400">--ram-cache-mb 1024</code> - RAM cache size</li>
-                <li><code className="text-violet-400">--prefetch</code> - Enable prefetching</li>
+                <li><code className="text-wormhole-hunter-light">--read-only</code> - Read-only mount</li>
+                <li><code className="text-wormhole-hunter-light">--cache-mode hybrid</code> - Caching strategy</li>
+                <li><code className="text-wormhole-hunter-light">--ram-cache-mb 1024</code> - RAM cache size</li>
+                <li><code className="text-wormhole-hunter-light">--prefetch</code> - Enable prefetching</li>
               </ul>
             </CardContent>
           </Card>
@@ -275,10 +275,10 @@ $ open ~/mnt/project`}
             <CardContent className="p-4">
               <h4 className="font-medium text-white mb-2">Connection Options</h4>
               <ul className="text-sm text-zinc-400 space-y-1">
-                <li><code className="text-violet-400">--signal ws://...</code> - Custom signal server</li>
-                <li><code className="text-violet-400">--auto-reconnect</code> - Auto-reconnect</li>
-                <li><code className="text-violet-400">--offline-mode</code> - Serve from cache</li>
-                <li><code className="text-violet-400">--timeout 60</code> - Connection timeout</li>
+                <li><code className="text-wormhole-hunter-light">--signal ws://...</code> - Custom signal server</li>
+                <li><code className="text-wormhole-hunter-light">--auto-reconnect</code> - Auto-reconnect</li>
+                <li><code className="text-wormhole-hunter-light">--offline-mode</code> - Serve from cache</li>
+                <li><code className="text-wormhole-hunter-light">--timeout 60</code> - Connection timeout</li>
               </ul>
             </CardContent>
           </Card>
@@ -288,7 +288,7 @@ $ open ~/mnt/project`}
       {/* Step 4: Work with Files */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold">
+          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-white font-bold">
             4
           </div>
           <h2 className="text-2xl font-bold text-white">Work with Files</h2>
@@ -330,7 +330,7 @@ $ ffplay ~/mnt/project/render_v2.mp4`}
       {/* Step 5: Unmount */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold">
+          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-white font-bold">
             5
           </div>
           <h2 className="text-2xl font-bold text-white">Unmount When Done</h2>
@@ -397,36 +397,36 @@ $ wormhole mount 192.168.1.42:4433 ~/mnt/project`}
         <h2 className="text-2xl font-bold text-white">What&apos;s Next?</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <Link href="/docs/cli">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Terminal className="w-6 h-6 text-violet-400 mb-3" />
+                <Terminal className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">CLI Reference</h3>
                 <p className="text-sm text-zinc-400">Complete command-line documentation</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/performance">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <CheckCircle2 className="w-6 h-6 text-violet-400 mb-3" />
+                <CheckCircle2 className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">Performance Tuning</h3>
                 <p className="text-sm text-zinc-400">Optimize for your use case</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/security">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <CheckCircle2 className="w-6 h-6 text-violet-400 mb-3" />
+                <CheckCircle2 className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">Security Guide</h3>
                 <p className="text-sm text-zinc-400">Encryption, authentication, and more</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/self-hosting">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <CheckCircle2 className="w-6 h-6 text-violet-400 mb-3" />
+                <CheckCircle2 className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">Self-Hosting</h3>
                 <p className="text-sm text-zinc-400">Run your own signal server</p>
               </CardContent>

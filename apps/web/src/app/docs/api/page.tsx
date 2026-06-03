@@ -43,7 +43,7 @@ export default function ApiPage() {
                 All Wormhole functionality is available via the command-line interface.
                 Use <code>--format json</code> for machine-readable output.
               </p>
-              <Link href="/docs/cli" className="text-violet-400 text-sm hover:underline mt-2 inline-block">
+              <Link href="/docs/cli" className="text-wormhole-hunter-light text-sm hover:underline mt-2 inline-block">
                 CLI Reference →
               </Link>
             </CardContent>
@@ -58,7 +58,7 @@ export default function ApiPage() {
                 The binary protocol used for peer-to-peer communication.
                 Documented for implementers of compatible clients.
               </p>
-              <Link href="/docs/architecture/protocol" className="text-violet-400 text-sm hover:underline mt-2 inline-block">
+              <Link href="/docs/architecture/protocol" className="text-wormhole-hunter-light text-sm hover:underline mt-2 inline-block">
                 Protocol Docs →
               </Link>
             </CardContent>
@@ -66,14 +66,14 @@ export default function ApiPage() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-3">
-                <Webhook className="h-6 w-6 text-violet-400" />
+                <Webhook className="h-6 w-6 text-wormhole-hunter-light" />
                 <h3 className="font-semibold text-white">Signal Server API</h3>
               </div>
               <p className="text-zinc-400 text-sm">
                 WebSocket API for the signal/rendezvous server. Used for peer
                 discovery and NAT traversal.
               </p>
-              <Link href="/docs/api/signal" className="text-violet-400 text-sm hover:underline mt-2 inline-block">
+              <Link href="/docs/api/signal" className="text-wormhole-hunter-light text-sm hover:underline mt-2 inline-block">
                 Signal API →
               </Link>
             </CardContent>
@@ -88,7 +88,7 @@ export default function ApiPage() {
                 The Wormhole Rust libraries can be used directly in your
                 Rust applications for embedding functionality.
               </p>
-              <Link href="/docs/api/rust" className="text-violet-400 text-sm hover:underline mt-2 inline-block">
+              <Link href="/docs/api/rust" className="text-wormhole-hunter-light text-sm hover:underline mt-2 inline-block">
                 Rust API →
               </Link>
             </CardContent>
@@ -197,42 +197,42 @@ echo "Join code: $CODE"`}</code>
             </thead>
             <tbody className="text-zinc-300">
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">WORMHOLE_SIGNAL_SERVER</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_SIGNAL_SERVER</td>
                 <td className="py-3 px-4">Default signal server URL</td>
                 <td className="py-3 px-4 text-zinc-500">wss://signal.wormhole.app</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">WORMHOLE_PORT</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_PORT</td>
                 <td className="py-3 px-4">Default QUIC port</td>
                 <td className="py-3 px-4 text-zinc-500">4433</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">WORMHOLE_CACHE_DIR</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DIR</td>
                 <td className="py-3 px-4">Disk cache directory</td>
                 <td className="py-3 px-4 text-zinc-500">~/.cache/wormhole</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">WORMHOLE_CONFIG_DIR</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CONFIG_DIR</td>
                 <td className="py-3 px-4">Config directory</td>
                 <td className="py-3 px-4 text-zinc-500">~/.config/wormhole</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">WORMHOLE_LOG_LEVEL</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_LOG_LEVEL</td>
                 <td className="py-3 px-4">Logging verbosity</td>
                 <td className="py-3 px-4 text-zinc-500">info</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">WORMHOLE_CACHE_RAM_MB</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_RAM_MB</td>
                 <td className="py-3 px-4">RAM cache size (MB)</td>
                 <td className="py-3 px-4 text-zinc-500">512</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">WORMHOLE_CACHE_DISK_GB</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DISK_GB</td>
                 <td className="py-3 px-4">Disk cache size (GB)</td>
                 <td className="py-3 px-4 text-zinc-500">10</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">NO_COLOR</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">NO_COLOR</td>
                 <td className="py-3 px-4">Disable colored output</td>
                 <td className="py-3 px-4 text-zinc-500">-</td>
               </tr>
@@ -316,22 +316,22 @@ ws://signal.example.com:8080
         <h2 className="text-2xl font-bold text-white">Related Documentation</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/all-commands">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               All CLI Commands
             </Badge>
           </Link>
           <Link href="/docs/architecture/protocol">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Wire Protocol
             </Badge>
           </Link>
           <Link href="/docs/self-hosting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Self-Hosting
             </Badge>
           </Link>
           <Link href="/docs/troubleshooting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Troubleshooting
             </Badge>
           </Link>

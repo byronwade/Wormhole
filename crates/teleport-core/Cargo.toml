@@ -16,6 +16,11 @@ tracing = { workspace = true }
 libc = { workspace = true }
 toml = { workspace = true }
 directories = { workspace = true }
+parking_lot = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+zstd = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+criterion = { workspace = true }

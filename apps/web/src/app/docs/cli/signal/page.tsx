@@ -49,7 +49,7 @@ export default function SignalCommandPage() {
         </p>
         <p className="text-zinc-300">
           By default, Wormhole uses the public signal server at{" "}
-          <code className="text-violet-400">wss://signal.wormhole.app</code>. You can run
+          <code className="text-wormhole-hunter-light">wss://signal.wormhole.app</code>. You can run
           your own for privacy, reliability, or air-gapped networks.
         </p>
       </section>
@@ -177,7 +177,7 @@ export default function SignalCommandPage() {
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Radio className="h-5 w-5 text-violet-400" />
+            <Radio className="h-5 w-5 text-wormhole-hunter-light" />
             Basic Usage
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -198,7 +198,7 @@ wormhole signal --daemon`}</code>
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Lock className="h-5 w-5 text-violet-400" />
+            <Lock className="h-5 w-5 text-wormhole-hunter-light" />
             With TLS (Production)
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -219,7 +219,7 @@ wormhole signal \\
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Shield className="h-5 w-5 text-violet-400" />
+            <Shield className="h-5 w-5 text-wormhole-hunter-light" />
             With Rate Limiting
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -237,7 +237,7 @@ wormhole signal \\
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Activity className="h-5 w-5 text-violet-400" />
+            <Activity className="h-5 w-5 text-wormhole-hunter-light" />
             With Monitoring
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -258,7 +258,7 @@ wormhole signal \\
 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Settings className="h-5 w-5 text-violet-400" />
+            <Settings className="h-5 w-5 text-wormhole-hunter-light" />
             Full Production Setup
           </h3>
           <Card className="bg-zinc-900 border-zinc-800">
@@ -333,7 +333,7 @@ export WORMHOLE_SIGNAL_SERVER="wss://signal.example.com"`}</code>
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Prometheus Metrics</h2>
         <p className="text-zinc-300">
-          When <code className="text-violet-400">--metrics</code> is enabled:
+          When <code className="text-wormhole-hunter-light">--metrics</code> is enabled:
         </p>
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-4">
@@ -372,17 +372,17 @@ wormhole_signal_request_duration_seconds_bucket{le="0.01"} 5892`}</code>
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/self-hosting">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Self-Hosting Guide
             </Badge>
           </Link>
           <Link href="/docs/architecture/signal-server">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Signal Server Architecture
             </Badge>
           </Link>
           <Link href="/docs/security">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Security
             </Badge>
           </Link>

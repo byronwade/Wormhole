@@ -33,8 +33,8 @@ wormhole/
 │   ├── teleport-daemon/   # FUSE + QUIC (main logic)
 │   └── teleport-signal/   # WebSocket rendezvous server
 ├── apps/
-│   └── teleport-ui/       # Tauri + React frontend
-└── doc/
+│   └── desktop/       # Tauri + React frontend
+└── docs/
     ├── development/       # 7 phase implementation guides
     └── marketing/         # 8 strategy documents
 ```
@@ -90,11 +90,11 @@ wormhole/
 ## Key Documents
 
 **Development:**
-- `doc/development/00-master-implementation-plan.md` - Full build guide
-- `doc/development/01-testing-strategy.md` - Test pyramid
-- `doc/development/02-security-guide.md` - Threat model
+- `docs/development/00-master-implementation-plan.md` - Full build guide
+- `docs/development/01-testing-strategy.md` - Test pyramid
+- `docs/development/02-security-guide.md` - Threat model
 
 **Marketing:**
-- `doc/marketing/01-target-audience-strategy.md` - Personas
-- `doc/marketing/02-brand-identity.md` - Design system
-- `doc/marketing/08-monetization-strategy.md` - Pricing math
+- `docs/marketing/01-target-audience-strategy.md` - Personas
+- `docs/marketing/02-brand-identity.md` - Design system
+- `docs/marketing/08-monetization-strategy.md` - Pricing math

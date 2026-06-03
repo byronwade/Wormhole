@@ -16,7 +16,7 @@ alwaysApply: true
 ## Project Structure
 
 ```
-apps/teleport-ui/
+apps/desktop/
 ├── src/
 │   ├── components/
 │   │   ├── ui/           # Reusable primitives

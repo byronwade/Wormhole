@@ -19,7 +19,7 @@ import {
 } from "@/types/history";
 
 // Wormhole base URL for share links
-const WORMHOLE_BASE_URL = "https://wormhole.dev";
+const WORMHOLE_BASE_URL = "https://wormhole.byronwade.com";
 
 function makeShareLink(joinCode: string): string {
   return `${WORMHOLE_BASE_URL}/j/${joinCode}`;

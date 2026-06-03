@@ -8,6 +8,15 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Wormhole Brand Colors */
+  --color-wormhole-hunter: var(--wormhole-hunter);
+  --color-wormhole-hunter-light: var(--wormhole-hunter-light);
+  --color-wormhole-hunter-dark: var(--wormhole-hunter-dark);
+  --color-wormhole-off-black: var(--wormhole-off-black);
+  --color-wormhole-off-white: var(--wormhole-off-white);
+  --color-wormhole-space-blue: var(--wormhole-space-blue);
+  --color-wormhole-space-purple: var(--wormhole-space-purple);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -47,6 +56,15 @@
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+
+  /* Wormhole Brand Colors */
+  --wormhole-hunter: #355E3B;
+  --wormhole-hunter-light: #4A7C59;
+  --wormhole-hunter-dark: #2D4F32;
+  --wormhole-off-black: #0d0d0d;
+  --wormhole-off-white: #f5f5f5;
+  --wormhole-space-blue: #1a1a2e;
+  --wormhole-space-purple: #16213e;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -118,5 +136,123 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Skip to content link - AGENTS.md: scroll-margin-top, skip link */
+  .skip-to-content {
+    @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-wormhole-hunter focus:text-wormhole-off-white focus:rounded-lg focus:outline-none focus:ring-2 focus:ring-wormhole-hunter-light;
+  }
+
+  /* Focus styles - AGENTS.md: Visible focus rings */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-wormhole-hunter;
+  }
+
+  /* Focus within for group focus - AGENTS.md: group with :focus-within */
+  .focus-group:focus-within {
+    @apply ring-2 ring-wormhole-hunter/50;
+  }
+
+  /* Scroll margin for anchored headings - AGENTS.md: scroll-margin-top on headings */
+  h1, h2, h3, h4, h5, h6 {
+    scroll-margin-top: 5rem;
+  }
+
+  /* Tabular numbers for comparisons - AGENTS.md: font-variant-numeric: tabular-nums */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Reduced motion - AGENTS.md: Honor prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Touch interaction improvements - AGENTS.md: touch-action, tap-highlight */
+@layer base {
+  button, a, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(53, 94, 59, 0.2);
+  }
+
+  /* Minimum touch targets - AGENTS.md: Hit target ≥24px (mobile ≥44px) */
+  button, [role="button"], a {
+    min-height: 24px;
+    min-width: 24px;
+  }
+
+  @media (max-width: 768px) {
+    button, [role="button"], a {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Prevent text selection during drag - AGENTS.md: disable text selection during drag */
+  .dragging {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Modal/drawer overscroll containment - AGENTS.md: overscroll-behavior: contain */
+  .modal, .drawer, [role="dialog"] {
+    overscroll-behavior: contain;
+  }
+
+  /* Non-breaking spaces utility - AGENTS.md: Use non-breaking spaces */
+  .nbsp {
+    white-space: nowrap;
+  }
+
+  /* Loading button spinner - AGENTS.md: Loading buttons show spinner and keep original label */
+  .btn-loading {
+    @apply relative pointer-events-none;
+  }
+  .btn-loading::after {
+    content: "";
+    @apply absolute inset-0 flex items-center justify-center;
+  }
+
+  /* Tooltip delay - AGENTS.md: Delay first tooltip in a group */
+  [data-tooltip]:hover::after {
+    animation: tooltip-delay 0.3s ease-out forwards;
+  }
+  .tooltip-group [data-tooltip]:hover::after {
+    animation-delay: 0s;
+  }
+}
+
+@keyframes tooltip-delay {
+  0% { opacity: 0; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Skeleton loading - AGENTS.md: Skeletons mirror final content */
+.skeleton {
+  @apply animate-pulse bg-zinc-800 rounded;
+}
+
+/* Safe area insets - AGENTS.md: Respect safe areas */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
   }
 }

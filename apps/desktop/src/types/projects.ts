@@ -14,14 +14,14 @@ export const PROJECTS_STORAGE_KEY = "wormhole_projects";
 
 // Predefined project colors
 export const PROJECT_COLORS = [
-  "#7C3AED", // Wormhole Purple
+  "#355E3B", // Wormhole Hunter Green
   "#3B82F6", // Blue
   "#10B981", // Green
   "#F59E0B", // Amber
   "#EF4444", // Red
   "#EC4899", // Pink
   "#06B6D4", // Cyan
-  "#8B5CF6", // Violet
+  "#4A7C59", // Hunter Green Light
 ];
 
 // Generate unique ID for project

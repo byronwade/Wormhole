@@ -112,7 +112,7 @@ TLS_CHACHA20_POLY1305_SHA256
       {/* Key Exchange */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Key className="h-6 w-6 text-violet-400" />
+          <Key className="h-6 w-6 text-wormhole-hunter-light" />
           Key Exchange
         </h2>
         <p className="text-zinc-300">
@@ -221,7 +221,7 @@ wormhole mount WORM-XXXX \\
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Why rustls?</h2>
         <p className="text-zinc-300">
-          Wormhole uses <code className="text-violet-400">rustls</code> instead of OpenSSL:
+          Wormhole uses <code className="text-wormhole-hunter-light">rustls</code> instead of OpenSSL:
         </p>
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="bg-zinc-900 border-zinc-800">
@@ -325,17 +325,17 @@ WORMHOLE_LOG_LEVEL=debug wormhole mount WORM-XXXX 2>&1 | grep -i tls`}</code>
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/security/pake">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               PAKE Authentication
             </Badge>
           </Link>
           <Link href="/docs/security">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Security Overview
             </Badge>
           </Link>
           <Link href="/docs/architecture/quic">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               QUIC Protocol
             </Badge>
           </Link>

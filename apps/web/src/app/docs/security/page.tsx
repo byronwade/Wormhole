@@ -26,7 +26,7 @@ export default function SecurityPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Security
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -75,7 +75,7 @@ export default function SecurityPage() {
       {/* Encryption */}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Lock className="w-6 h-6 text-violet-400" />
+          <Lock className="w-6 h-6 text-wormhole-hunter-light" />
           Encryption
         </h2>
         <Card className="bg-zinc-900/50 border-zinc-800">
@@ -110,7 +110,7 @@ export default function SecurityPage() {
           </CardContent>
         </Card>
 
-        <Link href="/docs/security/encryption" className="inline-flex items-center text-violet-400 hover:underline">
+        <Link href="/docs/security/encryption" className="inline-flex items-center text-wormhole-hunter-light hover:underline">
           Learn more about encryption implementation
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>
@@ -119,7 +119,7 @@ export default function SecurityPage() {
       {/* PAKE Authentication */}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Fingerprint className="w-6 h-6 text-violet-400" />
+          <Fingerprint className="w-6 h-6 text-wormhole-hunter-light" />
           Password-Authenticated Key Exchange (PAKE)
         </h2>
         <Card className="bg-zinc-900/50 border-zinc-800">
@@ -132,7 +132,7 @@ export default function SecurityPage() {
 
               <div className="bg-zinc-900 rounded-lg p-4 font-mono text-sm mb-4">
                 <div className="text-zinc-500 mb-2"># Join code format (16 characters, ~80 bits entropy)</div>
-                <div className="text-violet-400">WORM-7X9K-ABCD-EFGH</div>
+                <div className="text-wormhole-hunter-light">WORM-7X9K-ABCD-EFGH</div>
               </div>
 
               <ul className="space-y-2 text-sm text-zinc-400">
@@ -165,7 +165,7 @@ export default function SecurityPage() {
           </CardContent>
         </Card>
 
-        <Link href="/docs/security/pake" className="inline-flex items-center text-violet-400 hover:underline">
+        <Link href="/docs/security/pake" className="inline-flex items-center text-wormhole-hunter-light hover:underline">
           Deep dive into PAKE implementation
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>
@@ -174,7 +174,7 @@ export default function SecurityPage() {
       {/* Data Integrity */}
       <section className="space-y-6">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <FileCode className="w-6 h-6 text-violet-400" />
+          <FileCode className="w-6 h-6 text-wormhole-hunter-light" />
           Data Integrity
         </h2>
         <Card className="bg-zinc-900/50 border-zinc-800">
@@ -271,7 +271,7 @@ export default function SecurityPage() {
           </CardContent>
         </Card>
 
-        <Link href="/docs/security/threat-model" className="inline-flex items-center text-violet-400 hover:underline">
+        <Link href="/docs/security/threat-model" className="inline-flex items-center text-wormhole-hunter-light hover:underline">
           Full threat model documentation
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>
@@ -383,7 +383,7 @@ crates/teleport-daemon/src/net.rs     # TLS/QUIC setup`}
           </CardContent>
         </Card>
 
-        <Link href="/docs/security/audit" className="inline-flex items-center text-violet-400 hover:underline">
+        <Link href="/docs/security/audit" className="inline-flex items-center text-wormhole-hunter-light hover:underline">
           Security audit guide
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>

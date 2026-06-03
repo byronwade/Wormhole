@@ -52,10 +52,10 @@ export default function HostCommandPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Description</h2>
         <p className="text-zinc-400">
-          The <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-violet-400">host</code> command starts a QUIC server that shares the specified folder. Other users can then mount this folder using the generated join code or by connecting directly via IP address.
+          The <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-wormhole-hunter-light">host</code> command starts a QUIC server that shares the specified folder. Other users can then mount this folder using the generated join code or by connecting directly via IP address.
         </p>
         <p className="text-zinc-400">
-          By default, the host registers with a signal server to enable NAT traversal and join code functionality. Use <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-violet-400">--no-signal</code> for direct LAN-only connections.
+          By default, the host registers with a signal server to enable NAT traversal and join code functionality. Use <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-wormhole-hunter-light">--no-signal</code> for direct LAN-only connections.
         </p>
       </section>
 
@@ -74,7 +74,7 @@ export default function HostCommandPage() {
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">&lt;PATH&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">&lt;PATH&gt;</td>
                     <td className="py-2">Path to the folder to share. Can be absolute or relative.</td>
                   </tr>
                 </tbody>
@@ -99,48 +99,48 @@ export default function HostCommandPage() {
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--port &lt;PORT&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--port &lt;PORT&gt;</td>
                     <td className="py-3">
                       <p>QUIC listening port.</p>
                       <p className="text-zinc-600 text-xs mt-1">Default: 4433</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--bind &lt;ADDRESS&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--bind &lt;ADDRESS&gt;</td>
                     <td className="py-3">
                       <p>IP address to bind to.</p>
                       <p className="text-zinc-600 text-xs mt-1">Default: 0.0.0.0 (all interfaces)</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--signal-server &lt;URL&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--signal-server &lt;URL&gt;</td>
                     <td className="py-3">
                       <p>Signal server URL for NAT traversal and join codes.</p>
                       <p className="text-zinc-600 text-xs mt-1">Default: ws://localhost:8080</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--no-signal</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--no-signal</td>
                     <td className="py-3">
                       <p>Don&apos;t register with signal server. Direct IP only.</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--max-connections &lt;N&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--max-connections &lt;N&gt;</td>
                     <td className="py-3">
                       <p>Maximum concurrent client connections.</p>
                       <p className="text-zinc-600 text-xs mt-1">Default: 10</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--bandwidth-limit &lt;MB/s&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--bandwidth-limit &lt;MB/s&gt;</td>
                     <td className="py-3">
                       <p>Rate limit in MB/s. 0 for unlimited.</p>
                       <p className="text-zinc-600 text-xs mt-1">Default: 0 (unlimited)</p>
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-3 font-mono text-violet-400">--announce-local</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--announce-local</td>
                     <td className="py-3">
                       <p>Announce on local network via mDNS/Bonjour.</p>
                     </td>
@@ -155,7 +155,7 @@ export default function HostCommandPage() {
       {/* Options - Security */}
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Shield className="w-6 h-6 text-violet-400" />
+          <Shield className="w-6 h-6 text-wormhole-hunter-light" />
           Security Options
         </h2>
         <Card className="bg-zinc-900/50 border-zinc-800">
@@ -170,44 +170,44 @@ export default function HostCommandPage() {
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--code &lt;CODE&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--code &lt;CODE&gt;</td>
                     <td className="py-3">
                       <p>Use a specific join code instead of generating one.</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--password &lt;PASS&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--password &lt;PASS&gt;</td>
                     <td className="py-3">
                       <p>Require an additional password beyond the join code.</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--allow-ips &lt;IPs&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--allow-ips &lt;IPs&gt;</td>
                     <td className="py-3">
                       <p>Comma-separated whitelist of allowed IP addresses.</p>
                       <p className="text-zinc-600 text-xs mt-1">Example: --allow-ips 192.168.1.0/24,10.0.0.5</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--block-ips &lt;IPs&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--block-ips &lt;IPs&gt;</td>
                     <td className="py-3">
                       <p>Comma-separated blacklist of blocked IP addresses.</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--expire-after &lt;DURATION&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--expire-after &lt;DURATION&gt;</td>
                     <td className="py-3">
                       <p>Auto-expire the share after duration (e.g., &quot;2h&quot;, &quot;30m&quot;).</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--tls-cert &lt;PATH&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--tls-cert &lt;PATH&gt;</td>
                     <td className="py-3">
                       <p>Path to custom TLS certificate file.</p>
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-3 font-mono text-violet-400">--tls-key &lt;PATH&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--tls-key &lt;PATH&gt;</td>
                     <td className="py-3">
                       <p>Path to custom TLS key file.</p>
                     </td>
@@ -234,20 +234,20 @@ export default function HostCommandPage() {
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--allow-write</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--allow-write</td>
                     <td className="py-3">
                       <p>Allow clients to write/modify files. By default, shares are read-only.</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--exclude &lt;PATTERNS&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--exclude &lt;PATTERNS&gt;</td>
                     <td className="py-3">
                       <p>Glob patterns to exclude from sharing.</p>
                       <p className="text-zinc-600 text-xs mt-1">Example: --exclude &quot;*.log,node_modules/**&quot;</p>
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-3 font-mono text-violet-400">--include &lt;PATTERNS&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--include &lt;PATTERNS&gt;</td>
                     <td className="py-3">
                       <p>Only include files matching these glob patterns.</p>
                     </td>
@@ -274,37 +274,37 @@ export default function HostCommandPage() {
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--name &lt;NAME&gt;</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--name &lt;NAME&gt;</td>
                     <td className="py-3">
                       <p>Custom name for the share (shown to clients).</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--daemon</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--daemon</td>
                     <td className="py-3">
                       <p>Run in background as a daemon.</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--copy-code</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--copy-code</td>
                     <td className="py-3">
                       <p>Copy the join code to clipboard.</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--qr-code</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--qr-code</td>
                     <td className="py-3">
                       <p>Display a QR code for the join code (mobile clients).</p>
                     </td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-3 font-mono text-violet-400">--compress</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--compress</td>
                     <td className="py-3">
                       <p>Enable compression for transfers.</p>
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-3 font-mono text-violet-400">--watch</td>
+                    <td className="py-3 font-mono text-wormhole-hunter-light">--watch</td>
                     <td className="py-3">
                       <p>Watch for file changes and notify connected clients.</p>
                     </td>
@@ -454,13 +454,13 @@ Join Code: WORM-DEMO-CODE`}
       <section className="space-y-4 pt-8 border-t border-zinc-800">
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
-          <Link href="/docs/cli/mount" className="text-violet-400 hover:underline">wormhole mount</Link>
+          <Link href="/docs/cli/mount" className="text-wormhole-hunter-light hover:underline">wormhole mount</Link>
           <span className="text-zinc-600">•</span>
-          <Link href="/docs/cli/status" className="text-violet-400 hover:underline">wormhole status</Link>
+          <Link href="/docs/cli/status" className="text-wormhole-hunter-light hover:underline">wormhole status</Link>
           <span className="text-zinc-600">•</span>
-          <Link href="/docs/security" className="text-violet-400 hover:underline">Security Guide</Link>
+          <Link href="/docs/security" className="text-wormhole-hunter-light hover:underline">Security Guide</Link>
           <span className="text-zinc-600">•</span>
-          <Link href="/docs/cli/signal" className="text-violet-400 hover:underline">wormhole signal</Link>
+          <Link href="/docs/cli/signal" className="text-wormhole-hunter-light hover:underline">wormhole signal</Link>
         </div>
       </section>
     </div>

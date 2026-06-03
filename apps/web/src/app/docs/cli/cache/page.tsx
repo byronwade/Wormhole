@@ -47,7 +47,7 @@ export default function CacheCommandPage() {
         </p>
         <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
           <li><strong>L1 (RAM cache)</strong> - Fast in-memory cache for recently accessed chunks</li>
-          <li><strong>L2 (Disk cache)</strong> - Persistent cache stored in <code className="text-violet-400">~/.cache/wormhole</code></li>
+          <li><strong>L2 (Disk cache)</strong> - Persistent cache stored in <code className="text-wormhole-hunter-light">~/.cache/wormhole</code></li>
         </ul>
         <p className="text-zinc-300 mt-4">
           The cache command provides tools to inspect, clear, resize, and manage this cache.
@@ -61,7 +61,7 @@ export default function CacheCommandPage() {
         {/* stats */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Database className="h-5 w-5 text-violet-400" />
+            <Database className="h-5 w-5 text-wormhole-hunter-light" />
             cache stats
           </h3>
           <p className="text-zinc-300">Display cache statistics and usage information.</p>
@@ -152,7 +152,7 @@ wormhole cache clear --force`}</code>
         {/* path */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <HardDrive className="h-5 w-5 text-violet-400" />
+            <HardDrive className="h-5 w-5 text-wormhole-hunter-light" />
             cache path
           </h3>
           <p className="text-zinc-300">Show the cache directory location.</p>
@@ -174,7 +174,7 @@ wormhole cache clear --force`}</code>
         {/* resize */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-violet-400" />
+            <RefreshCw className="h-5 w-5 text-wormhole-hunter-light" />
             cache resize
           </h3>
           <p className="text-zinc-300">Change cache size limits.</p>
@@ -325,7 +325,7 @@ wormhole cache gc --target-gb 2 --dry-run`}</code>
         {/* export */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Upload className="h-5 w-5 text-violet-400" />
+            <Upload className="h-5 w-5 text-wormhole-hunter-light" />
             cache export
           </h3>
           <p className="text-zinc-300">Export cache to an archive for backup or transfer.</p>
@@ -359,7 +359,7 @@ wormhole cache export project-cache.tar --share project-files`}</code>
         {/* import */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Download className="h-5 w-5 text-violet-400" />
+            <Download className="h-5 w-5 text-wormhole-hunter-light" />
             cache import
           </h3>
           <p className="text-zinc-300">Import cache from an archive.</p>
@@ -391,7 +391,7 @@ wormhole cache import backup.tar --verify`}</code>
       <section className="space-y-4">
         <h2 className="text-2xl font-bold text-white">Cache Modes</h2>
         <p className="text-zinc-300">
-          When mounting, you can specify the cache mode with <code className="text-violet-400">--cache-mode</code>:
+          When mounting, you can specify the cache mode with <code className="text-wormhole-hunter-light">--cache-mode</code>:
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -405,31 +405,31 @@ wormhole cache import backup.tar --verify`}</code>
             </thead>
             <tbody className="text-zinc-300">
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">none</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">none</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Always-fresh data, testing</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">ram</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">ram</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Fast access, no disk usage</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">disk</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">disk</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4">Offline access, low RAM</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">hybrid</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">hybrid</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4 text-green-400">On</td>
                 <td className="py-3 px-4"><strong>Default</strong> - best of both</td>
               </tr>
               <tr className="border-b border-zinc-800/50">
-                <td className="py-3 px-4 font-mono text-violet-400">aggressive</td>
+                <td className="py-3 px-4 font-mono text-wormhole-hunter-light">aggressive</td>
                 <td className="py-3 px-4 text-green-400">On (large)</td>
                 <td className="py-3 px-4 text-green-400">On (large)</td>
                 <td className="py-3 px-4">Maximum offline access</td>
@@ -444,17 +444,17 @@ wormhole cache import backup.tar --verify`}</code>
         <h2 className="text-2xl font-bold text-white">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/mount">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole mount
             </Badge>
           </Link>
           <Link href="/docs/performance/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Cache Performance
             </Badge>
           </Link>
           <Link href="/docs/configuration">
-            <Badge variant="outline" className="border-zinc-700 hover:border-violet-500/50 cursor-pointer">
+            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
               Configuration
             </Badge>
           </Link>

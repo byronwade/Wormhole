@@ -24,7 +24,7 @@ export default function SelfHostingPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Self-Hosting
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -41,21 +41,21 @@ export default function SelfHostingPage() {
         <div className="grid sm:grid-cols-3 gap-4">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Shield className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Shield className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <h3 className="font-semibold text-white mb-1">Privacy</h3>
               <p className="text-sm text-zinc-400">No connection metadata leaves your network</p>
             </CardContent>
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Settings className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Settings className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <h3 className="font-semibold text-white mb-1">Control</h3>
               <p className="text-sm text-zinc-400">Customize rate limits, expiry, and policies</p>
             </CardContent>
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Globe className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Globe className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <h3 className="font-semibold text-white mb-1">Reliability</h3>
               <p className="text-sm text-zinc-400">Not dependent on our infrastructure</p>
             </CardContent>
@@ -169,57 +169,57 @@ services:
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--port &lt;PORT&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--port &lt;PORT&gt;</td>
                     <td className="py-2">WebSocket listening port</td>
                     <td className="py-2">8080</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--bind &lt;ADDR&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--bind &lt;ADDR&gt;</td>
                     <td className="py-2">Bind address</td>
                     <td className="py-2">0.0.0.0</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--db &lt;PATH&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--db &lt;PATH&gt;</td>
                     <td className="py-2">SQLite database for persistence</td>
                     <td className="py-2">in-memory</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--max-connections</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--max-connections</td>
                     <td className="py-2">Max concurrent connections</td>
                     <td className="py-2">1000</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--code-expiry &lt;SECS&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--code-expiry &lt;SECS&gt;</td>
                     <td className="py-2">Join code expiration time</td>
                     <td className="py-2">3600 (1 hour)</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--rate-limit</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--rate-limit</td>
                     <td className="py-2">Enable rate limiting</td>
                     <td className="py-2">false</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--rate-limit-rpm</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--rate-limit-rpm</td>
                     <td className="py-2">Requests per minute per IP</td>
                     <td className="py-2">60</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--tls-cert &lt;PATH&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--tls-cert &lt;PATH&gt;</td>
                     <td className="py-2">TLS certificate file (for WSS)</td>
                     <td className="py-2">none</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--tls-key &lt;PATH&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--tls-key &lt;PATH&gt;</td>
                     <td className="py-2">TLS key file</td>
                     <td className="py-2">none</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--metrics</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--metrics</td>
                     <td className="py-2">Enable Prometheus metrics</td>
                     <td className="py-2">false</td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">--metrics-port</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--metrics-port</td>
                     <td className="py-2">Metrics endpoint port</td>
                     <td className="py-2">9090</td>
                   </tr>
@@ -374,7 +374,7 @@ wormhole_signal_connections_total 1847`}
           </CardContent>
         </Card>
 
-        <Link href="/docs/self-hosting/monitoring" className="inline-flex items-center text-violet-400 hover:underline">
+        <Link href="/docs/self-hosting/monitoring" className="inline-flex items-center text-wormhole-hunter-light hover:underline">
           Full monitoring guide with Prometheus & Grafana
           <ArrowRight className="w-4 h-4 ml-1" />
         </Link>
@@ -417,7 +417,7 @@ wormhole_signal_connections_total 1847`}
         <h2 className="text-2xl font-bold text-white">Learn More</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <Link href="/docs/self-hosting/docker">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">Docker Deployment</h3>
                 <p className="text-sm text-zinc-400">Complete Docker and Kubernetes guides</p>
@@ -425,7 +425,7 @@ wormhole_signal_connections_total 1847`}
             </Card>
           </Link>
           <Link href="/docs/self-hosting/production">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-white mb-1">Production Checklist</h3>
                 <p className="text-sm text-zinc-400">Everything you need for a production deployment</p>

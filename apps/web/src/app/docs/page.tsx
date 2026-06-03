@@ -66,7 +66,7 @@ export default function DocsPage() {
     <div className="space-y-12">
       {/* Hero */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Documentation
         </Badge>
         <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
@@ -94,7 +94,7 @@ export default function DocsPage() {
               </div>
               <div className="text-zinc-400 ml-4 mt-1">
                 <div>Scanning... <span className="text-green-400">12.4 GB</span> in 847 files</div>
-                <div>Join code: <span className="text-violet-400 font-bold">WORM-7X9K-BETA</span></div>
+                <div>Join code: <span className="text-wormhole-hunter-light font-bold">WORM-7X9K-BETA</span></div>
               </div>
             </div>
             <div className="border-t border-zinc-800 pt-4">
@@ -118,9 +118,9 @@ export default function DocsPage() {
             const Icon = link.icon;
             return (
               <Link key={link.href} href={link.href}>
-                <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+                <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
                   <CardContent className="p-6">
-                    <Icon className="w-8 h-8 text-violet-400 mb-4" />
+                    <Icon className="w-8 h-8 text-wormhole-hunter-light mb-4" />
                     <h3 className="text-lg font-semibold text-white mb-2">{link.title}</h3>
                     <p className="text-sm text-zinc-400">{link.description}</p>
                   </CardContent>
@@ -146,21 +146,21 @@ export default function DocsPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-start gap-2">
-                  <Zap className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <Zap className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <div>
                     <span className="text-white font-medium">Instant Access</span>
                     <p className="text-zinc-500">Access 50GB folders in seconds, not hours</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
-                  <Shield className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <Shield className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <div>
                     <span className="text-white font-medium">E2E Encrypted</span>
                     <p className="text-zinc-500">TLS 1.3 + SPAKE2 authentication</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
-                  <Server className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <Server className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <div>
                     <span className="text-white font-medium">No Cloud</span>
                     <p className="text-zinc-500">Files never touch third-party servers</p>
@@ -175,19 +175,19 @@ export default function DocsPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span className="text-zinc-400">Video editors accessing render farm outputs</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span className="text-zinc-400">Game dev teams sharing build artifacts</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span className="text-zinc-400">VFX studios collaborating on projects</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span className="text-zinc-400">ML engineers sharing model weights</span>
                 </div>
               </CardContent>
@@ -204,7 +204,7 @@ export default function DocsPage() {
             <thead>
               <tr className="border-b border-zinc-800">
                 <th className="text-left py-3 px-4 text-zinc-400 font-medium">Feature</th>
-                <th className="text-left py-3 px-4 text-violet-400 font-medium">Wormhole</th>
+                <th className="text-left py-3 px-4 text-wormhole-hunter-light font-medium">Wormhole</th>
                 <th className="text-left py-3 px-4 text-zinc-400 font-medium">Cloud Storage</th>
                 <th className="text-left py-3 px-4 text-zinc-400 font-medium">Syncthing</th>
               </tr>
@@ -247,7 +247,7 @@ export default function DocsPage() {
 
       {/* Next Steps */}
       <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-zinc-800">
-        <Button asChild size="lg" className="bg-violet-600 hover:bg-violet-700">
+        <Button asChild size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark">
           <Link href="/docs/quickstart">
             Get Started
             <ArrowRight className="w-4 h-4 ml-2" />

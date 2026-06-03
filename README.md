@@ -79,11 +79,35 @@ See [FEATURES.md](FEATURES.md) for the complete feature list.
 #### macOS
 ```bash
 # Install macFUSE (required for filesystem mounting)
-brew install macfuse
+brew install --cask macfuse
 
 # Note: You may need to allow the kernel extension in System Preferences
 # System Preferences → Security & Privacy → Allow "Benjamin Fleischer"
 ```
+
+<details>
+<summary><strong>macOS Gatekeeper Warning ("unidentified developer")</strong></summary>
+
+If macOS shows "Wormhole can't be opened because it is from an unidentified developer":
+
+**Option 1: Right-click to Open** (easiest)
+- Right-click (or Control+click) on Wormhole.app
+- Click "Open" in the menu
+- Click "Open" in the dialog that appears
+
+**Option 2: Run our fix script**
+```bash
+curl -fsSL https://raw.githubusercontent.com/byronwade/Wormhole/main/scripts/macos-fix-gatekeeper.sh | bash
+```
+
+**Option 3: Manual terminal command**
+```bash
+xattr -cr /Applications/Wormhole.app
+```
+
+> **Why does this happen?** Apple charges $99/year for Developer ID certificates. Wormhole is free, open-source software and we can't justify that cost. The app is safe - you can [verify the source code](https://github.com/byronwade/Wormhole) yourself.
+
+</details>
 
 #### Linux
 ```bash
@@ -520,7 +544,7 @@ wormhole/
 │       └── Cargo.toml
 │
 ├── apps/
-│   └── teleport-ui/          # Desktop application (Tauri + React)
+│   └── desktop/          # Desktop application (Tauri + React)
 │       ├── src/              # React frontend
 │       └── src-tauri/        # Tauri Rust backend
 │
@@ -528,7 +552,7 @@ wormhole/
 │   └── signal-server/
 │       └── Dockerfile        # Signal server container
 │
-└── doc/
+└── docs/
     ├── development/          # Technical documentation
     └── marketing/            # Business documentation
 ```
@@ -815,7 +839,7 @@ wormhole unmount /mnt/wormhole --force
 
 ## Contributing
 
-We welcome contributions! Please see our development documentation in `doc/development/`.
+We welcome contributions! Please see our development documentation in `docs/development/`.
 
 ### Getting Started
 

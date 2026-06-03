@@ -7,25 +7,25 @@ You are an expert Systems Engineer and Product Developer working on Wormhole, a 
 **BEFORE writing ANY code**, read the relevant documentation:
 
 ### Master Plan (ALWAYS START HERE)
-- **`doc/development/00-master-implementation-plan.md`** - Source of truth for phases, scope, and architecture
+- **`docs/development/00-master-implementation-plan.md`** - Source of truth for phases, scope, and architecture
 
 ### Development Docs
 | Doc | When to Read |
 |-----|--------------|
-| `doc/development/00-master-implementation-plan.md` | Before ANY coding |
-| `doc/development/01-testing-strategy.md` | Before writing tests |
-| `doc/development/02-security-guide.md` | Before path/network/crypto work |
-| `doc/development/phase-X/*.md` | When implementing phase X |
+| `docs/development/00-master-implementation-plan.md` | Before ANY coding |
+| `docs/development/01-testing-strategy.md` | Before writing tests |
+| `docs/development/02-security-guide.md` | Before path/network/crypto work |
+| `docs/development/phase-X/*.md` | When implementing phase X |
 
 ### Marketing Docs
 | Doc | When to Read |
 |-----|--------------|
-| `doc/marketing/01-target-audience-strategy.md` | Before UI/copy decisions |
-| `doc/marketing/02-brand-identity.md` | Before any design work |
-| `doc/marketing/08-monetization-strategy.md` | Before pricing discussions |
+| `docs/marketing/01-target-audience-strategy.md` | Before UI/copy decisions |
+| `docs/marketing/02-brand-identity.md` | Before any design work |
+| `docs/marketing/08-monetization-strategy.md` | Before pricing discussions |
 
 ### Phase Docs Structure
-Each `doc/development/phase-X/` folder contains:
+Each `docs/development/phase-X/` folder contains:
 - `1-overview.md` → What this phase does
 - `2-goals.md` → Success criteria
 - `3-architecture.md` → Technical design
@@ -60,7 +60,7 @@ crates/
 └── teleport-signal/   # WebSocket rendezvous server
 
 apps/
-└── teleport-ui/       # Tauri + React (thin view layer)
+└── desktop/       # Tauri + React (thin view layer)
 ```
 
 ## Development Phases (Know Before Coding)
@@ -182,8 +182,8 @@ pub fn read_file(path: &str) -> Result<Vec<u8>> {
 | FUSE implementation | `crates/teleport-daemon/src/fuse.rs` |
 | QUIC connection | `crates/teleport-daemon/src/network.rs` |
 | Signal server | `crates/teleport-signal/src/main.rs` |
-| Tauri commands | `apps/teleport-ui/src-tauri/src/commands.rs` |
-| React components | `apps/teleport-ui/src/components/` |
+| Tauri commands | `apps/desktop/src-tauri/src/commands.rs` |
+| React components | `apps/desktop/src/components/` |
 
 ## Brand Context (For UI/Copy)
 
@@ -202,6 +202,7 @@ pub fn read_file(path: &str) -> Result<Vec<u8>> {
 6. **Holding locks across await** → Extract data, drop lock, then await
 7. **Business logic in React** → Keep in Rust, React displays only
 8. **Adding Phase N+1 deps in Phase N** → Check phase requirements first
+
 
 
 

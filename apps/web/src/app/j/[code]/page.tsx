@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,21 +11,29 @@ import {
   Apple,
   Monitor,
   Terminal,
-  Download,
   ExternalLink,
   Copy,
   Check,
   Loader2,
   ArrowRight,
+  Download,
 } from "lucide-react";
 
 type Platform = "mac" | "windows" | "linux" | "unknown";
+
+interface GitHubRelease {
+  tag_name: string;
+  assets: {
+    name: string;
+    browser_download_url: string;
+  }[];
+}
 
 const GITHUB_OWNER = "byronwade";
 const GITHUB_REPO = "wormhole";
 
 // Base URL for wormhole links
-const WORMHOLE_BASE_URL = "https://wormhole.dev";
+const WORMHOLE_BASE_URL = "https://wormhole.byronwade.com";
 
 function detectPlatform(): Platform {
   if (typeof window === "undefined") return "unknown";
@@ -33,6 +42,26 @@ function detectPlatform(): Platform {
   if (userAgent.includes("win")) return "windows";
   if (userAgent.includes("linux")) return "linux";
   return "unknown";
+}
+
+function getAssetForPlatform(assets: GitHubRelease["assets"], platform: Platform): GitHubRelease["assets"][0] | null {
+  const patterns: Record<Platform, string[][]> = {
+    mac: [[".dmg"], ["macos", "darwin", "aarch64", "arm64"]],
+    windows: [["-setup.exe", ".msi"], [".exe"]],
+    linux: [[".appimage"], [".deb"], [".rpm"]],
+    unknown: [],
+  };
+
+  const platformPatternGroups = patterns[platform];
+  for (const patternGroup of platformPatternGroups) {
+    for (const asset of assets) {
+      const name = asset.name.toLowerCase();
+      if (patternGroup.some(p => name.includes(p.toLowerCase()))) {
+        return asset;
+      }
+    }
+  }
+  return null;
 }
 
 function normalizeJoinCode(code: string): string {
@@ -68,10 +97,17 @@ export default function JoinPage() {
   const [copied, setCopied] = useState(false);
   const [attemptedDeepLink, setAttemptedDeepLink] = useState(false);
   const [deepLinkFailed, setDeepLinkFailed] = useState(false);
+  const [release, setRelease] = useState<GitHubRelease | null>(null);
 
   useEffect(() => {
     setMounted(true);
     setPlatform(detectPlatform());
+
+    // Fetch latest release for download links
+    fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setRelease(data))
+      .catch(() => {});
   }, []);
 
   // Attempt to open the app via deep link
@@ -126,6 +162,10 @@ export default function JoinPage() {
   };
 
   const getDownloadUrl = (targetPlatform: Platform): string => {
+    if (release?.assets) {
+      const asset = getAssetForPlatform(release.assets, targetPlatform);
+      if (asset) return asset.browser_download_url;
+    }
     return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
   };
 
@@ -143,8 +183,8 @@ export default function JoinPage() {
             <p className="text-zinc-400 mb-6">
               The join code &quot;{rawCode}&quot; doesn&apos;t appear to be valid.
             </p>
-            <Button asChild className="bg-violet-600 hover:bg-violet-700">
-              <a href="/">Go to Homepage</a>
+            <Button asChild className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark">
+              <Link href="/">Go to Homepage</Link>
             </Button>
           </CardContent>
         </Card>
@@ -157,15 +197,15 @@ export default function JoinPage() {
       {/* Navigation */}
       <nav className="border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-3" aria-label="Wormhole Home">
+            <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center" aria-hidden="true">
               <Share2 className="w-4 h-4 text-white" />
             </div>
             <span className="font-bold text-lg text-white">Wormhole</span>
             <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs font-medium">
               ALPHA
             </Badge>
-          </a>
+          </Link>
         </div>
       </nav>
 
@@ -176,8 +216,8 @@ export default function JoinPage() {
           <Card className="bg-zinc-900 border-zinc-800 mb-6">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-full bg-violet-500/20 flex items-center justify-center mx-auto mb-6">
-                  <Share2 className="w-8 h-8 text-violet-400" />
+                <div className="w-16 h-16 rounded-full bg-wormhole-hunter/20 flex items-center justify-center mx-auto mb-6" aria-hidden="true">
+                  <Share2 className="w-8 h-8 text-wormhole-hunter-light" />
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-2">
                   Join Shared Folder
@@ -188,11 +228,11 @@ export default function JoinPage() {
               </div>
 
               {/* Join Code Display */}
-              <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-6 mb-6">
+              <div className="bg-wormhole-hunter/10 border border-wormhole-hunter/30 rounded-xl p-6 mb-6">
                 <div className="text-center">
                   <p className="text-sm text-zinc-400 mb-2">Join Code</p>
                   <div className="flex items-center justify-center gap-3">
-                    <span className="text-4xl font-mono font-bold tracking-wider text-white">
+                    <span className="text-4xl font-mono font-bold tracking-wider text-white tabular-nums">
                       {joinCode}
                     </span>
                     <Button
@@ -200,22 +240,23 @@ export default function JoinPage() {
                       size="icon"
                       onClick={handleCopyCode}
                       className="bg-zinc-800 hover:bg-zinc-700"
+                      aria-label={copied ? "Copied!" : "Copy join code"}
                     >
                       {copied ? (
-                        <Check className="w-5 h-5 text-green-400" />
+                        <Check className="w-5 h-5 text-green-400" aria-hidden="true" />
                       ) : (
-                        <Copy className="w-5 h-5 text-zinc-400" />
+                        <Copy className="w-5 h-5 text-zinc-400" aria-hidden="true" />
                       )}
                     </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Status Message */}
+              {/* Status Message - AGENTS.md: Use polite aria-live for status */}
               {!deepLinkFailed && mounted && (
-                <div className="flex items-center justify-center gap-2 text-sm text-zinc-400 mb-6">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Opening Wormhole app...</span>
+                <div className="flex items-center justify-center gap-2 text-sm text-zinc-400 mb-6" role="status" aria-live="polite">
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  <span>Opening Wormhole app…</span>
                 </div>
               )}
 
@@ -223,7 +264,7 @@ export default function JoinPage() {
               <div className="space-y-3">
                 <Button
                   onClick={handleOpenApp}
-                  className="w-full bg-violet-600 hover:bg-violet-700 h-12"
+                  className="w-full bg-wormhole-hunter hover:bg-wormhole-hunter-dark h-12"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Open in Wormhole App
@@ -248,12 +289,25 @@ export default function JoinPage() {
                 Don&apos;t have Wormhole installed?
               </h2>
 
+              {/* Primary download for detected platform */}
+              {platform !== "unknown" && (
+                <Button
+                  className="w-full mb-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark h-12"
+                  asChild
+                >
+                  <a href={getDownloadUrl(platform)}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download for {platform === "mac" ? "macOS" : platform === "windows" ? "Windows" : "Linux"}
+                  </a>
+                </Button>
+              )}
+
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <Button
                   variant="outline"
                   className={`h-auto py-4 flex-col gap-2 ${
                     platform === "mac"
-                      ? "border-violet-500 bg-violet-500/10 text-white"
+                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
                       : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                   }`}
                   asChild
@@ -267,7 +321,7 @@ export default function JoinPage() {
                   variant="outline"
                   className={`h-auto py-4 flex-col gap-2 ${
                     platform === "windows"
-                      ? "border-violet-500 bg-violet-500/10 text-white"
+                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
                       : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                   }`}
                   asChild
@@ -281,7 +335,7 @@ export default function JoinPage() {
                   variant="outline"
                   className={`h-auto py-4 flex-col gap-2 ${
                     platform === "linux"
-                      ? "border-violet-500 bg-violet-500/10 text-white"
+                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-white"
                       : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                   }`}
                   asChild
@@ -308,21 +362,21 @@ export default function JoinPage() {
             <p className="text-sm text-zinc-500 mb-4">How it works</p>
             <div className="flex items-center justify-center gap-4 text-xs text-zinc-400">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-violet-400 font-bold">
+                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-wormhole-hunter-light font-bold">
                   1
                 </div>
                 <span>Install Wormhole</span>
               </div>
               <ArrowRight className="w-4 h-4 text-zinc-600" />
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-violet-400 font-bold">
+                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-wormhole-hunter-light font-bold">
                   2
                 </div>
                 <span>Click link</span>
               </div>
               <ArrowRight className="w-4 h-4 text-zinc-600" />
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-violet-400 font-bold">
+                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-wormhole-hunter-light font-bold">
                   3
                 </div>
                 <span>Access files</span>

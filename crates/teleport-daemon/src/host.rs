@@ -34,6 +34,9 @@ use crate::net::{create_server_endpoint, recv_message, send_message, ConnectionE
 /// This prevents stale or compromised sessions from being used indefinitely.
 const MAX_SESSION_DURATION: Duration = Duration::from_secs(24 * 60 * 60);
 
+/// SECURITY: Handshake timeout - prevent clients from holding connections without completing handshake
+const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Maximum number of inode entries to prevent unbounded memory growth
 const MAX_INODE_ENTRIES: usize = 1_000_000;
 
@@ -345,14 +348,16 @@ async fn handle_connection(
     host_name: String,
     lock_manager: Arc<LockManager>,
 ) -> Result<(), ConnectionError> {
-    // Wait for handshake stream
-    let (mut send, mut recv) = connection
-        .accept_bi()
+    // Wait for handshake stream with timeout
+    let (mut send, mut recv) = tokio::time::timeout(HANDSHAKE_TIMEOUT, connection.accept_bi())
         .await
+        .map_err(|_| ConnectionError::StreamAccept("handshake timeout waiting for stream".into()))?
         .map_err(|e| ConnectionError::StreamAccept(e.to_string()))?;
 
-    // Receive Hello
-    let hello = recv_message(&mut recv).await?;
+    // Receive Hello with timeout
+    let hello = tokio::time::timeout(HANDSHAKE_TIMEOUT, recv_message(&mut recv))
+        .await
+        .map_err(|_| ConnectionError::Receive("handshake timeout waiting for Hello".into()))??;
 
     let client_id = match hello {
         NetMessage::Hello(h) => {

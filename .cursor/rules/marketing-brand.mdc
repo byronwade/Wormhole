@@ -160,7 +160,7 @@ wormhole mount 7KJM-XBCD-QRST-VWYZ ./renders
 
 ## Documentation References
 
-- `doc/marketing/01-target-audience-strategy.md` - Full personas
-- `doc/marketing/02-brand-identity.md` - Complete design system
-- `doc/marketing/03-customer-acquisition.md` - Channel strategy
-- `doc/marketing/08-monetization-strategy.md` - Pricing math
+- `docs/marketing/01-target-audience-strategy.md` - Full personas
+- `docs/marketing/02-brand-identity.md` - Complete design system
+- `docs/marketing/03-customer-acquisition.md` - Channel strategy
+- `docs/marketing/08-monetization-strategy.md` - Pricing math

@@ -26,7 +26,7 @@ export default function TroubleshootingPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Troubleshooting
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -41,7 +41,7 @@ export default function TroubleshootingPage() {
       <section className="space-y-6">
         <h2 className="text-2xl font-bold text-white">Start Here: Run Doctor</h2>
         <p className="text-zinc-400">
-          The <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-violet-400">wormhole doctor</code> command automatically checks your system for common issues:
+          The <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-wormhole-hunter-light">wormhole doctor</code> command automatically checks your system for common issues:
         </p>
 
         <Card className="bg-zinc-900 border-zinc-800">
@@ -94,7 +94,7 @@ $ wormhole doctor --fix`}
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-white">
-                <HardDrive className="w-5 h-5 text-violet-400" />
+                <HardDrive className="w-5 h-5 text-wormhole-hunter-light" />
                 FUSE / Mount Issues
               </CardTitle>
             </CardHeader>
@@ -163,7 +163,7 @@ sudo umount -l ~/mnt/wormhole`}
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-white">
-                <Wifi className="w-5 h-5 text-violet-400" />
+                <Wifi className="w-5 h-5 text-wormhole-hunter-light" />
                 Connection Issues
               </CardTitle>
             </CardHeader>
@@ -233,7 +233,7 @@ sudo iptables -L -n | grep 4433`}
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-white">
-                <Gauge className="w-5 h-5 text-violet-400" />
+                <Gauge className="w-5 h-5 text-wormhole-hunter-light" />
                 Performance Issues
               </CardTitle>
             </CardHeader>
@@ -347,32 +347,32 @@ tail -f ~/.cache/wormhole/wormhole.log`}
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">ENOENT</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">ENOENT</td>
                     <td className="py-2">File not found</td>
                     <td className="py-2">Check if file exists on host</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">EACCES</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">EACCES</td>
                     <td className="py-2">Permission denied</td>
                     <td className="py-2">Check host file permissions</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">EIO</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">EIO</td>
                     <td className="py-2">I/O error</td>
                     <td className="py-2">Network issue or host disconnected</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">EBUSY</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">EBUSY</td>
                     <td className="py-2">Resource busy</td>
                     <td className="py-2">File locked or mount point in use</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">ETIMEDOUT</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">ETIMEDOUT</td>
                     <td className="py-2">Connection timeout</td>
                     <td className="py-2">Network latency or host unreachable</td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">ECONNREFUSED</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">ECONNREFUSED</td>
                     <td className="py-2">Connection refused</td>
                     <td className="py-2">Host not running or wrong port</td>
                   </tr>
@@ -427,36 +427,36 @@ brew reinstall wormhole  # or your install method`}
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Link href="/docs/troubleshooting/fuse">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <HardDrive className="w-6 h-6 text-violet-400 mb-3" />
+                <HardDrive className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">FUSE Troubleshooting</h3>
                 <p className="text-sm text-zinc-400">Platform-specific FUSE issues and solutions</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/troubleshooting/network">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Wifi className="w-6 h-6 text-violet-400 mb-3" />
+                <Wifi className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">Network Troubleshooting</h3>
                 <p className="text-sm text-zinc-400">NAT, firewalls, and connectivity issues</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="/docs/troubleshooting/performance">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Gauge className="w-6 h-6 text-violet-400 mb-3" />
+                <Gauge className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">Performance Issues</h3>
                 <p className="text-sm text-zinc-400">Diagnose and fix slow transfers</p>
               </CardContent>
             </Card>
           </Link>
           <Link href="https://github.com/byronwade/wormhole/issues">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-colors h-full">
+            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-wormhole-hunter/50 transition-colors h-full">
               <CardContent className="p-6">
-                <Bug className="w-6 h-6 text-violet-400 mb-3" />
+                <Bug className="w-6 h-6 text-wormhole-hunter-light mb-3" />
                 <h3 className="font-semibold text-white mb-1">Report a Bug</h3>
                 <p className="text-sm text-zinc-400">Open an issue on GitHub</p>
               </CardContent>

@@ -5,10 +5,11 @@
 /crates/ @byronwade
 
 # Frontend
-/apps/teleport-ui/ @byronwade
+/apps/desktop/ @byronwade
+/apps/web/ @byronwade
 
 # CI/CD
 /.github/ @byronwade
 
 # Documentation
-/doc/ @byronwade
+/docs/ @byronwade

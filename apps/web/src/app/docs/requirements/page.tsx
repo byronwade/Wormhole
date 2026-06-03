@@ -25,7 +25,7 @@ export default function RequirementsPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/40">
+        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
           Getting Started
         </Badge>
         <h1 className="text-4xl font-bold text-white tracking-tight">
@@ -43,7 +43,7 @@ export default function RequirementsPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Cpu className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Cpu className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <h3 className="font-semibold text-white mb-1">CPU</h3>
               <p className="text-sm text-zinc-400">x86_64 or ARM64</p>
               <p className="text-xs text-zinc-500 mt-1">2+ cores recommended</p>
@@ -51,7 +51,7 @@ export default function RequirementsPage() {
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Monitor className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Monitor className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <h3 className="font-semibold text-white mb-1">RAM</h3>
               <p className="text-sm text-zinc-400">512 MB minimum</p>
               <p className="text-xs text-zinc-500 mt-1">2+ GB for caching</p>
@@ -59,7 +59,7 @@ export default function RequirementsPage() {
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <HardDrive className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <HardDrive className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <h3 className="font-semibold text-white mb-1">Storage</h3>
               <p className="text-sm text-zinc-400">100 MB for app</p>
               <p className="text-xs text-zinc-500 mt-1">10+ GB for cache</p>
@@ -67,7 +67,7 @@ export default function RequirementsPage() {
           </Card>
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6 text-center">
-              <Wifi className="w-8 h-8 text-violet-400 mx-auto mb-3" />
+              <Wifi className="w-8 h-8 text-wormhole-hunter-light mx-auto mb-3" />
               <h3 className="font-semibold text-white mb-1">Network</h3>
               <p className="text-sm text-zinc-400">1 Mbps minimum</p>
               <p className="text-xs text-zinc-500 mt-1">100+ Mbps recommended</p>
@@ -223,7 +223,7 @@ sudo pacman -S fuse3`}
                 <Info className="h-4 w-4 text-blue-400" />
                 <AlertTitle className="text-blue-400">Development Status</AlertTitle>
                 <AlertDescription className="text-zinc-400">
-                  Windows support is in active development. Track progress on <Link href="https://github.com/byronwade/wormhole/issues" className="text-violet-400 hover:underline">GitHub</Link>.
+                  Windows support is in active development. Track progress on <Link href="https://github.com/byronwade/wormhole/issues" className="text-wormhole-hunter-light hover:underline">GitHub</Link>.
                 </AlertDescription>
               </Alert>
             </CardContent>

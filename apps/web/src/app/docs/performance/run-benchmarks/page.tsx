@@ -116,23 +116,23 @@ Bottleneck: None detected`}
                 </thead>
                 <tbody className="text-zinc-400">
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--test &lt;TYPE&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--test &lt;TYPE&gt;</td>
                     <td className="py-2">all, read, write, latency, metadata (default: all)</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--duration &lt;SECS&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--duration &lt;SECS&gt;</td>
                     <td className="py-2">Duration per test (default: 10)</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--parallel &lt;N&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--parallel &lt;N&gt;</td>
                     <td className="py-2">Parallel streams (default: 4)</td>
                   </tr>
                   <tr className="border-b border-zinc-800/50">
-                    <td className="py-2 font-mono text-violet-400">--signal &lt;URL&gt;</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--signal &lt;URL&gt;</td>
                     <td className="py-2">Signal server URL</td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-mono text-violet-400">--format json</td>
+                    <td className="py-2 font-mono text-wormhole-hunter-light">--format json</td>
                     <td className="py-2">Output as JSON for scripting</td>
                   </tr>
                 </tbody>
@@ -368,26 +368,26 @@ Avg fetch time: 15.3ms`}
               <h3 className="font-semibold text-white mb-3">Check These First</h3>
               <ul className="text-sm text-zinc-400 space-y-2">
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span><strong className="text-white">Network:</strong> Run <code className="bg-zinc-800 px-1 rounded">iperf3</code> between machines to verify base network speed</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span><strong className="text-white">Latency:</strong> Run <code className="bg-zinc-800 px-1 rounded">wormhole ping TARGET</code> to check round-trip time</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span><strong className="text-white">Cache:</strong> Check hit rate with <code className="bg-zinc-800 px-1 rounded">wormhole cache stats</code></span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-violet-400 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
                   <span><strong className="text-white">Disk:</strong> Verify disk cache is on SSD, not HDD</span>
                 </li>
               </ul>
             </CardContent>
           </Card>
 
-          <Link href="/docs/performance/tuning" className="inline-flex items-center text-violet-400 hover:underline">
+          <Link href="/docs/performance/tuning" className="inline-flex items-center text-wormhole-hunter-light hover:underline">
             See the Performance Tuning Guide
             <ArrowRight className="w-4 h-4 ml-1" />
           </Link>

@@ -1,40 +1,37 @@
-# Wormhole Signal Server - Fly.io Configuration
-# Deploy with: fly deploy
+# fly.toml app configuration file for wormhole-signal
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 
-app = "wormhole-signal"
-primary_region = "sjc"
+app = 'wormhole-signal'
+primary_region = 'sjc'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  RUST_LOG = "info"
+  RUST_LOG = 'info'
 
-[[services]]
+# Use modern http_service format which has native WebSocket support
+[http_service]
   internal_port = 8080
-  protocol = "tcp"
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
 
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
-
-  [services.concurrency]
+  [http_service.concurrency]
+    type = 'connections'
     hard_limit = 1000
     soft_limit = 800
-    type = "connections"
 
-  [[services.http_checks]]
-    interval = "15s"
-    timeout = "2s"
-    grace_period = "10s"
-    method = "GET"
-    path = "/health"
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/health'
 
 [[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
+  memory = '256mb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
