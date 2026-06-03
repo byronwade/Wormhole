@@ -35,8 +35,8 @@ export default function AboutPage() {
             <Link href="/docs" className="text-sm text-zinc-400 hover:text-white transition-colors">
               Docs
             </Link>
-            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" asChild>
-              <Link href="/#download">Download</Link>
+            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/#download" />}>
+              Download
             </Button>
           </div>
         </div>
@@ -179,23 +179,17 @@ export default function AboutPage() {
             the community are what make this project possible.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" asChild>
-              <a href="https://github.com/byronwade/wormhole" target="_blank" rel="noopener noreferrer">
-                <Github className="w-4 h-4 mr-2" />
-                Star on GitHub
-              </a>
+            <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<a href="https://github.com/byronwade/wormhole" target="_blank" rel="noopener noreferrer" />}>
+              <Github className="w-4 h-4 mr-2" />
+              Star on GitHub
             </Button>
-            <Button size="lg" variant="outline" className="border-pink-500/30 text-pink-400 hover:bg-pink-500/10" asChild>
-              <a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer">
-                <Heart className="w-4 h-4 mr-2" />
-                Sponsor
-              </a>
+            <Button size="lg" variant="outline" className="border-pink-500/30 text-pink-400 hover:bg-pink-500/10" render={<a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer" />}>
+              <Heart className="w-4 h-4 mr-2" />
+              Sponsor
             </Button>
-            <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" asChild>
-              <a href="https://github.com/byronwade/wormhole/discussions" target="_blank" rel="noopener noreferrer">
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Discussions
-              </a>
+            <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800" render={<a href="https://github.com/byronwade/wormhole/discussions" target="_blank" rel="noopener noreferrer" />}>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Discussions
             </Button>
           </div>
         </div>
@@ -208,11 +202,9 @@ export default function AboutPage() {
           <p className="text-zinc-400 mb-8">
             Download now and share your first folder in under a minute.
           </p>
-          <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" asChild>
-            <Link href="/#download">
-              Download Wormhole
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
+          <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/#download" />}>
+            Download Wormhole
+            <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
       </section>
