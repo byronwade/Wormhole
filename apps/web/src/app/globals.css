@@ -78,10 +78,11 @@
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
 
-  /* Wormhole Brand Colors */
-  --wormhole-hunter: #355E3B;
-  --wormhole-hunter-light: #4A7C59;
-  --wormhole-hunter-dark: #2D4F32;
+  /* Wormhole Brand Colors — purple (#7C3AED) per byronwade-ui reconciliation.
+     Class names keep the historical `wormhole-hunter` slug but now render purple. */
+  --wormhole-hunter: #7C3AED;
+  --wormhole-hunter-light: #A78BFA;
+  --wormhole-hunter-dark: #6D28D9;
   --wormhole-off-black: #0d0d0d;
   --wormhole-off-white: #f5f5f5;
   --wormhole-space-blue: #1a1a2e;
@@ -116,9 +117,9 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --edge: oklch(0 0 0 / 11%);
-  --brand: oklch(0.6 0.17 148);
+  --brand: oklch(0.539 0.246 293);
   --brand-foreground: oklch(0.99 0.002 95);
-  --brand-muted: oklch(0.96 0.03 148);
+  --brand-muted: oklch(0.96 0.03 293);
   --success: var(--brand);
   --success-foreground: oklch(0.99 0.002 95);
   --warning: oklch(0.78 0.16 75);
@@ -164,9 +165,9 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
   --edge: oklch(1 0 0 / 10%);
-  --brand: oklch(0.7 0.17 148);
+  --brand: oklch(0.62 0.21 293);
   --brand-foreground: oklch(0.985 0.001 95);
-  --brand-muted: oklch(0.32 0.06 148);
+  --brand-muted: oklch(0.32 0.06 293);
   --success: var(--brand);
   --success-foreground: oklch(0.985 0.001 95);
   --warning: oklch(0.82 0.15 78);
