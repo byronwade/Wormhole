@@ -287,9 +287,170 @@ impl std::fmt::Display for PakeError {
 
 impl std::error::Error for PakeError {}
 
+// ============================================================================
+// PAKE key confirmation, fingerprint binding, and session proof
+//
+// SPAKE2's `finish()` returns a key even when the two join codes differ — the
+// two sides simply derive *different* keys. So key confirmation is mandatory:
+// it is the step that actually rejects a wrong join code. We also bind the
+// host's TLS certificate fingerprint into the host's confirmation tag so that
+// the (untrusted) signal server cannot substitute its own certificate (MITM):
+// only a party holding the PAKE key can produce a tag the peer will accept.
+//
+// All tags are keyed-BLAKE3 over length-prefixed, domain-separated inputs to
+// avoid canonicalization/concatenation ambiguities.
+// ============================================================================
+
+/// Domain-separation label for the host's key-confirmation tag.
+pub const LABEL_CONFIRM_HOST: &[u8] = b"wormhole-confirm-host-v1";
+/// Domain-separation label for the client's key-confirmation tag.
+pub const LABEL_CONFIRM_CLIENT: &[u8] = b"wormhole-confirm-client-v1";
+/// Domain-separation label for the client's QUIC-Hello proof of key knowledge.
+pub const LABEL_HELLO_PROOF: &[u8] = b"wormhole-hello-proof-v1";
+
+/// Keyed-BLAKE3 authentication tag over `parts`, domain-separated by `label`.
+///
+/// Each input (the label and every part) is length-prefixed so that distinct
+/// `parts` slices can never collide via reframing.
+pub fn auth_tag(key: &[u8; SHARED_KEY_SIZE], label: &[u8], parts: &[&[u8]]) -> [u8; 32] {
+    let mut h = Hasher::new_keyed(key);
+    h.update(&(label.len() as u64).to_le_bytes());
+    h.update(label);
+    for p in parts {
+        h.update(&(p.len() as u64).to_le_bytes());
+        h.update(p);
+    }
+    *h.finalize().as_bytes()
+}
+
+/// Constant-time comparison of two 32-byte authentication tags.
+///
+/// Runs in time independent of where the first differing byte is, so it does
+/// not leak how much of a forged tag was correct.
+pub fn verify_tag(a: &[u8; 32], b: &[u8; 32]) -> bool {
+    let mut diff = 0u8;
+    for i in 0..32 {
+        diff |= a[i] ^ b[i];
+    }
+    diff == 0
+}
+
+/// Host's key-confirmation tag, binding the full PAKE transcript (both PAKE
+/// messages) to the host's certificate fingerprint. The client recomputes this
+/// with the fingerprint it actually received; a wrong join code (→ different
+/// key) or a fingerprint swapped in transit makes verification fail.
+pub fn host_confirmation(
+    key: &[u8; SHARED_KEY_SIZE],
+    host_msg: &[u8],
+    client_msg: &[u8],
+    cert_fingerprint: &[u8; 32],
+) -> [u8; 32] {
+    auth_tag(key, LABEL_CONFIRM_HOST, &[host_msg, client_msg, cert_fingerprint])
+}
+
+/// Client's key-confirmation tag over the same transcript. The host verifies it
+/// to confirm the client derived the same key (i.e. knows the join code).
+pub fn client_confirmation(
+    key: &[u8; SHARED_KEY_SIZE],
+    host_msg: &[u8],
+    client_msg: &[u8],
+    cert_fingerprint: &[u8; 32],
+) -> [u8; 32] {
+    auth_tag(key, LABEL_CONFIRM_CLIENT, &[host_msg, client_msg, cert_fingerprint])
+}
+
+/// Client's proof, sent in the QUIC `Hello`, that it holds the PAKE key — bound
+/// to the host-chosen session id so it cannot be replayed onto another session.
+/// The host recomputes and verifies it before granting access.
+pub fn hello_proof(key: &[u8; SHARED_KEY_SIZE], session_id: &[u8]) -> [u8; 32] {
+    auth_tag(key, LABEL_HELLO_PROOF, &[session_id])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Run a full SPAKE2 exchange and return (host_key, client_key, host_msg, client_msg).
+    fn pake_exchange(host_code: &str, client_code: &str) -> ([u8; 32], [u8; 32], Vec<u8>, Vec<u8>) {
+        let host = PakeHandshake::start_host(host_code);
+        let client = PakeHandshake::start_client(client_code);
+        let host_msg = host.outbound_message().to_vec();
+        let client_msg = client.outbound_message().to_vec();
+        let host_key = host.finish(&client_msg).expect("host finish");
+        let client_key = client.finish(&host_msg).expect("client finish");
+        (host_key, client_key, host_msg, client_msg)
+    }
+
+    #[test]
+    fn pake_same_code_confirmations_verify() {
+        let fp = [7u8; 32];
+        let (hk, ck, hm, cm) = pake_exchange("ABC-123", "ABC-123");
+        assert_eq!(hk, ck, "matching join codes must derive the same key");
+        // Each side recomputes the OTHER side's tag and it must verify.
+        let host_tag = host_confirmation(&hk, &hm, &cm, &fp);
+        let client_recompute = host_confirmation(&ck, &hm, &cm, &fp);
+        assert!(verify_tag(&host_tag, &client_recompute));
+        let client_tag = client_confirmation(&ck, &hm, &cm, &fp);
+        let host_recompute = client_confirmation(&hk, &hm, &cm, &fp);
+        assert!(verify_tag(&client_tag, &host_recompute));
+    }
+
+    #[test]
+    fn pake_wrong_code_is_rejected_by_confirmation() {
+        // THE core security property: a client with the wrong join code derives a
+        // different key, so the host's confirmation tag does NOT verify.
+        let fp = [7u8; 32];
+        let (hk, ck, hm, cm) = pake_exchange("ABC-123", "XYZ-999");
+        assert_ne!(hk, ck, "different codes must derive different keys");
+        let host_tag = host_confirmation(&hk, &hm, &cm, &fp);
+        let attacker_recompute = host_confirmation(&ck, &hm, &cm, &fp);
+        assert!(
+            !verify_tag(&host_tag, &attacker_recompute),
+            "wrong join code must fail key confirmation"
+        );
+    }
+
+    #[test]
+    fn swapped_fingerprint_fails_confirmation() {
+        // A MITM (e.g. malicious signal server) that swaps the host's certificate
+        // fingerprint cannot forge the host confirmation tag without the PAKE key,
+        // so the client (recomputing with the swapped fp) rejects it.
+        let real_fp = [1u8; 32];
+        let evil_fp = [2u8; 32];
+        let (hk, ck, hm, cm) = pake_exchange("ABC-123", "ABC-123");
+        let host_tag = host_confirmation(&hk, &hm, &cm, &real_fp); // host binds REAL fp
+        let client_sees = host_confirmation(&ck, &hm, &cm, &evil_fp); // client got swapped fp
+        assert!(
+            !verify_tag(&host_tag, &client_sees),
+            "a swapped certificate fingerprint must fail confirmation"
+        );
+    }
+
+    #[test]
+    fn hello_proof_requires_correct_key_and_binds_session() {
+        let (hk, ck, _, _) = pake_exchange("ABC-123", "ABC-123");
+        let session = [42u8; 16];
+        let proof = hello_proof(&ck, &session);
+        assert!(verify_tag(&proof, &hello_proof(&hk, &session)), "valid key+session verifies");
+        // Wrong key (attacker without the code) cannot forge the proof.
+        let wrong_key = [9u8; 32];
+        assert!(!verify_tag(&proof, &hello_proof(&wrong_key, &session)));
+        // Proof for one session must not verify against another (anti-replay).
+        let other_session = [43u8; 16];
+        assert!(!verify_tag(&proof, &hello_proof(&ck, &other_session)));
+    }
+
+    #[test]
+    fn verify_tag_is_correct() {
+        let a = [5u8; 32];
+        let mut b = a;
+        assert!(verify_tag(&a, &b));
+        b[31] ^= 1;
+        assert!(!verify_tag(&a, &b));
+        b = a;
+        b[0] ^= 0x80;
+        assert!(!verify_tag(&a, &b));
+    }
 
     #[test]
     fn test_join_code_generation() {
