@@ -345,7 +345,11 @@ pub fn host_confirmation(
     client_msg: &[u8],
     cert_fingerprint: &[u8; 32],
 ) -> [u8; 32] {
-    auth_tag(key, LABEL_CONFIRM_HOST, &[host_msg, client_msg, cert_fingerprint])
+    auth_tag(
+        key,
+        LABEL_CONFIRM_HOST,
+        &[host_msg, client_msg, cert_fingerprint],
+    )
 }
 
 /// Client's key-confirmation tag over the same transcript. The host verifies it
@@ -356,7 +360,11 @@ pub fn client_confirmation(
     client_msg: &[u8],
     cert_fingerprint: &[u8; 32],
 ) -> [u8; 32] {
-    auth_tag(key, LABEL_CONFIRM_CLIENT, &[host_msg, client_msg, cert_fingerprint])
+    auth_tag(
+        key,
+        LABEL_CONFIRM_CLIENT,
+        &[host_msg, client_msg, cert_fingerprint],
+    )
 }
 
 /// Client's proof, sent in the QUIC `Hello`, that it holds the PAKE key — bound
@@ -431,7 +439,10 @@ mod tests {
         let (hk, ck, _, _) = pake_exchange("ABC-123", "ABC-123");
         let session = [42u8; 16];
         let proof = hello_proof(&ck, &session);
-        assert!(verify_tag(&proof, &hello_proof(&hk, &session)), "valid key+session verifies");
+        assert!(
+            verify_tag(&proof, &hello_proof(&hk, &session)),
+            "valid key+session verifies"
+        );
         // Wrong key (attacker without the code) cannot forge the proof.
         let wrong_key = [9u8; 32];
         assert!(!verify_tag(&proof, &hello_proof(&wrong_key, &session)));
