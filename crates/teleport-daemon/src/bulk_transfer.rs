@@ -213,7 +213,8 @@ pub struct BulkTransferCoordinator {
     stream_pool: Arc<StreamPool>,
     /// Dedup index for content-addressed chunks
     dedup_index: Arc<DedupIndex>,
-    /// Buffer pool for zero-copy I/O
+    /// Buffer pool for zero-copy I/O (reserved for upcoming zero-copy paths)
+    #[allow(dead_code)]
     buffer_pool: Arc<BufferPool>,
     /// Compressor for smart compression
     compressor: SmartCompressor,
@@ -505,7 +506,7 @@ mod tests {
 
         let manifest = coordinator.build_manifest(temp.path(), 123).unwrap();
 
-        assert!(manifest.chunks.len() >= 1);
+        assert!(!manifest.chunks.is_empty());
         assert_eq!(manifest.total_size, data.len() as u64);
         assert_eq!(manifest.inode, 123);
 
@@ -611,10 +612,22 @@ mod tests {
         let coordinator = create_test_coordinator();
 
         // Record some stats
-        coordinator.stats.transfers_started.fetch_add(10, Ordering::Relaxed);
-        coordinator.stats.transfers_completed.fetch_add(8, Ordering::Relaxed);
-        coordinator.stats.total_bytes.fetch_add(1_000_000, Ordering::Relaxed);
-        coordinator.stats.dedup_savings.fetch_add(200_000, Ordering::Relaxed);
+        coordinator
+            .stats
+            .transfers_started
+            .fetch_add(10, Ordering::Relaxed);
+        coordinator
+            .stats
+            .transfers_completed
+            .fetch_add(8, Ordering::Relaxed);
+        coordinator
+            .stats
+            .total_bytes
+            .fetch_add(1_000_000, Ordering::Relaxed);
+        coordinator
+            .stats
+            .dedup_savings
+            .fetch_add(200_000, Ordering::Relaxed);
 
         let snapshot = coordinator.stats();
         assert_eq!(snapshot.transfers_started, 10);

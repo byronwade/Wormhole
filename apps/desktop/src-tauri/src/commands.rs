@@ -202,7 +202,10 @@ pub async fn start_hosting_with_id(
             },
         );
 
-        info!("Host {} serving {:?} on port {}", id_clone, path_clone, port);
+        info!(
+            "Host {} serving {:?} on port {}",
+            id_clone, path_clone, port
+        );
 
         // This blocks until the host is stopped
         if let Err(e) = host.serve().await {
@@ -241,10 +244,7 @@ pub async fn start_hosting_with_id(
 
 /// Stop hosting by ID
 #[tauri::command]
-pub async fn stop_hosting_by_id(
-    state: State<'_, Arc<AppState>>,
-    id: String,
-) -> Result<(), String> {
+pub async fn stop_hosting_by_id(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
     info!("Stopping host: {}", id);
 
     let mut handles = state.host_handles.lock().await;
@@ -587,10 +587,7 @@ pub async fn connect_to_peer(
 
 /// Disconnect by connection ID
 #[tauri::command]
-pub async fn disconnect_by_id(
-    state: State<'_, Arc<AppState>>,
-    id: String,
-) -> Result<(), String> {
+pub async fn disconnect_by_id(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
     info!("Disconnecting connection: {}", id);
 
     let mut handles = state.client_handles.lock().await;
@@ -622,7 +619,10 @@ pub async fn disconnect_by_id(
         });
 
         if let Some(_thread) = ch.mount_thread {
-            info!("Disconnecting {} - mount thread will cleanup in background", id);
+            info!(
+                "Disconnecting {} - mount thread will cleanup in background",
+                id
+            );
         }
 
         info!("Disconnected {} and unmounted", id);
@@ -636,7 +636,10 @@ pub async fn disconnect_by_id(
 #[tauri::command]
 pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
     // Try to disconnect the default connection first
-    if disconnect_by_id(state.clone(), "default".to_string()).await.is_ok() {
+    if disconnect_by_id(state.clone(), "default".to_string())
+        .await
+        .is_ok()
+    {
         return Ok(());
     }
 
@@ -660,7 +663,10 @@ pub async fn get_status(state: State<'_, Arc<AppState>>) -> Result<serde_json::V
     let is_connected = !client_handles.is_empty();
     let host_count = host_handles.len();
     let connection_count = client_handles.len();
-    let mount_point = client_handles.values().next().map(|h| h.mount_point.to_string_lossy().to_string());
+    let mount_point = client_handles
+        .values()
+        .next()
+        .map(|h| h.mount_point.to_string_lossy().to_string());
 
     Ok(serde_json::json!({
         "is_hosting": is_hosting,
@@ -1490,11 +1496,9 @@ pub fn delete_path(path: String) -> Result<(), String> {
     }
 
     if path.is_dir() {
-        std::fs::remove_dir_all(&path)
-            .map_err(|e| format!("Failed to delete folder: {}", e))?;
+        std::fs::remove_dir_all(&path).map_err(|e| format!("Failed to delete folder: {}", e))?;
     } else {
-        std::fs::remove_file(&path)
-            .map_err(|e| format!("Failed to delete file: {}", e))?;
+        std::fs::remove_file(&path).map_err(|e| format!("Failed to delete file: {}", e))?;
     }
 
     info!("Deleted: {}", path.display());
@@ -1659,9 +1663,9 @@ pub struct IndexEntry {
     pub is_dir: bool,
     pub size: u64,
     pub modified: Option<u64>,
-    pub root_path: String,   // Which share/mount this belongs to
-    pub root_name: String,   // Display name for the source
-    pub root_type: String,   // "share" or "connection"
+    pub root_path: String, // Which share/mount this belongs to
+    pub root_name: String, // Display name for the source
+    pub root_type: String, // "share" or "connection"
 }
 
 /// Recursively index all files in a directory
@@ -1825,10 +1829,7 @@ pub async fn check_for_updates(current_version: String) -> Result<Option<UpdateI
     if latest_version > current_version {
         Ok(Some(UpdateInfo {
             version: tag_name.to_string(),
-            release_url: release["html_url"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
+            release_url: release["html_url"].as_str().unwrap_or("").to_string(),
             release_notes: release["body"].as_str().map(|s| s.to_string()),
             published_at: release["published_at"].as_str().map(|s| s.to_string()),
         }))
@@ -1853,7 +1854,8 @@ pub async fn start_hosting_with_expiration(
     );
 
     // Start the host normally first
-    let host_info = start_hosting_with_id(app.clone(), state.clone(), id.clone(), path.clone(), port).await?;
+    let host_info =
+        start_hosting_with_id(app.clone(), state.clone(), id.clone(), path.clone(), port).await?;
 
     // If expiration is set, spawn a task to auto-stop the share
     if let Some(ms) = expires_in_ms {
@@ -1872,10 +1874,13 @@ pub async fn start_hosting_with_expiration(
                 h.abort_handle.abort();
 
                 // Emit expired event to frontend
-                let _ = app_clone.emit("share-expired", serde_json::json!({
-                    "id": id_clone,
-                    "share_path": h.info.share_path,
-                }));
+                let _ = app_clone.emit(
+                    "share-expired",
+                    serde_json::json!({
+                        "id": id_clone,
+                        "share_path": h.info.share_path,
+                    }),
+                );
 
                 info!("Expired share {} stopped successfully", id_clone);
             }
@@ -1931,10 +1936,11 @@ pub async fn export_file(
     }
 
     // Get file size for progress tracking
-    let metadata = std::fs::metadata(&source)
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    let metadata =
+        std::fs::metadata(&source).map_err(|e| format!("Failed to get file metadata: {}", e))?;
     let total_bytes = metadata.len();
-    let file_name = source.file_name()
+    let file_name = source
+        .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "unknown".to_string());
 
@@ -1967,14 +1973,16 @@ pub async fn export_file(
                 .map_err(|e| format!("Failed to create destination: {}", e))?;
 
             loop {
-                let bytes_read = source_file.read(&mut buffer)
+                let bytes_read = source_file
+                    .read(&mut buffer)
                     .map_err(|e| format!("Read error: {}", e))?;
 
                 if bytes_read == 0 {
                     break;
                 }
 
-                dest_file.write_all(&buffer[..bytes_read])
+                dest_file
+                    .write_all(&buffer[..bytes_read])
                     .map_err(|e| format!("Write error: {}", e))?;
 
                 bytes_copied += bytes_read as u64;
@@ -1995,21 +2003,25 @@ pub async fn export_file(
                         None
                     };
 
-                    let _ = app_clone.emit("transfer-progress", TransferProgressEvent {
-                        transfer_id: transfer_id_clone.clone(),
-                        file_name: file_name_clone.clone(),
-                        bytes_transferred: bytes_copied,
-                        total_bytes,
-                        speed_bps,
-                        eta_seconds,
-                    });
+                    let _ = app_clone.emit(
+                        "transfer-progress",
+                        TransferProgressEvent {
+                            transfer_id: transfer_id_clone.clone(),
+                            file_name: file_name_clone.clone(),
+                            bytes_transferred: bytes_copied,
+                            total_bytes,
+                            speed_bps,
+                            eta_seconds,
+                        },
+                    );
 
                     last_progress_time = now;
                 }
             }
 
             // Ensure all data is flushed to disk
-            dest_file.sync_all()
+            dest_file
+                .sync_all()
                 .map_err(|e| format!("Sync error: {}", e))?;
 
             Ok(())
@@ -2018,13 +2030,16 @@ pub async fn export_file(
         let duration_ms = start_time.elapsed().as_millis() as u64;
 
         // Emit completion event
-        let _ = app_clone.emit("transfer-completed", TransferCompletedEvent {
-            transfer_id: transfer_id_clone,
-            success: result.is_ok(),
-            bytes_transferred: bytes_copied,
-            duration_ms,
-            error: result.err(),
-        });
+        let _ = app_clone.emit(
+            "transfer-completed",
+            TransferCompletedEvent {
+                transfer_id: transfer_id_clone,
+                success: result.is_ok(),
+                bytes_transferred: bytes_copied,
+                duration_ms,
+                error: result.err(),
+            },
+        );
     });
 
     Ok(())
@@ -2058,7 +2073,8 @@ pub fn get_drag_file_path(path: String) -> Result<String, String> {
     }
 
     // Return the canonical path for drag operations
-    file_path.canonicalize()
+    file_path
+        .canonicalize()
         .map(|p| p.to_string_lossy().to_string())
         .map_err(|e| format!("Failed to resolve path: {}", e))
 }

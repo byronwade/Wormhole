@@ -92,7 +92,9 @@ fn bench_compression(c: &mut Criterion) {
     });
 
     // Already high-entropy data (won't compress well)
-    let random_data: Vec<u8> = (0..BULK_CHUNK_SIZE).map(|i| ((i * 7 + 13) % 256) as u8).collect();
+    let random_data: Vec<u8> = (0..BULK_CHUNK_SIZE)
+        .map(|i| ((i * 7 + 13) % 256) as u8)
+        .collect();
 
     group.throughput(Throughput::Bytes(random_data.len() as u64));
     group.bench_function("compress_random_4mb", |b| {

@@ -429,6 +429,6 @@ mod tests {
         }
 
         // Verify some entries exist
-        assert!(index.len() > 0);
+        assert!(!index.is_empty());
     }
 }

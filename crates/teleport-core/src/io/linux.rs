@@ -36,9 +36,7 @@ impl LinuxIO {
     ) -> io::Result<usize> {
         let mut off = offset as i64;
 
-        let result = unsafe {
-            libc::sendfile(socket_fd, file_fd, &mut off, len)
-        };
+        let result = unsafe { libc::sendfile(socket_fd, file_fd, &mut off, len) };
 
         if result < 0 {
             Err(io::Error::last_os_error())
@@ -78,9 +76,8 @@ impl LinuxIO {
             })
             .collect();
 
-        let result = unsafe {
-            libc::pwritev(fd, iovecs.as_ptr(), iovecs.len() as i32, offset as i64)
-        };
+        let result =
+            unsafe { libc::pwritev(fd, iovecs.as_ptr(), iovecs.len() as i32, offset as i64) };
 
         if result < 0 {
             Err(io::Error::last_os_error())
@@ -109,7 +106,7 @@ impl AsyncIO for LinuxIO {
             Ok::<_, io::Error>((local_buf, n))
         })
         .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))??;
+        .map_err(io::Error::other)??;
 
         buf[..result.1].copy_from_slice(&result.0[..result.1]);
         Ok(result.1)
@@ -124,11 +121,9 @@ impl AsyncIO for LinuxIO {
     ) -> io::Result<usize> {
         let file_fd = file.as_raw_fd();
 
-        tokio::task::spawn_blocking(move || {
-            Self::sendfile_sync(file_fd, socket_fd, offset, len)
-        })
-        .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+        tokio::task::spawn_blocking(move || Self::sendfile_sync(file_fd, socket_fd, offset, len))
+            .await
+            .map_err(io::Error::other)?
     }
 
     async fn writev(&self, file: &File, bufs: &[&[u8]], offset: u64) -> io::Result<usize> {
@@ -147,7 +142,7 @@ impl AsyncIO for LinuxIO {
             result
         })
         .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+        .map_err(io::Error::other)?
     }
 
     fn name(&self) -> &'static str {

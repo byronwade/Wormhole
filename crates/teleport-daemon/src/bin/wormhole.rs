@@ -211,7 +211,11 @@ struct HostArgs {
     max_connections: usize,
 
     /// Signal server URL for join code registration
-    #[arg(long, default_value = "wss://wormhole-signal.fly.dev", env = "WORMHOLE_SIGNAL")]
+    #[arg(
+        long,
+        default_value = "wss://wormhole-signal.fly.dev",
+        env = "WORMHOLE_SIGNAL"
+    )]
     signal_server: String,
 
     /// Don't register with signal server (direct IP only)
@@ -1642,7 +1646,15 @@ async fn run_mount_direct(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std
 
     let mount_point = args.path.clone().unwrap_or(default_mount);
 
-    if !mount_point.exists() {
+    // macOS FSKit mounts under /Volumes are root-owned and created by the system
+    // at mount time; pre-creating them as a normal user fails. wormhole-mount
+    // creates the mount point when appropriate, so only create user-writable paths.
+    #[cfg(target_os = "macos")]
+    let skip_create = !args.use_kext && mount_point.starts_with("/Volumes");
+    #[cfg(not(target_os = "macos"))]
+    let skip_create = false;
+
+    if !skip_create && !mount_point.exists() {
         std::fs::create_dir_all(&mount_point)?;
     }
 
@@ -1697,7 +1709,13 @@ async fn run_mount_via_signal(
         .clone()
         .unwrap_or_else(|| std::env::temp_dir().join(format!("wormhole-{}", &code)));
 
-    if !mount_point.exists() {
+    // See run_mount_direct: don't pre-create macOS FSKit /Volumes mount points.
+    #[cfg(target_os = "macos")]
+    let skip_create = !args.use_kext && mount_point.starts_with("/Volumes");
+    #[cfg(not(target_os = "macos"))]
+    let skip_create = false;
+
+    if !skip_create && !mount_point.exists() {
         std::fs::create_dir_all(&mount_point)?;
     }
 

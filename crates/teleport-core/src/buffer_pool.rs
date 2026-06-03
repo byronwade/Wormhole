@@ -274,16 +274,13 @@ impl Deref for PooledBuffer {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        self.buffer.as_ref().map(|b| b.as_slice()).unwrap_or(&[])
+        self.buffer.as_deref().unwrap_or(&[])
     }
 }
 
 impl DerefMut for PooledBuffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.buffer
-            .as_mut()
-            .map(|b| b.as_mut_slice())
-            .unwrap_or(&mut [])
+        self.buffer.as_deref_mut().unwrap_or(&mut [])
     }
 }
 

@@ -34,7 +34,7 @@ impl AsyncIO for FallbackIO {
             Ok::<_, io::Error>((local_buf, n))
         })
         .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))??;
+        .map_err(io::Error::other)??;
 
         buf[..result.1].copy_from_slice(&result.0[..result.1]);
         Ok(result.1)
@@ -56,7 +56,7 @@ impl AsyncIO for FallbackIO {
             Ok::<_, io::Error>(n)
         })
         .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+        .map_err(io::Error::other)?
     }
 
     async fn writev(&self, file: &File, bufs: &[&[u8]], offset: u64) -> io::Result<usize> {
@@ -72,7 +72,7 @@ impl AsyncIO for FallbackIO {
             Ok::<_, io::Error>(total)
         })
         .await
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+        .map_err(io::Error::other)?
     }
 
     fn name(&self) -> &'static str {

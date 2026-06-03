@@ -96,8 +96,19 @@ mod unix_impl {
         #[cfg(not(target_os = "macos"))]
         let actual_mount_point = mount_point.clone();
 
-        // Create mount point if it doesn't exist
-        if !actual_mount_point.exists() {
+        // Create mount point if it doesn't exist.
+        //
+        // Exception: macOS FSKit mounts live under /Volumes, which is root-owned
+        // and managed by the system. A normal user cannot create directories there
+        // (EACCES), and FSKit creates the volume entry itself at mount time, so we
+        // must NOT try to pre-create it. The kext backend (and all other platforms)
+        // mount at a user-writable path, which we do create.
+        #[cfg(target_os = "macos")]
+        let skip_create = !cli.use_kext && actual_mount_point.starts_with("/Volumes");
+        #[cfg(not(target_os = "macos"))]
+        let skip_create = false;
+
+        if !skip_create && !actual_mount_point.exists() {
             std::fs::create_dir_all(&actual_mount_point)?;
         }
 

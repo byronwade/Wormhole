@@ -159,7 +159,9 @@ impl StreamPool {
 
     /// Create a stream pool with custom configuration
     pub fn with_config(config: StreamPoolConfig) -> Self {
-        let initial = config.initial_streams.clamp(config.min_streams, config.max_streams);
+        let initial = config
+            .initial_streams
+            .clamp(config.min_streams, config.max_streams);
 
         // Pre-allocate initial streams
         let mut available = VecDeque::with_capacity(initial);

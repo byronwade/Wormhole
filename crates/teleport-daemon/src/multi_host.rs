@@ -394,7 +394,7 @@ async fn handle_connection(
 
     // Generate session ID
     let mut session_id = [0u8; 16];
-    getrandom::getrandom(&mut session_id).expect("RNG failed - system entropy source unavailable");
+    getrandom::fill(&mut session_id).expect("RNG failed - system entropy source unavailable");
 
     // Create a unique holder ID for this client
     let holder_id = format!(

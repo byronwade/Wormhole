@@ -82,13 +82,17 @@ pub use multi_fuse::{MountedShare, MultiShareFS};
 pub use winfsp::{mount_winfsp, WormholeFileContext, WormholeWinFS};
 
 // Platform-independent re-exports
+pub use bulk_transfer::{
+    BulkTransferConfig, BulkTransferCoordinator, TransferProgress, TransferProgressTracker,
+    TransferResult, TransferStats, TransferStatsSnapshot,
+};
 pub use cache::{CacheManager, ChunkCache, HybridCacheManager, HybridChunkCache};
 pub use client::WormholeClient;
-pub use dedup_index::{ChunkLocation, DedupIndex, DedupStatsSnapshot};
 pub use connection_manager::{
     ConnectionError, ConnectionEvent, ConnectionManager, HostConnectionConfig, ReconnectConfig,
     RegisteredShare,
 };
+pub use dedup_index::{ChunkLocation, DedupIndex, DedupStatsSnapshot};
 pub use disk_cache::DiskCache;
 pub use gc::GarbageCollector;
 pub use global::{
@@ -105,10 +109,6 @@ pub use stream_pool::{
     MAX_STREAMS, MIN_STREAMS,
 };
 pub use sync_engine::{DirtyChunk, FileLock, SyncEngine, SyncRunner, SyncStatus};
-pub use bulk_transfer::{
-    BulkTransferConfig, BulkTransferCoordinator, TransferProgress, TransferProgressTracker,
-    TransferResult, TransferStats, TransferStatsSnapshot,
-};
 
 /// Default mount options
 pub const DEFAULT_MOUNT_OPTIONS: &[&str] =

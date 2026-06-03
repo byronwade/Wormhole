@@ -57,11 +57,7 @@ impl SmartCompressor {
 
     /// Check if a file extension indicates already-compressed data.
     pub fn is_compressed_extension(path: &str) -> bool {
-        let ext = path
-            .rsplit('.')
-            .next()
-            .unwrap_or("")
-            .to_lowercase();
+        let ext = path.rsplit('.').next().unwrap_or("").to_lowercase();
 
         matches!(
             ext.as_str(),
@@ -244,9 +240,11 @@ impl CompressionResult {
     /// Get the savings in bytes (0 if not compressed).
     pub fn savings(&self) -> usize {
         match self {
-            CompressionResult::Compressed { original_size, compressed_size, .. } => {
-                original_size.saturating_sub(*compressed_size)
-            }
+            CompressionResult::Compressed {
+                original_size,
+                compressed_size,
+                ..
+            } => original_size.saturating_sub(*compressed_size),
             _ => 0,
         }
     }
@@ -267,7 +265,11 @@ mod tests {
     fn test_entropy_text() {
         let data = b"Hello, World! This is a test of the entropy calculation.";
         let entropy = SmartCompressor::shannon_entropy(data);
-        assert!(entropy > 3.0 && entropy < 5.0, "Text should have moderate entropy: {}", entropy);
+        assert!(
+            entropy > 3.0 && entropy < 5.0,
+            "Text should have moderate entropy: {}",
+            entropy
+        );
     }
 
     #[test]
@@ -314,7 +316,12 @@ mod tests {
         let text = b"Hello, World! ".repeat(100);
         let result = compressor.compress_smart("file.txt", &text);
         assert!(result.is_compressed());
-        if let CompressionResult::Compressed { compressed_size, original_size, .. } = result {
+        if let CompressionResult::Compressed {
+            compressed_size,
+            original_size,
+            ..
+        } = result
+        {
             assert!(compressed_size < original_size);
         }
 

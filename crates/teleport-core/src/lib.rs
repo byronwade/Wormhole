@@ -14,7 +14,9 @@ pub mod protocol;
 pub mod types;
 
 // Phase 8: High-Performance Transfer Engine
-pub use buffer_pool::{BufferPool, BufferPoolStats, PooledBuffer, BULK_CHUNK_SIZE, RANDOM_CHUNK_SIZE};
+pub use buffer_pool::{
+    BufferPool, BufferPoolStats, PooledBuffer, BULK_CHUNK_SIZE, RANDOM_CHUNK_SIZE,
+};
 pub use compression::{CompressionResult, CompressionStats, SmartCompressor};
 pub use io::{platform_io, AsyncIO, IoStats};
 

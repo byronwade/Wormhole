@@ -62,9 +62,16 @@ impl SignalServer {
             let peer_count = self.peer_rooms.len();
 
             tokio::spawn(async move {
-                if let Err(e) =
-                    handle_connection(stream, peer_addr, rooms, peer_rooms, peer_senders, room_count, peer_count)
-                        .await
+                if let Err(e) = handle_connection(
+                    stream,
+                    peer_addr,
+                    rooms,
+                    peer_rooms,
+                    peer_senders,
+                    room_count,
+                    peer_count,
+                )
+                .await
                 {
                     debug!("Connection error from {}: {:?}", peer_addr, e);
                 }
@@ -128,7 +135,7 @@ async fn handle_connection(
             // Handle incoming WebSocket messages
             msg = ws_receiver.next() => {
                 let msg = match msg {
-                    Some(Ok(Message::Text(text))) => text,
+                    Some(Ok(Message::Text(text))) => text.to_string(),
                     Some(Ok(Message::Close(_))) => break,
                     Some(Ok(Message::Ping(data))) => {
                         let _ = ws_sender.send(Message::Pong(data)).await;
@@ -148,7 +155,7 @@ async fn handle_connection(
                         let error =
                             SignalMessage::error(ErrorCode::InternalError, format!("Invalid JSON: {}", e));
                         let _ = ws_sender
-                            .send(Message::Text(error.to_json().unwrap()))
+                            .send(Message::text(error.to_json().unwrap()))
                             .await;
                         continue;
                     }
@@ -159,7 +166,7 @@ async fn handle_connection(
                     // Verify sender is in a room
                     if current_room.is_none() {
                         let error = SignalMessage::error(ErrorCode::NotInRoom, "Not in a room");
-                        let _ = ws_sender.send(Message::Text(error.to_json().unwrap())).await;
+                        let _ = ws_sender.send(Message::text(error.to_json().unwrap())).await;
                         continue;
                     }
 
@@ -170,7 +177,7 @@ async fn handle_connection(
 
                     if !same_room {
                         let error = SignalMessage::error(ErrorCode::RoomNotFound, "Target peer not in your room");
-                        let _ = ws_sender.send(Message::Text(error.to_json().unwrap())).await;
+                        let _ = ws_sender.send(Message::text(error.to_json().unwrap())).await;
                         continue;
                     }
 
@@ -204,7 +211,7 @@ async fn handle_connection(
 
                 if let Some(response) = response {
                     let json = response.to_json().unwrap();
-                    if ws_sender.send(Message::Text(json)).await.is_err() {
+                    if ws_sender.send(Message::text(json)).await.is_err() {
                         break;
                     }
                 }
@@ -213,7 +220,7 @@ async fn handle_connection(
             // Handle messages from other peers (relayed)
             Some(relayed_msg) = rx.recv() => {
                 let json = relayed_msg.to_json().unwrap();
-                if ws_sender.send(Message::Text(json)).await.is_err() {
+                if ws_sender.send(Message::text(json)).await.is_err() {
                     break;
                 }
             }
@@ -284,7 +291,10 @@ fn handle_message(
     current_room: &mut Option<String>,
 ) -> Option<SignalMessage> {
     match msg {
-        SignalMessage::CreateRoom { join_code, peer_info } => {
+        SignalMessage::CreateRoom {
+            join_code,
+            peer_info,
+        } => {
             if current_room.is_some() {
                 return Some(SignalMessage::error(
                     ErrorCode::AlreadyInRoom,
@@ -325,7 +335,10 @@ fn handle_message(
                 }
             };
 
-            debug!("Creating room {} with host local_addrs: {:?}", code, info.local_addrs);
+            debug!(
+                "Creating room {} with host local_addrs: {:?}",
+                code, info.local_addrs
+            );
 
             if room.add_peer(info).is_err() {
                 return Some(SignalMessage::error(
@@ -470,7 +483,7 @@ fn generate_peer_id() -> String {
 /// Try to generate a unique peer ID, returning an error if RNG fails
 fn try_generate_peer_id() -> Result<String, getrandom::Error> {
     let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes)?;
+    getrandom::fill(&mut bytes)?;
     Ok(hex::encode(bytes))
 }
 

@@ -247,7 +247,7 @@ impl RendezvousClient {
             .to_json()
             .map_err(|e| RendezvousError::WebSocket(e.to_string()))?;
 
-        ws.send(Message::Text(json))
+        ws.send(Message::text(json))
             .await
             .map_err(|e| RendezvousError::WebSocket(e.to_string()))?;
 
@@ -264,7 +264,7 @@ impl RendezvousClient {
 
             match recv_result {
                 Ok(Some(Ok(Message::Text(text)))) => {
-                    let msg = SignalMessage::from_json(&text)
+                    let msg = SignalMessage::from_json(text.as_str())
                         .map_err(|e| RendezvousError::WebSocket(e.to_string()))?;
                     return Ok(msg);
                 }
@@ -429,7 +429,7 @@ fn generate_peer_id() -> String {
 /// Try to generate a random peer ID, returning an error if RNG fails
 fn try_generate_peer_id() -> Result<String, getrandom::Error> {
     let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes)?;
+    getrandom::fill(&mut bytes)?;
     Ok(hex::encode(bytes))
 }
 
