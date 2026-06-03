@@ -155,8 +155,7 @@ impl WormholeClient {
 
         // Send Hello
         let mut client_id = [0u8; 16];
-        getrandom::fill(&mut client_id)
-            .expect("RNG failed - system entropy source unavailable");
+        getrandom::fill(&mut client_id).expect("RNG failed - system entropy source unavailable");
 
         let hello = NetMessage::Hello(HelloMessage {
             protocol_version: PROTOCOL_VERSION,
@@ -1022,10 +1021,7 @@ mod tests {
         let mut offset = 0u64;
         while offset < size {
             let want = std::cmp::min(CHUNK_SIZE as u64, size - offset) as u32;
-            let part = client
-                .read(inode, offset, want)
-                .await
-                .expect("read chunk");
+            let part = client.read(inode, offset, want).await.expect("read chunk");
             assert!(!part.is_empty(), "read returned 0 bytes at offset {offset}");
             offset += part.len() as u64;
             buf.extend_from_slice(&part);
@@ -1090,14 +1086,20 @@ mod tests {
         assert!(names.contains("sub"), "missing sub dir: {names:?}");
 
         // 5. Look up + read the small file; bytes must match exactly.
-        let small_attr = client.lookup(ROOT_INODE, "small.txt").await.expect("lookup small");
+        let small_attr = client
+            .lookup(ROOT_INODE, "small.txt")
+            .await
+            .expect("lookup small");
         assert_eq!(small_attr.file_type, FileType::File);
         assert_eq!(small_attr.size, small.len() as u64);
         let got_small = read_whole_file(&client, small_attr.inode, small_attr.size).await;
         assert_eq!(got_small, small, "small.txt content mismatch over the wire");
 
         // 6. Look up + read the multi-chunk file; bytes must match exactly.
-        let big_attr = client.lookup(ROOT_INODE, "big.bin").await.expect("lookup big");
+        let big_attr = client
+            .lookup(ROOT_INODE, "big.bin")
+            .await
+            .expect("lookup big");
         assert_eq!(big_attr.size, big.len() as u64);
         let got_big = read_whole_file(&client, big_attr.inode, big_attr.size).await;
         assert_eq!(got_big.len(), big.len(), "big.bin length mismatch");
@@ -1115,7 +1117,10 @@ mod tests {
 
         // 8. A missing file must report NotFound, not garbage.
         let missing = client.lookup(ROOT_INODE, "does-not-exist.txt").await;
-        assert!(matches!(missing, Err(FuseError::NotFound)), "expected NotFound, got {missing:?}");
+        assert!(
+            matches!(missing, Err(FuseError::NotFound)),
+            "expected NotFound, got {missing:?}"
+        );
     }
 
     /// Performance baseline: sequential read throughput of a large file through
@@ -1247,7 +1252,10 @@ mod tests {
         assert!(connected, "client failed to connect");
 
         // The legit file still works (the fix must not break normal reads).
-        let ok = client.lookup(ROOT_INODE, "ok.txt").await.expect("legit lookup");
+        let ok = client
+            .lookup(ROOT_INODE, "ok.txt")
+            .await
+            .expect("legit lookup");
         let ok_data = read_whole_file(&client, ok.inode, ok.size).await;
         assert_eq!(ok_data, b"public");
 

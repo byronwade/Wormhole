@@ -272,8 +272,7 @@ impl ConnectionManager {
 
         // Generate client ID
         let mut client_id = [0u8; 16];
-        getrandom::fill(&mut client_id)
-            .expect("RNG failed - system entropy source unavailable");
+        getrandom::fill(&mut client_id).expect("RNG failed - system entropy source unavailable");
 
         // Send Hello
         let hello = NetMessage::Hello(HelloMessage {

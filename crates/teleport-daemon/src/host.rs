@@ -697,11 +697,7 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
     }
 }
 
-fn handle_read_chunk(
-    req: ReadChunkRequest,
-    inodes: &InodeTable,
-    shared_path: &Path,
-) -> NetMessage {
+fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
     let path = match inodes.get_path(req.chunk_id.inode) {
         Some(p) => p,
         None => {
@@ -1621,7 +1617,9 @@ mod tests {
     fn bench_host_read_chunk_cpu() {
         let dir = TempDir::new().unwrap();
         let file = dir.path().join("big.bin");
-        let bytes: Vec<u8> = (0..(64 * 1024 * 1024usize)).map(|i| (i % 251) as u8).collect();
+        let bytes: Vec<u8> = (0..(64 * 1024 * 1024usize))
+            .map(|i| (i % 251) as u8)
+            .collect();
         std::fs::write(&file, &bytes).unwrap();
         let table = InodeTable::new(dir.path().to_path_buf());
         let inode = table.get_or_create_inode(file).unwrap();
@@ -1630,7 +1628,10 @@ mod tests {
         // warm the page cache
         for i in 0..chunks {
             let _ = handle_read_chunk(
-                ReadChunkRequest { chunk_id: ChunkId::new(inode, i as u64), priority: 0 },
+                ReadChunkRequest {
+                    chunk_id: ChunkId::new(inode, i as u64),
+                    priority: 0,
+                },
                 &table,
                 dir.path(),
             );
@@ -1638,7 +1639,10 @@ mod tests {
         let start = Instant::now();
         for i in 0..chunks {
             let _ = handle_read_chunk(
-                ReadChunkRequest { chunk_id: ChunkId::new(inode, i as u64), priority: 0 },
+                ReadChunkRequest {
+                    chunk_id: ChunkId::new(inode, i as u64),
+                    priority: 0,
+                },
                 &table,
                 dir.path(),
             );
