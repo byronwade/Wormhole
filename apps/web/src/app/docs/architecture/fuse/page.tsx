@@ -13,49 +13,49 @@ export default function FuseArchitecturePage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/architecture" className="hover:text-white">Architecture</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/architecture" className="hover:text-foreground">Architecture</Link>
           <span>/</span>
-          <span className="text-zinc-400">FUSE</span>
+          <span className="text-muted-foreground">FUSE</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           FUSE Integration
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           How Wormhole uses Filesystem in Userspace (FUSE) to present remote files as local directories.
         </p>
       </div>
 
       {/* What is FUSE */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">What is FUSE?</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">What is FUSE?</h2>
+        <p className="text-muted-foreground">
           FUSE (Filesystem in Userspace) is a kernel interface that lets non-privileged users
           create their own filesystems without modifying kernel code. When an application
           accesses files on a FUSE mount, the kernel forwards these requests to a userspace
           program (Wormhole) which handles them and returns results.
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="text-center space-y-4">
               <div className="flex justify-center items-center gap-4 text-sm">
                 <div className="px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded">
-                  Application<br/><span className="text-zinc-500 text-xs">(e.g., finder, ls)</span>
+                  Application<br/><span className="text-muted-foreground text-xs">(e.g., finder, ls)</span>
                 </div>
-                <ArrowRight className="h-5 w-5 text-zinc-600" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
                 <div className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/30 rounded">
                   Kernel VFS
                 </div>
-                <ArrowRight className="h-5 w-5 text-zinc-600" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
                 <div className="px-4 py-2 bg-green-500/20 border border-green-500/30 rounded">
                   FUSE Module
                 </div>
-                <ArrowRight className="h-5 w-5 text-zinc-600" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground" />
                 <div className="px-4 py-2 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded">
                   Wormhole Daemon
                 </div>
               </div>
-              <p className="text-zinc-500 text-xs">Request flow from application to Wormhole</p>
+              <p className="text-muted-foreground text-xs">Request flow from application to Wormhole</p>
             </div>
           </CardContent>
         </Card>
@@ -63,12 +63,12 @@ export default function FuseArchitecturePage() {
 
       {/* Why FUSE */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Why FUSE?</h2>
+        <h2 className="text-2xl font-bold text-foreground">Why FUSE?</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="font-semibold text-green-400 mb-2">Advantages</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>- Works with any application (no integration needed)</li>
                 <li>- Native file operations (drag-drop, save-as)</li>
                 <li>- Standard POSIX semantics</li>
@@ -77,10 +77,10 @@ export default function FuseArchitecturePage() {
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <h3 className="font-semibold text-yellow-400 mb-2">Challenges</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>- Context switches between kernel and userspace</li>
                 <li>- FUSE callbacks are synchronous</li>
                 <li>- Network latency affects file operations</li>
@@ -93,55 +93,55 @@ export default function FuseArchitecturePage() {
 
       {/* Wormhole FUSE Implementation */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Wormhole&apos;s FUSE Implementation</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Wormhole&apos;s FUSE Implementation</h2>
+        <p className="text-muted-foreground">
           Wormhole uses the <code className="text-wormhole-hunter-light">fuser</code> crate (Rust bindings for
           libfuse) to implement FUSE operations. The implementation is in{" "}
           <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/fuse.rs</code>.
         </p>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Key Operations</h3>
+        <h3 className="text-lg font-semibold text-foreground mt-6">Key Operations</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">FUSE Op</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Description</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Wormhole Behavior</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">FUSE Op</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Wormhole Behavior</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">lookup</td>
                 <td className="py-3 px-4">Resolve path to inode</td>
                 <td className="py-3 px-4">Query inode map, fetch from host if not cached</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">getattr</td>
                 <td className="py-3 px-4">Get file attributes</td>
                 <td className="py-3 px-4">Return cached attrs with configured TTL</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">readdir</td>
                 <td className="py-3 px-4">List directory contents</td>
                 <td className="py-3 px-4">Return cached entries, fetch if expired</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">open</td>
                 <td className="py-3 px-4">Open file for read/write</td>
                 <td className="py-3 px-4">Create file handle, track open files</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">read</td>
                 <td className="py-3 px-4">Read bytes from file</td>
                 <td className="py-3 px-4">Return from cache or fetch chunks via QUIC</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">write</td>
                 <td className="py-3 px-4">Write bytes to file</td>
                 <td className="py-3 px-4">Buffer writes, sync to host (Phase 7)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">release</td>
                 <td className="py-3 px-4">Close file handle</td>
                 <td className="py-3 px-4">Flush pending writes, cleanup handle</td>
@@ -153,15 +153,15 @@ export default function FuseArchitecturePage() {
 
       {/* Async/Sync Bridging */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Async/Sync Bridging</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Async/Sync Bridging</h2>
+        <p className="text-muted-foreground">
           A key challenge: FUSE callbacks are synchronous, but network operations are async.
           Wormhole uses the ClientActor pattern to bridge this gap:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// In FUSE callback (synchronous context)
+              <code className="text-muted-foreground">{`// In FUSE callback (synchronous context)
 fn read(&mut self, req: &Request, ino: u64, fh: u64, offset: i64, size: u32) {
     // Create oneshot channel for response
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -208,15 +208,15 @@ async fn handle_read(&mut self, inode: u64, offset: u64, size: u32) -> Result<Ve
 
       {/* Inode Management */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Inode Management</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Inode Management</h2>
+        <p className="text-muted-foreground">
           FUSE identifies files by inode numbers, not paths. Wormhole maintains a bidirectional
           mapping between paths and inodes:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`pub struct InodeMap {
+              <code className="text-muted-foreground">{`pub struct InodeMap {
     // Path -> Inode lookup
     path_to_inode: HashMap<PathBuf, u64>,
 
@@ -240,7 +240,7 @@ const ROOT_INODE: u64 = 1;`}</code>
             </pre>
           </CardContent>
         </Card>
-        <p className="text-zinc-300 mt-4">
+        <p className="text-muted-foreground mt-4">
           The inode map is protected by <code className="text-wormhole-hunter-light">RwLock</code> since
           reads are much more frequent than writes. Inode numbers are assigned incrementally
           and never reused during a session.
@@ -249,15 +249,15 @@ const ROOT_INODE: u64 = 1;`}</code>
 
       {/* Attribute Caching */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Attribute Caching</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Attribute Caching</h2>
+        <p className="text-muted-foreground">
           FUSE calls <code className="text-wormhole-hunter-light">getattr</code> extremely frequently
           (often before every operation). Wormhole caches attributes with a configurable TTL:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
-              <code className="text-zinc-300">{`# Default: 1 second attribute cache
+              <code className="text-muted-foreground">{`# Default: 1 second attribute cache
 wormhole mount WORM-XXXX --attr-timeout 1
 
 # For static content, increase TTL
@@ -268,7 +268,7 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
             </pre>
           </CardContent>
         </Card>
-        <p className="text-zinc-300 mt-4">
+        <p className="text-muted-foreground mt-4">
           The TTL is returned to the kernel with each <code>getattr</code> response. The kernel
           won&apos;t call <code>getattr</code> again for that inode until the TTL expires.
         </p>
@@ -276,15 +276,15 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
 
       {/* Platform Differences */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Platform Differences</h2>
+        <h2 className="text-2xl font-bold text-foreground">Platform Differences</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <HardDrive className="h-5 w-5 text-wormhole-hunter-light" />
-                <h3 className="font-semibold text-white">macOS</h3>
+                <h3 className="font-semibold text-foreground">macOS</h3>
               </div>
-              <ul className="space-y-1 text-zinc-300 text-sm">
+              <ul className="space-y-1 text-muted-foreground text-sm">
                 <li>- Uses macFUSE (osxfuse)</li>
                 <li>- Requires system extension approval</li>
                 <li>- Supports volname for Finder</li>
@@ -292,13 +292,13 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Cpu className="h-5 w-5 text-green-400" />
-                <h3 className="font-semibold text-white">Linux</h3>
+                <h3 className="font-semibold text-foreground">Linux</h3>
               </div>
-              <ul className="space-y-1 text-zinc-300 text-sm">
+              <ul className="space-y-1 text-muted-foreground text-sm">
                 <li>- Native FUSE in kernel</li>
                 <li>- libfuse3 in userspace</li>
                 <li>- Best performance</li>
@@ -306,13 +306,13 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Layers className="h-5 w-5 text-blue-400" />
-                <h3 className="font-semibold text-white">Windows</h3>
+                <h3 className="font-semibold text-foreground">Windows</h3>
               </div>
-              <ul className="space-y-1 text-zinc-300 text-sm">
+              <ul className="space-y-1 text-muted-foreground text-sm">
                 <li>- Uses WinFSP</li>
                 <li>- Driver installation required</li>
                 <li>- Different API surface</li>
@@ -325,25 +325,25 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
 
       {/* Performance Considerations */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Performance Considerations</h2>
+        <h2 className="text-2xl font-bold text-foreground">Performance Considerations</h2>
         <div className="space-y-4">
-          <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
-            <h3 className="font-semibold text-white mb-2">Minimize Round Trips</h3>
-            <p className="text-zinc-300 text-sm">
+          <div className="p-4 bg-card border border-border rounded-lg">
+            <h3 className="font-semibold text-foreground mb-2">Minimize Round Trips</h3>
+            <p className="text-muted-foreground text-sm">
               Every FUSE operation that requires network I/O adds latency. Wormhole
               prefetches directory contents and uses read-ahead to minimize round trips.
             </p>
           </div>
-          <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
-            <h3 className="font-semibold text-white mb-2">Batch Requests</h3>
-            <p className="text-zinc-300 text-sm">
+          <div className="p-4 bg-card border border-border rounded-lg">
+            <h3 className="font-semibold text-foreground mb-2">Batch Requests</h3>
+            <p className="text-muted-foreground text-sm">
               When listing a directory, Wormhole fetches all child metadata in one request
               rather than making individual requests per file.
             </p>
           </div>
-          <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
-            <h3 className="font-semibold text-white mb-2">Cache Aggressively</h3>
-            <p className="text-zinc-300 text-sm">
+          <div className="p-4 bg-card border border-border rounded-lg">
+            <h3 className="font-semibold text-foreground mb-2">Cache Aggressively</h3>
+            <p className="text-muted-foreground text-sm">
               The two-tier cache (L1 RAM + L2 disk) ensures repeated reads hit cache.
               Directory listings are cached with their modification times.
             </p>
@@ -353,20 +353,20 @@ wormhole mount WORM-XXXX --attr-timeout 0`}</code>
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/architecture/quic">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               QUIC Protocol
             </Badge>
           </Link>
           <Link href="/docs/architecture/caching">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Caching System
             </Badge>
           </Link>
           <Link href="/docs/troubleshooting/fuse">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               FUSE Troubleshooting
             </Badge>
           </Link>

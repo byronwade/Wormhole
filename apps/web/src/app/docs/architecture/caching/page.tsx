@@ -13,57 +13,57 @@ export default function CachingArchitecturePage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/architecture" className="hover:text-white">Architecture</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/architecture" className="hover:text-foreground">Architecture</Link>
           <span>/</span>
-          <span className="text-zinc-400">Caching</span>
+          <span className="text-muted-foreground">Caching</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           Two-Tier Caching System
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Wormhole uses L1 (RAM) and L2 (Disk) caches for performance and offline access.
         </p>
       </div>
 
       {/* Overview */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Overview</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Overview</h2>
+        <p className="text-muted-foreground">
           Wormhole&apos;s caching system is designed to minimize network requests and enable
           offline file access. Data flows through a two-tier cache hierarchy before
           reaching the network.
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="text-center space-y-4">
               <div className="flex justify-center items-center gap-2 flex-wrap">
                 <div className="px-4 py-3 bg-blue-500/20 border border-blue-500/30 rounded w-32">
                   <div className="font-semibold text-blue-400">Application</div>
-                  <div className="text-xs text-zinc-500">file read request</div>
+                  <div className="text-xs text-muted-foreground">file read request</div>
                 </div>
               </div>
-              <ArrowDown className="h-5 w-5 text-zinc-600 mx-auto" />
+              <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
               <div className="flex justify-center items-center gap-2 flex-wrap">
                 <div className="px-4 py-3 bg-yellow-500/20 border border-yellow-500/30 rounded w-32">
                   <div className="font-semibold text-yellow-400">L1 Cache</div>
-                  <div className="text-xs text-zinc-500">RAM (512MB)</div>
+                  <div className="text-xs text-muted-foreground">RAM (512MB)</div>
                 </div>
                 <div className="text-green-400 text-sm">~0.1ms</div>
               </div>
-              <ArrowDown className="h-5 w-5 text-zinc-600 mx-auto" />
+              <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
               <div className="flex justify-center items-center gap-2 flex-wrap">
                 <div className="px-4 py-3 bg-orange-500/20 border border-orange-500/30 rounded w-32">
                   <div className="font-semibold text-orange-400">L2 Cache</div>
-                  <div className="text-xs text-zinc-500">Disk (10GB)</div>
+                  <div className="text-xs text-muted-foreground">Disk (10GB)</div>
                 </div>
                 <div className="text-green-400 text-sm">~1-5ms</div>
               </div>
-              <ArrowDown className="h-5 w-5 text-zinc-600 mx-auto" />
+              <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
               <div className="flex justify-center items-center gap-2 flex-wrap">
                 <div className="px-4 py-3 bg-wormhole-hunter/20 border border-wormhole-hunter/30 rounded w-32">
                   <div className="font-semibold text-wormhole-hunter-light">Network</div>
-                  <div className="text-xs text-zinc-500">Remote Host</div>
+                  <div className="text-xs text-muted-foreground">Remote Host</div>
                 </div>
                 <div className="text-yellow-400 text-sm">2-100ms+</div>
               </div>
@@ -74,20 +74,20 @@ export default function CachingArchitecturePage() {
 
       {/* L1 Cache */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Zap className="h-6 w-6 text-yellow-400" />
           L1 Cache (RAM)
         </h2>
-        <p className="text-zinc-300">
+        <p className="text-muted-foreground">
           The L1 cache keeps recently accessed chunks in memory for instant access.
           Implementation is in <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/cache.rs</code>.
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
-              <h3 className="font-semibold text-white mb-3">Characteristics</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <h3 className="font-semibold text-foreground mb-3">Characteristics</h3>
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><strong>Default size:</strong> 512 MB</li>
                 <li><strong>Access time:</strong> ~0.1ms</li>
                 <li><strong>Eviction:</strong> LRU (Least Recently Used)</li>
@@ -96,10 +96,10 @@ export default function CachingArchitecturePage() {
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
-              <h3 className="font-semibold text-white mb-3">Best For</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <h3 className="font-semibold text-foreground mb-3">Best For</h3>
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>- Repeatedly accessed files</li>
                 <li>- Sequential reads (prefetched chunks)</li>
                 <li>- Directory listings</li>
@@ -110,10 +110,10 @@ export default function CachingArchitecturePage() {
           </Card>
         </div>
 
-        <Card className="bg-zinc-900 border-zinc-800 mt-4">
+        <Card className="bg-card border-border mt-4">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`pub struct RamCache {
+              <code className="text-muted-foreground">{`pub struct RamCache {
     // Chunk data: (inode, chunk_index) -> data
     chunks: RwLock<LruCache<(u64, u64), Arc<Vec<u8>>>>,
 
@@ -145,20 +145,20 @@ impl RamCache {
 
       {/* L2 Cache */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <HardDrive className="h-6 w-6 text-orange-400" />
           L2 Cache (Disk)
         </h2>
-        <p className="text-zinc-300">
+        <p className="text-muted-foreground">
           The L2 cache persists data to disk for offline access and to survive restarts.
           Implementation is in <code className="text-wormhole-hunter-light">crates/teleport-daemon/src/disk_cache.rs</code>.
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
-              <h3 className="font-semibold text-white mb-3">Characteristics</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <h3 className="font-semibold text-foreground mb-3">Characteristics</h3>
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><strong>Default size:</strong> 10 GB</li>
                 <li><strong>Access time:</strong> 1-5ms (SSD), 10-50ms (HDD)</li>
                 <li><strong>Eviction:</strong> LRU with size-based pruning</li>
@@ -167,10 +167,10 @@ impl RamCache {
               </ul>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
-              <h3 className="font-semibold text-white mb-3">Best For</h3>
-              <ul className="space-y-2 text-zinc-300 text-sm">
+              <h3 className="font-semibold text-foreground mb-3">Best For</h3>
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>- Offline access</li>
                 <li>- Large files (video, images)</li>
                 <li>- Data that survives restarts</li>
@@ -181,11 +181,11 @@ impl RamCache {
           </Card>
         </div>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Disk Layout</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Disk Layout</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`~/.cache/wormhole/
+              <code className="text-muted-foreground">{`~/.cache/wormhole/
 ├── index.db              # SQLite metadata database
 ├── chunks/
 │   ├── aa/
@@ -215,11 +215,11 @@ CREATE INDEX idx_access ON chunks(accessed_at);`}</code>
 
       {/* Cache Flow */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Cache Lookup Flow</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Cache Lookup Flow</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`async fn read_chunk(inode: u64, offset: u64, size: u32) -> Result<Vec<u8>> {
+              <code className="text-muted-foreground">{`async fn read_chunk(inode: u64, offset: u64, size: u32) -> Result<Vec<u8>> {
     let chunk_idx = offset / CHUNK_SIZE as u64;
 
     // 1. Check L1 (RAM) cache
@@ -258,15 +258,15 @@ CREATE INDEX idx_access ON chunks(accessed_at);`}</code>
 
       {/* Prefetching */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Prefetching (Read-Ahead)</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Prefetching (Read-Ahead)</h2>
+        <p className="text-muted-foreground">
           When reading sequentially, Wormhole prefetches upcoming chunks in the background
           to hide network latency:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// Governor-based prefetching
+              <code className="text-muted-foreground">{`// Governor-based prefetching
 pub struct Governor {
     // Track read patterns per file
     patterns: HashMap<u64, ReadPattern>,
@@ -309,15 +309,15 @@ impl Governor {
 
       {/* Cache Invalidation */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Cache Invalidation</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Cache Invalidation</h2>
+        <p className="text-muted-foreground">
           The host sends notifications when files change. The client invalidates affected
           cache entries:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// On receiving FileModified notification
+              <code className="text-muted-foreground">{`// On receiving FileModified notification
 async fn handle_file_modified(&mut self, inode: u64, new_size: u64) {
     // Invalidate all chunks for this file
     self.l1_cache.invalidate_inode(inode);
@@ -345,46 +345,46 @@ async fn handle_dir_changed(&mut self, parent_inode: u64) {
 
       {/* Cache Modes */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Cache Modes</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Cache Modes</h2>
+        <p className="text-muted-foreground">
           Configure caching behavior when mounting:
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Mode</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">L1</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">L2</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Use Case</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Mode</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">L1</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">L2</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Use Case</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">none</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Always-fresh data, debugging</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">ram</td>
                 <td className="py-3 px-4 text-green-400">512MB</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4">Fast, no disk writes</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">disk</td>
                 <td className="py-3 px-4 text-red-400">Off</td>
                 <td className="py-3 px-4 text-green-400">10GB</td>
                 <td className="py-3 px-4">Low RAM, offline needed</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">hybrid</td>
                 <td className="py-3 px-4 text-green-400">512MB</td>
                 <td className="py-3 px-4 text-green-400">10GB</td>
                 <td className="py-3 px-4"><strong>Default</strong> - best of both</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">aggressive</td>
                 <td className="py-3 px-4 text-green-400">2GB</td>
                 <td className="py-3 px-4 text-green-400">50GB</td>
@@ -393,10 +393,10 @@ async fn handle_dir_changed(&mut self, parent_inode: u64) {
             </tbody>
           </table>
         </div>
-        <Card className="bg-zinc-900 border-zinc-800 mt-4">
+        <Card className="bg-card border-border mt-4">
           <CardContent className="p-4">
             <pre className="text-sm">
-              <code className="text-zinc-300">{`# Use specific cache mode
+              <code className="text-muted-foreground">{`# Use specific cache mode
 wormhole mount WORM-XXXX --cache-mode hybrid
 
 # Customize sizes
@@ -408,14 +408,14 @@ wormhole mount WORM-XXXX --ram-cache-mb 1024 --disk-cache-gb 50`}</code>
 
       {/* LRU Eviction */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">LRU Eviction</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">LRU Eviction</h2>
+        <p className="text-muted-foreground">
           When caches reach capacity, the least recently used entries are evicted:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// L1 (RAM) - synchronous eviction
+              <code className="text-muted-foreground">{`// L1 (RAM) - synchronous eviction
 impl RamCache {
     fn insert_with_eviction(&mut self, key: CacheKey, data: Vec<u8>) {
         // LruCache handles eviction automatically when capacity exceeded
@@ -456,20 +456,20 @@ impl DiskCache {
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole cache
             </Badge>
           </Link>
           <Link href="/docs/performance/cache">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Cache Performance
             </Badge>
           </Link>
           <Link href="/docs/configuration">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Configuration
             </Badge>
           </Link>

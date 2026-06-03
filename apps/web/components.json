@@ -18,5 +18,7 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "registries": {}
+  "registries": {
+    "@byronwade": "https://ui.byronwade.com/r/{name}.json"
+  }
 }

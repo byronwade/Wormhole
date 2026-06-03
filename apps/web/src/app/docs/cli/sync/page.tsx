@@ -13,20 +13,20 @@ export default function SyncCommandPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/cli" className="hover:text-white">CLI Reference</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
           <span>/</span>
-          <span className="text-zinc-400">sync</span>
+          <span className="text-muted-foreground">sync</span>
         </div>
         <div className="flex items-center gap-3">
-          <h1 className="text-4xl font-bold text-white tracking-tight font-mono">
+          <h1 className="text-4xl font-bold text-foreground tracking-tight font-mono">
             wormhole sync
           </h1>
           <Badge variant="outline" className="border-wormhole-hunter/50 text-wormhole-hunter-light">
             Phase 7
           </Badge>
         </div>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Bidirectional file synchronization for writable mounts.
         </p>
       </div>
@@ -42,12 +42,12 @@ export default function SyncCommandPage() {
 
       {/* Synopsis */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Synopsis</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Synopsis</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
               <code className="text-green-400">wormhole sync</code>
-              <code className="text-zinc-400"> &lt;COMMAND&gt; [SHARE] [OPTIONS]</code>
+              <code className="text-muted-foreground"> &lt;COMMAND&gt; [SHARE] [OPTIONS]</code>
             </pre>
           </CardContent>
         </Card>
@@ -55,8 +55,8 @@ export default function SyncCommandPage() {
 
       {/* Description */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Description</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Description</h2>
+        <p className="text-muted-foreground">
           When a share is configured for write access, Wormhole provides bidirectional
           synchronization. Changes made on either side are automatically propagated to the
           other. The sync command lets you monitor sync status, force synchronization,
@@ -66,29 +66,29 @@ export default function SyncCommandPage() {
 
       {/* Subcommands */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Subcommands</h2>
+        <h2 className="text-2xl font-bold text-foreground">Subcommands</h2>
 
         {/* status */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-wormhole-hunter-light" />
             sync status
           </h3>
-          <p className="text-zinc-300">Show synchronization status for shares.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Show synchronization status for shares.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole sync status [SHARE] [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole sync status [SHARE] [OPTIONS]
 
 OPTIONS:
   --pending       Show pending changes only`}</code>
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole sync status
+                <code className="text-muted-foreground">{`$ wormhole sync status
 Sync Status
 ──────────────────────────────────────────────────────────────────
 Share           Status      Pending     Conflicts   Last Sync
@@ -124,15 +124,15 @@ Pending downloads (7):
 
         {/* now */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Play className="h-5 w-5 text-green-400" />
             sync now
           </h3>
-          <p className="text-zinc-300">Force immediate synchronization.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Force immediate synchronization.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole sync now [SHARE] [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole sync now [SHARE] [OPTIONS]
 
 OPTIONS:
   --wait          Wait for sync to complete before returning
@@ -153,15 +153,15 @@ Sync complete.`}</code>
 
         {/* pause */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Pause className="h-5 w-5 text-yellow-400" />
             sync pause
           </h3>
-          <p className="text-zinc-300">Pause automatic synchronization.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Pause automatic synchronization.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole sync pause [SHARE]
+                <code className="text-muted-foreground">{`wormhole sync pause [SHARE]
 
 # Examples
 $ wormhole sync pause shared-media
@@ -182,15 +182,15 @@ Paused synchronization for all shares`}</code>
 
         {/* resume */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Play className="h-5 w-5 text-green-400" />
             sync resume
           </h3>
-          <p className="text-zinc-300">Resume paused synchronization.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Resume paused synchronization.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole sync resume [SHARE]
+                <code className="text-muted-foreground">{`wormhole sync resume [SHARE]
 
 # Examples
 $ wormhole sync resume shared-media
@@ -203,15 +203,15 @@ Resumed synchronization for shared-media
 
         {/* conflicts */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-400" />
             sync conflicts
           </h3>
-          <p className="text-zinc-300">Show files with sync conflicts.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Show files with sync conflicts.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole sync conflicts shared-media
+                <code className="text-muted-foreground">{`$ wormhole sync conflicts shared-media
 Conflicts in shared-media
 ──────────────────────────────────────────────────────────────────
 
@@ -234,15 +234,15 @@ Conflicts in shared-media
 
         {/* resolve */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-green-400" />
             sync resolve
           </h3>
-          <p className="text-zinc-300">Resolve a sync conflict.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Resolve a sync conflict.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole sync resolve <CONFLICT_ID> <STRATEGY>
+                <code className="text-muted-foreground">{`wormhole sync resolve <CONFLICT_ID> <STRATEGY>
 
 STRATEGIES:
   local         Keep local version, overwrite remote
@@ -273,15 +273,15 @@ Resolved: video/project.mp4
 
         {/* reset */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <RotateCcw className="h-5 w-5 text-red-400" />
             sync reset
           </h3>
-          <p className="text-zinc-300">Reset sync state (use with caution).</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Reset sync state (use with caution).</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole sync reset [SHARE] [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole sync reset [SHARE] [OPTIONS]
 
 OPTIONS:
   --force       Skip confirmation
@@ -307,15 +307,15 @@ Sync state reset for project-files.`}</code>
 
         {/* log */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <History className="h-5 w-5 text-wormhole-hunter-light" />
             sync log
           </h3>
-          <p className="text-zinc-300">Show sync history.</p>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <p className="text-muted-foreground">Show sync history.</p>
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300">{`wormhole sync log [SHARE] [OPTIONS]
+                <code className="text-muted-foreground">{`wormhole sync log [SHARE] [OPTIONS]
 
 OPTIONS:
   --limit <N>     Number of entries (default: 50)
@@ -325,10 +325,10 @@ $ wormhole sync log project-files --limit 10`}</code>
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole sync log project-files --limit 5
+                <code className="text-muted-foreground">{`$ wormhole sync log project-files --limit 5
 Sync History: project-files
 ──────────────────────────────────────────────────────────────────
 Time              Direction   Files    Size       Status
@@ -347,8 +347,8 @@ Total: 847 syncs, 48.2 GB transferred`}</code>
 
       {/* Conflict Resolution Strategies */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Conflict Resolution</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Conflict Resolution</h2>
+        <p className="text-muted-foreground">
           Conflicts occur when the same file is modified on both sides since the last sync.
           Wormhole detects conflicts automatically and pauses sync for affected files until
           you resolve them.
@@ -356,29 +356,29 @@ Total: 847 syncs, 48.2 GB transferred`}</code>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Strategy</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Description</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Use When</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Strategy</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Use When</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">local</td>
                 <td className="py-3 px-4">Keep your version, overwrite remote</td>
                 <td className="py-3 px-4">Your changes are more important</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">remote</td>
                 <td className="py-3 px-4">Keep remote version, discard local</td>
                 <td className="py-3 px-4">Remote changes are more important</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">both</td>
                 <td className="py-3 px-4">Keep both with different names</td>
                 <td className="py-3 px-4">Need to review both versions</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">merge</td>
                 <td className="py-3 px-4">Auto-merge (text files only)</td>
                 <td className="py-3 px-4">Code files with non-overlapping changes</td>
@@ -390,15 +390,15 @@ Total: 847 syncs, 48.2 GB transferred`}</code>
 
       {/* Automatic vs Manual Sync */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Sync Modes</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Sync Modes</h2>
+        <p className="text-muted-foreground">
           By default, Wormhole syncs automatically when files change. You can configure
           different sync behaviors:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
-              <code className="text-zinc-300">{`# Automatic sync (default) - changes sync immediately
+              <code className="text-muted-foreground">{`# Automatic sync (default) - changes sync immediately
 wormhole mount WORM-XXXX --allow-write
 
 # Manual sync - only sync when you run 'sync now'
@@ -413,20 +413,20 @@ wormhole mount WORM-XXXX --allow-write --sync-interval 5`}</code>
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/host">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole host
             </Badge>
           </Link>
           <Link href="/docs/cli/mount">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole mount
             </Badge>
           </Link>
           <Link href="/docs/architecture">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Architecture
             </Badge>
           </Link>

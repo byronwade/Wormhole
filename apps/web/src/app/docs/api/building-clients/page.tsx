@@ -12,10 +12,10 @@ export default function BuildingClientsPage() {
   return (
     <div className="space-y-8">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-zinc-500">
-        <Link href="/docs/api" className="hover:text-white">Api</Link>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/docs/api" className="hover:text-foreground">Api</Link>
         <span>/</span>
-        <span className="text-zinc-400">Building Clients</span>
+        <span className="text-muted-foreground">Building Clients</span>
       </div>
 
       {/* Header */}
@@ -23,20 +23,20 @@ export default function BuildingClientsPage() {
         <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
           Coming Soon
         </Badge>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           Building Clients
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           This documentation page is currently being written.
         </p>
       </div>
 
       {/* Coming Soon Card */}
-      <Card className="bg-zinc-900/50 border-zinc-800">
+      <Card className="bg-card/50 border-border">
         <CardContent className="p-8 text-center">
           <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">Under Construction</h2>
-          <p className="text-zinc-400 max-w-md mx-auto mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
+          <p className="text-muted-foreground max-w-md mx-auto mb-6">
             We&apos;re working on comprehensive documentation for this feature. 
             Check back soon or contribute to our docs on GitHub.
           </p>
@@ -52,7 +52,7 @@ export default function BuildingClientsPage() {
               href="https://github.com/byronwade/wormhole/issues"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
             >
               Request this doc
             </a>

@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -162,11 +163,11 @@ function NavSection({ item }: { item: NavItem }) {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-1">
-      <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-semibold text-zinc-200 hover:text-white transition-colors">
+      <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-semibold text-foreground hover:text-foreground transition-colors">
         {item.title}
         <ChevronRight
           className={cn(
-            "h-4 w-4 text-zinc-500 transition-transform duration-200",
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
             isOpen && "rotate-90"
           )}
         />
@@ -182,7 +183,7 @@ function NavSection({ item }: { item: NavItem }) {
                 "block rounded-md px-3 py-2 text-sm transition-colors",
                 isActive
                   ? "bg-wormhole-hunter/10 text-wormhole-hunter-light font-medium"
-                  : "text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-200"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
               {subItem.title}
@@ -223,21 +224,19 @@ function MobileNav() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden text-zinc-400 hover:text-white">
-          <Menu className="w-5 h-5" />
-          <span className="sr-only">Toggle menu</span>
-        </Button>
+      <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden text-muted-foreground hover:text-foreground" />}>
+        <Menu className="w-5 h-5" />
+        <span className="sr-only">Toggle menu</span>
       </SheetTrigger>
-      <SheetContent side="left" className="w-80 p-0 bg-[#0a0a0a] border-zinc-800/50">
-        <div className="p-6 border-b border-zinc-800/50">
+      <SheetContent side="left" className="w-80 p-0 bg-[#0a0a0a] border-border/50">
+        <div className="p-6 border-b border-border/50">
           <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-wormhole-hunter-light to-wormhole-hunter flex items-center justify-center">
-              <Share2 className="w-4 h-4 text-white" />
+              <Share2 className="w-4 h-4 text-foreground" />
             </div>
             <div>
-              <span className="font-bold text-white">Wormhole</span>
-              <span className="text-zinc-500 ml-2">Docs</span>
+              <span className="font-bold text-foreground">Wormhole</span>
+              <span className="text-muted-foreground ml-2">Docs</span>
             </div>
           </Link>
         </div>
@@ -257,7 +256,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       {/* Top Navigation - Clean, minimal */}
-      <nav className="sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-zinc-800/50">
+      <nav className="sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
           <div className="flex items-center gap-6">
             <MobileNav />
@@ -265,14 +264,14 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
               <div className="relative">
                 <div className="absolute inset-0 bg-wormhole-hunter/30 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-wormhole-hunter-light to-wormhole-hunter flex items-center justify-center">
-                  <Share2 className="w-4 h-4 text-white" />
+                  <Share2 className="w-4 h-4 text-foreground" />
                 </div>
               </div>
-              <span className="font-bold text-lg text-white">Wormhole</span>
+              <span className="font-bold text-lg text-foreground">Wormhole</span>
             </Link>
             <div className="hidden sm:flex items-center gap-1 text-sm">
-              <span className="text-zinc-600">/</span>
-              <Link href="/docs" className="text-zinc-400 hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-zinc-800/50">
+              <span className="text-muted-foreground">/</span>
+              <Link href="/docs" className="text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted/50">
                 Docs
               </Link>
             </div>
@@ -280,10 +279,10 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
 
           <div className="flex items-center gap-2">
             {/* Search placeholder */}
-            <button className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-500 bg-zinc-900/50 hover:bg-zinc-800/50 rounded-lg border border-zinc-800/50 transition-colors">
+            <button className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-card/50 hover:bg-muted/50 rounded-lg border border-border/50 transition-colors">
               <Search className="w-4 h-4" />
               <span>Search...</span>
-              <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-1.5 font-mono text-[10px] text-zinc-400">
+              <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </button>
@@ -301,20 +300,19 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
               href="https://github.com/byronwade/wormhole"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               aria-label="GitHub"
             >
               <Github className="w-4 h-4" />
             </a>
+            <ThemeToggle />
             <Button
               size="sm"
-              className="h-9 px-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-white shadow-lg shadow-wormhole-hunter/20"
-              asChild
+              className="h-9 px-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-foreground shadow-lg shadow-wormhole-hunter/20"
+              render={<Link href="/#download" />}
             >
-              <Link href="/#download">
-                <Download className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Download</span>
-              </Link>
+              <Download className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Download</span>
             </Button>
           </div>
         </div>
@@ -327,7 +325,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
 
         {/* Main Content */}
         <main className="flex-1 min-w-0">
-          <div className="prose prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-10 prose-h2:border-b prose-h2:border-zinc-800/50 prose-h2:pb-2 prose-h3:text-lg prose-p:text-zinc-400 prose-p:leading-relaxed prose-a:text-wormhole-hunter-light prose-a:no-underline hover:prose-a:underline prose-strong:text-white prose-code:text-wormhole-hunter-light prose-code:bg-zinc-800/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800/50">
+          <div className="prose prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-10 prose-h2:border-b prose-h2:border-border/50 prose-h2:pb-2 prose-h3:text-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-a:text-wormhole-hunter-light prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-code:text-wormhole-hunter-light prose-code:bg-muted/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-card prose-pre:border prose-pre:border-border/50">
             {children}
           </div>
         </main>

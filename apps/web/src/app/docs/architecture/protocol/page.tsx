@@ -13,48 +13,48 @@ export default function ProtocolArchitecturePage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/architecture" className="hover:text-white">Architecture</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/architecture" className="hover:text-foreground">Architecture</Link>
           <span>/</span>
-          <span className="text-zinc-400">Wire Protocol</span>
+          <span className="text-muted-foreground">Wire Protocol</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">
           Wire Protocol
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           The binary protocol used for peer-to-peer communication in Wormhole.
         </p>
       </div>
 
       {/* Overview */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Overview</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Overview</h2>
+        <p className="text-muted-foreground">
           Wormhole uses a binary protocol built on <code className="text-wormhole-hunter-light">serde</code>{" "}
           + <code className="text-wormhole-hunter-light">bincode</code> for efficient serialization. All
           protocol messages are defined in{" "}
           <code className="text-wormhole-hunter-light">crates/teleport-core/src/protocol.rs</code>.
         </p>
         <div className="grid gap-4 md:grid-cols-3 mt-6">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <Package className="h-8 w-8 text-wormhole-hunter-light mx-auto mb-2" />
-              <h3 className="font-semibold text-white">Compact</h3>
-              <p className="text-zinc-400 text-sm mt-1">Binary format, no JSON overhead</p>
+              <h3 className="font-semibold text-foreground">Compact</h3>
+              <p className="text-muted-foreground text-sm mt-1">Binary format, no JSON overhead</p>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <FileCode className="h-8 w-8 text-green-400 mx-auto mb-2" />
-              <h3 className="font-semibold text-white">Type-Safe</h3>
-              <p className="text-zinc-400 text-sm mt-1">Rust enums, automatic (de)serialization</p>
+              <h3 className="font-semibold text-foreground">Type-Safe</h3>
+              <p className="text-muted-foreground text-sm mt-1">Rust enums, automatic (de)serialization</p>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 text-center">
               <Lock className="h-8 w-8 text-blue-400 mx-auto mb-2" />
-              <h3 className="font-semibold text-white">Versioned</h3>
-              <p className="text-zinc-400 text-sm mt-1">Additive changes only, backward compatible</p>
+              <h3 className="font-semibold text-foreground">Versioned</h3>
+              <p className="text-muted-foreground text-sm mt-1">Additive changes only, backward compatible</p>
             </CardContent>
           </Card>
         </div>
@@ -62,13 +62,13 @@ export default function ProtocolArchitecturePage() {
 
       {/* Message Types */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Message Types</h2>
+        <h2 className="text-2xl font-bold text-foreground">Message Types</h2>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Request Messages (Client → Host)</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Request Messages (Client → Host)</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`#[derive(Serialize, Deserialize, Debug)]
+              <code className="text-muted-foreground">{`#[derive(Serialize, Deserialize, Debug)]
 pub enum Request {
     // Metadata operations
     GetAttr { inode: u64 },
@@ -114,11 +114,11 @@ pub enum Request {
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Response Messages (Host → Client)</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Response Messages (Host → Client)</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`#[derive(Serialize, Deserialize, Debug)]
+              <code className="text-muted-foreground">{`#[derive(Serialize, Deserialize, Debug)]
 pub enum Response {
     // Success responses
     Attr(FileAttr),
@@ -146,11 +146,11 @@ pub enum Response {
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Notification Messages (Host → Client, Unidirectional)</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Notification Messages (Host → Client, Unidirectional)</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`#[derive(Serialize, Deserialize, Debug)]
+              <code className="text-muted-foreground">{`#[derive(Serialize, Deserialize, Debug)]
 pub enum Notification {
     // Cache invalidation
     Invalidate { inode: u64 },
@@ -178,13 +178,13 @@ pub enum Notification {
 
       {/* Data Types */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Data Types</h2>
+        <h2 className="text-2xl font-bold text-foreground">Data Types</h2>
 
-        <h3 className="text-lg font-semibold text-white mt-4">FileAttr</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-4">FileAttr</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`#[derive(Serialize, Deserialize, Debug, Clone)]
+              <code className="text-muted-foreground">{`#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileAttr {
     pub inode: u64,
     pub size: u64,
@@ -217,11 +217,11 @@ pub enum FileType {
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white mt-6">DirEntry</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">DirEntry</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`#[derive(Serialize, Deserialize, Debug, Clone)]
+              <code className="text-muted-foreground">{`#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DirEntry {
     pub inode: u64,
     pub name: String,
@@ -232,11 +232,11 @@ pub struct DirEntry {
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Error Codes</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Error Codes</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+              <code className="text-muted-foreground">{`#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum ErrorCode {
     NotFound = 2,           // ENOENT
     PermissionDenied = 13,  // EACCES
@@ -257,55 +257,55 @@ pub enum ErrorCode {
 
       {/* Message Flow */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Message Flow</h2>
+        <h2 className="text-2xl font-bold text-foreground">Message Flow</h2>
 
-        <h3 className="text-lg font-semibold text-white mt-4">Connection Handshake</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-4">Connection Handshake</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="space-y-4 font-mono text-sm">
               <div className="flex items-center gap-4">
                 <span className="text-blue-400 w-20">Client</span>
-                <ArrowRight className="h-4 w-4 text-zinc-600" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span className="text-wormhole-hunter-light w-20">Host</span>
-                <span className="text-zinc-500">Hello &#123; version: 1, capabilities: [...] &#125;</span>
+                <span className="text-muted-foreground">Hello &#123; version: 1, capabilities: [...] &#125;</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-wormhole-hunter-light w-20">Host</span>
-                <ArrowRight className="h-4 w-4 text-zinc-600" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span className="text-blue-400 w-20">Client</span>
-                <span className="text-zinc-500">Welcome &#123; share_name: &quot;...&quot;, root_inode: 1 &#125;</span>
+                <span className="text-muted-foreground">Welcome &#123; share_name: &quot;...&quot;, root_inode: 1 &#125;</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white mt-6">File Read Operation</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">File Read Operation</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="space-y-4 font-mono text-sm">
               <div className="flex items-center gap-4">
                 <span className="text-blue-400 w-20">Client</span>
-                <ArrowRight className="h-4 w-4 text-zinc-600" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span className="text-wormhole-hunter-light w-20">Host</span>
-                <span className="text-zinc-500">Lookup &#123; parent: 1, name: &quot;file.txt&quot; &#125;</span>
+                <span className="text-muted-foreground">Lookup &#123; parent: 1, name: &quot;file.txt&quot; &#125;</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-wormhole-hunter-light w-20">Host</span>
-                <ArrowRight className="h-4 w-4 text-zinc-600" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span className="text-blue-400 w-20">Client</span>
-                <span className="text-zinc-500">Entry &#123; inode: 42, attr: ... &#125;</span>
+                <span className="text-muted-foreground">Entry &#123; inode: 42, attr: ... &#125;</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-blue-400 w-20">Client</span>
-                <ArrowRight className="h-4 w-4 text-zinc-600" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span className="text-wormhole-hunter-light w-20">Host</span>
-                <span className="text-zinc-500">ReadChunk &#123; inode: 42, offset: 0, size: 131072 &#125;</span>
+                <span className="text-muted-foreground">ReadChunk &#123; inode: 42, offset: 0, size: 131072 &#125;</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-wormhole-hunter-light w-20">Host</span>
-                <ArrowRight className="h-4 w-4 text-zinc-600" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 <span className="text-blue-400 w-20">Client</span>
-                <span className="text-zinc-500">Data([128KB of bytes])</span>
+                <span className="text-muted-foreground">Data([128KB of bytes])</span>
               </div>
             </div>
           </CardContent>
@@ -314,14 +314,14 @@ pub enum ErrorCode {
 
       {/* Wire Format */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Wire Format</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Wire Format</h2>
+        <p className="text-muted-foreground">
           Messages are serialized using bincode with a length prefix:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`┌────────────────┬──────────────────────────────────┐
+              <code className="text-muted-foreground">{`┌────────────────┬──────────────────────────────────┐
 │ Length (4 bytes)│ Payload (bincode serialized)     │
 │ big-endian u32  │                                  │
 └────────────────┴──────────────────────────────────┘
@@ -336,7 +336,7 @@ Example: ReadChunk request
             </pre>
           </CardContent>
         </Card>
-        <p className="text-zinc-300 mt-4">
+        <p className="text-muted-foreground mt-4">
           The length prefix allows the receiver to know exactly how many bytes to read
           before deserializing. This is important for streaming protocols like QUIC.
         </p>
@@ -344,20 +344,20 @@ Example: ReadChunk request
 
       {/* Protocol Versioning */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Protocol Versioning</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Protocol Versioning</h2>
+        <p className="text-muted-foreground">
           The protocol version is exchanged during the handshake. Wormhole follows these rules:
         </p>
-        <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
+        <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
           <li><strong>Additive only:</strong> New message types can be added without breaking compatibility</li>
           <li><strong>Optional fields:</strong> New fields use <code className="text-wormhole-hunter-light">Option&lt;T&gt;</code></li>
           <li><strong>Unknown variants:</strong> Receivers ignore unknown enum variants gracefully</li>
           <li><strong>Version negotiation:</strong> Host and client agree on highest common version</li>
         </ul>
-        <Card className="bg-zinc-900 border-zinc-800 mt-4">
+        <Card className="bg-card border-border mt-4">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`// Version 1 message
+              <code className="text-muted-foreground">{`// Version 1 message
 pub struct ReadChunk {
     pub inode: u64,
     pub offset: u64,
@@ -378,14 +378,14 @@ pub struct ReadChunk {
 
       {/* Chunking */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Chunk Size</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Chunk Size</h2>
+        <p className="text-muted-foreground">
           Wormhole uses a fixed chunk size of 128KB (131,072 bytes) for data transfer:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
-              <code className="text-zinc-300">{`// In crates/teleport-core/src/types.rs
+              <code className="text-muted-foreground">{`// In crates/teleport-core/src/types.rs
 pub const CHUNK_SIZE: usize = 128 * 1024;  // 128 KB
 
 // Why 128KB?
@@ -400,20 +400,20 @@ pub const CHUNK_SIZE: usize = 128 * 1024;  // 128 KB
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/architecture/quic">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               QUIC Protocol
             </Badge>
           </Link>
           <Link href="/docs/architecture/caching">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Caching System
             </Badge>
           </Link>
           <Link href="/docs/security/encryption">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               Encryption
             </Badge>
           </Link>

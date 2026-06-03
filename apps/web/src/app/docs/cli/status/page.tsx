@@ -13,27 +13,27 @@ export default function StatusCommandPage() {
     <div className="space-y-12">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
-          <Link href="/docs/cli" className="hover:text-white">CLI Reference</Link>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
           <span>/</span>
-          <span className="text-zinc-400">status</span>
+          <span className="text-muted-foreground">status</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight font-mono">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight font-mono">
           wormhole status
         </h1>
-        <p className="text-xl text-zinc-400">
+        <p className="text-xl text-muted-foreground">
           Monitor active shares, mounts, and connection statistics in real-time.
         </p>
       </div>
 
       {/* Synopsis */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Synopsis</h2>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h2 className="text-2xl font-bold text-foreground">Synopsis</h2>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-sm">
               <code className="text-green-400">wormhole status</code>
-              <code className="text-zinc-400"> [ID] [OPTIONS]</code>
+              <code className="text-muted-foreground"> [ID] [OPTIONS]</code>
             </pre>
           </CardContent>
         </Card>
@@ -41,13 +41,13 @@ export default function StatusCommandPage() {
 
       {/* Description */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Description</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">Description</h2>
+        <p className="text-muted-foreground">
           The <code className="text-wormhole-hunter-light">status</code> command displays information about active
           Wormhole connections. Without arguments, it shows a summary of all hosts and mounts. With an
           ID argument, it shows detailed information about a specific connection.
         </p>
-        <p className="text-zinc-300">
+        <p className="text-muted-foreground">
           Use the <code className="text-wormhole-hunter-light">--watch</code> flag to continuously update the
           display, similar to tools like <code>top</code> or <code>htop</code>.
         </p>
@@ -55,17 +55,17 @@ export default function StatusCommandPage() {
 
       {/* Arguments */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Arguments</h2>
+        <h2 className="text-2xl font-bold text-foreground">Arguments</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Argument</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Description</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Argument</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-wormhole-hunter-light">[ID]</td>
                 <td className="py-3 px-4">Optional share or mount ID to show details for a specific connection</td>
               </tr>
@@ -76,41 +76,41 @@ export default function StatusCommandPage() {
 
       {/* Options */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Options</h2>
+        <h2 className="text-2xl font-bold text-foreground">Options</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Option</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Description</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Option</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--detailed</td>
                 <td className="py-3 px-4">Show detailed information including peer addresses, cache stats, and transfer history</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--watch</td>
                 <td className="py-3 px-4">Continuously update display (like <code>top</code>)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--interval &lt;SECS&gt;</td>
                 <td className="py-3 px-4">Update interval for watch mode (default: 1)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--hosts</td>
                 <td className="py-3 px-4">Show only active hosts (shares you&apos;re providing)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--mounts</td>
                 <td className="py-3 px-4">Show only active mounts (shares you&apos;re consuming)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--network</td>
                 <td className="py-3 px-4">Show network statistics (bandwidth, latency, packet loss)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">--performance</td>
                 <td className="py-3 px-4">Show performance metrics (IOPS, throughput, cache hit rate)</td>
               </tr>
@@ -121,13 +121,13 @@ export default function StatusCommandPage() {
 
       {/* Output Fields */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Output Fields</h2>
+        <h2 className="text-2xl font-bold text-foreground">Output Fields</h2>
 
-        <h3 className="text-lg font-semibold text-white">Basic Output</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground">Basic Output</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`$ wormhole status
+              <code className="text-muted-foreground">{`$ wormhole status
 Active Connections
 ──────────────────────────────────────────────────────────────────
 ID          Type    Name            Status      Peers   Transfer
@@ -139,11 +139,11 @@ Total: 2 connections (2 active)`}</code>
           </CardContent>
         </Card>
 
-        <h3 className="text-lg font-semibold text-white mt-6">Detailed Output</h3>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <h3 className="text-lg font-semibold text-foreground mt-6">Detailed Output</h3>
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`$ wormhole status abc123 --detailed
+              <code className="text-muted-foreground">{`$ wormhole status abc123 --detailed
 Share: abc123
 ──────────────────────────────────────────────────────────────────
 Type:           host
@@ -178,17 +178,17 @@ Statistics:
 
       {/* Examples */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-white">Examples</h2>
+        <h2 className="text-2xl font-bold text-foreground">Examples</h2>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Eye className="h-5 w-5 text-wormhole-hunter-light" />
             Basic Status
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300"># Show all active connections
+                <code className="text-muted-foreground"># Show all active connections
 wormhole status
 
 # Show only hosts
@@ -202,14 +202,14 @@ wormhole status --mounts</code>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Activity className="h-5 w-5 text-wormhole-hunter-light" />
             Live Monitoring
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300"># Watch all connections (updates every second)
+                <code className="text-muted-foreground"># Watch all connections (updates every second)
 wormhole status --watch
 
 # Watch with 5-second interval
@@ -223,14 +223,14 @@ wormhole status abc123 --watch</code>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Network className="h-5 w-5 text-wormhole-hunter-light" />
             Network Statistics
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300"># Show network stats for all connections
+                <code className="text-muted-foreground"># Show network stats for all connections
 wormhole status --network
 
 # Detailed network stats for specific mount
@@ -238,10 +238,10 @@ wormhole status def456 --network --detailed</code>
               </pre>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-xs overflow-x-auto">
-                <code className="text-zinc-300">{`$ wormhole status --network
+                <code className="text-muted-foreground">{`$ wormhole status --network
 Network Statistics
 ──────────────────────────────────────────────────────────────────
 ID          Latency     Bandwidth       Packets     Loss
@@ -253,14 +253,14 @@ def456      15.3ms      ↓ 28 MB/s       847K        0.02%`}</code>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Gauge className="h-5 w-5 text-wormhole-hunter-light" />
             Performance Metrics
           </h3>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4">
               <pre className="text-sm">
-                <code className="text-zinc-300"># Show performance metrics
+                <code className="text-muted-foreground"># Show performance metrics
 wormhole status --performance
 
 # Combined detailed view
@@ -273,14 +273,14 @@ wormhole status abc123 --detailed --network --performance</code>
 
       {/* JSON Output */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">JSON Output</h2>
-        <p className="text-zinc-300">
+        <h2 className="text-2xl font-bold text-foreground">JSON Output</h2>
+        <p className="text-muted-foreground">
           For scripting and automation, use <code className="text-wormhole-hunter-light">--format json</code>:
         </p>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-4">
             <pre className="text-xs overflow-x-auto">
-              <code className="text-zinc-300">{`$ wormhole status --format json
+              <code className="text-muted-foreground">{`$ wormhole status --format json
 {
   "connections": [
     {
@@ -319,25 +319,25 @@ wormhole status abc123 --detailed --network --performance</code>
 
       {/* Exit Codes */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">Exit Codes</h2>
+        <h2 className="text-2xl font-bold text-foreground">Exit Codes</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Code</th>
-                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Meaning</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Code</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Meaning</th>
               </tr>
             </thead>
-            <tbody className="text-zinc-300">
-              <tr className="border-b border-zinc-800/50">
+            <tbody className="text-muted-foreground">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-green-400">0</td>
                 <td className="py-3 px-4">Success (at least one connection exists)</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-yellow-400">1</td>
                 <td className="py-3 px-4">No active connections</td>
               </tr>
-              <tr className="border-b border-zinc-800/50">
+              <tr className="border-b border-border/50">
                 <td className="py-3 px-4 font-mono text-red-400">2</td>
                 <td className="py-3 px-4">Specified ID not found</td>
               </tr>
@@ -348,20 +348,20 @@ wormhole status abc123 --detailed --network --performance</code>
 
       {/* See Also */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-white">See Also</h2>
+        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/cli/host">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole host
             </Badge>
           </Link>
           <Link href="/docs/cli/mount">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               wormhole mount
             </Badge>
           </Link>
           <Link href="/docs/cli/all-commands">
-            <Badge variant="outline" className="border-zinc-700 hover:border-wormhole-hunter/50 cursor-pointer">
+            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
               All Commands
             </Badge>
           </Link>
