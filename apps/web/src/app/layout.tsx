@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,15 +35,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-wormhole-off-black text-wormhole-off-white`}>
-        {/* AGENTS.md: Include a "Skip to content" link */}
-        <a href="#main-content" className="skip-to-content">
-          Skip to content
-        </a>
-        <main id="main-content">
-          {children}
-        </main>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+        <ThemeProvider>
+          {/* AGENTS.md: Include a "Skip to content" link */}
+          <a href="#main-content" className="skip-to-content">
+            Skip to content
+          </a>
+          <main id="main-content">{children}</main>
+        </ThemeProvider>
       </body>
     </html>
   );
