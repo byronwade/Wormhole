@@ -27,7 +27,7 @@ pub fn generate_join_code() -> String {
 /// Try to generate a random join code, returning an error if RNG fails
 pub fn try_generate_join_code() -> Result<String, getrandom::Error> {
     let mut bytes = [0u8; JOIN_CODE_LENGTH];
-    getrandom::getrandom(&mut bytes)?;
+    getrandom::fill(&mut bytes)?;
 
     let code: String = bytes
         .iter()

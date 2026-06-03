@@ -34,7 +34,7 @@ clap = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 # Storage
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
 
 [dev-dependencies]
 tokio-test = "0.4"

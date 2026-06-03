@@ -328,7 +328,7 @@ impl Filesystem for WormholeFS {
         }
     }
 
-    fn getattr(&mut self, _req: &Request<'_>, ino: Inode, reply: ReplyAttr) {
+    fn getattr(&mut self, _req: &Request<'_>, ino: Inode, _fh: Option<u64>, reply: ReplyAttr) {
         trace!("getattr: ino={}", ino);
 
         // Check cache first

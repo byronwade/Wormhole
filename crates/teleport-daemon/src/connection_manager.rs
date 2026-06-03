@@ -272,7 +272,7 @@ impl ConnectionManager {
 
         // Generate client ID
         let mut client_id = [0u8; 16];
-        getrandom::getrandom(&mut client_id)
+        getrandom::fill(&mut client_id)
             .expect("RNG failed - system entropy source unavailable");
 
         // Send Hello
@@ -685,13 +685,22 @@ impl ConnectionManager {
             loop {
                 interval.tick().await;
 
-                for host in manager.hosts.iter() {
-                    let host_id = host.key().clone();
-                    if host.status == ConnectionStatus::Connected {
-                        if let Err(e) = manager.ping_host(&host_id).await {
-                            warn!("Health check failed for {}: {:?}", host_id, e);
-                            manager.handle_connection_failure(&host_id).await;
-                        }
+                // Snapshot the connected host IDs first, then drop the DashMap
+                // iterator BEFORE awaiting. Holding a `RefMulti` (a shard read
+                // guard) across `ping_host`/`handle_connection_failure` — which
+                // call `hosts.get_mut()` on the same shard — would deadlock, since
+                // parking_lot's RwLock is not reentrant. Mirrors `remove_host`.
+                let connected: Vec<String> = manager
+                    .hosts
+                    .iter()
+                    .filter(|h| h.status == ConnectionStatus::Connected)
+                    .map(|h| h.key().clone())
+                    .collect();
+
+                for host_id in connected {
+                    if let Err(e) = manager.ping_host(&host_id).await {
+                        warn!("Health check failed for {}: {:?}", host_id, e);
+                        manager.handle_connection_failure(&host_id).await;
                     }
                 }
             }
@@ -719,7 +728,7 @@ impl ConnectionManager {
 
         let start = Instant::now();
         let mut payload = [0u8; 8];
-        getrandom::getrandom(&mut payload).expect("RNG failed - system entropy source unavailable");
+        getrandom::fill(&mut payload).expect("RNG failed - system entropy source unavailable");
 
         let ping = NetMessage::Ping(PingMessage {
             // Safe conversion: millis since epoch won't overflow u64 until year 584 million

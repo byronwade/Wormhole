@@ -382,7 +382,7 @@ async fn handle_connection(
 
     // Generate session ID
     let mut session_id = [0u8; 16];
-    getrandom::getrandom(&mut session_id).expect("RNG failed - system entropy source unavailable");
+    getrandom::fill(&mut session_id).expect("RNG failed - system entropy source unavailable");
 
     // Create a unique holder ID for this client
     let holder_id = format!(
@@ -481,8 +481,8 @@ async fn handle_request(
         NetMessage::Lookup(req) => handle_lookup(req, inodes, shared_path),
         NetMessage::GetAttr(req) => handle_getattr(req, inodes),
         NetMessage::ListDir(req) => handle_listdir(req, inodes),
-        NetMessage::ReadChunk(req) => handle_read_chunk(req, inodes),
-        NetMessage::WriteChunk(req) => handle_write_chunk(req, inodes, lock_manager),
+        NetMessage::ReadChunk(req) => handle_read_chunk(req, inodes, shared_path),
+        NetMessage::WriteChunk(req) => handle_write_chunk(req, inodes, shared_path, lock_manager),
         NetMessage::AcquireLock(req) => handle_acquire_lock(req, lock_manager, holder_id),
         NetMessage::ReleaseLock(req) => handle_release_lock(req, lock_manager),
         // File operations (Phase 7) - all with security validation
@@ -491,8 +491,8 @@ async fn handle_request(
         NetMessage::CreateDir(req) => handle_create_dir(req, inodes, shared_path),
         NetMessage::DeleteDir(req) => handle_delete_dir(req, inodes, shared_path),
         NetMessage::Rename(req) => handle_rename(req, inodes, shared_path, lock_manager),
-        NetMessage::Truncate(req) => handle_truncate(req, inodes, lock_manager),
-        NetMessage::SetAttr(req) => handle_setattr(req, inodes, lock_manager),
+        NetMessage::Truncate(req) => handle_truncate(req, inodes, shared_path, lock_manager),
+        NetMessage::SetAttr(req) => handle_setattr(req, inodes, shared_path, lock_manager),
         NetMessage::Ping(p) => NetMessage::Pong(teleport_core::PongMessage {
             client_timestamp: p.timestamp,
             // Safe conversion: millis since epoch won't overflow u64 until year 584 million,
@@ -511,6 +511,28 @@ async fn handle_request(
     };
 
     send_message(send, &response).await
+}
+
+/// SECURITY: Reject access to a path that escapes the shared directory via a
+/// symlink. `safe_real_path` resolves all symlinks (canonicalize) and checks
+/// containment, so this MUST be called before any filesystem operation that
+/// follows symlinks (open / read_dir / set_len / set_permissions). Returns
+/// `Some(error)` if the resolved path escapes the share (or cannot be resolved),
+/// `None` if it is safely contained. Mirrors the checks in `multi_host.rs`.
+fn enforce_within_share(shared_path: &Path, path: &Path, inode: Inode) -> Option<NetMessage> {
+    if let Err(e) = teleport_core::path::safe_real_path(shared_path, path) {
+        warn!(
+            "Path traversal attempt via symlink: {} escapes share ({})",
+            path.display(),
+            e
+        );
+        return Some(NetMessage::Error(ErrorMessage {
+            code: ErrorCode::PathTraversal,
+            message: "symlink escapes shared directory".into(),
+            related_inode: Some(inode),
+        }));
+    }
+    None
 }
 
 fn handle_lookup(req: LookupRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
@@ -543,6 +565,11 @@ fn handle_lookup(req: LookupRequest, inodes: &InodeTable, shared_path: &Path) ->
 
     match fs::metadata(&child_path) {
         Ok(meta) => {
+            // SECURITY: the file exists; ensure it (after symlink resolution) is
+            // still inside the share before we ever hand out an inode for it.
+            if let Some(err) = enforce_within_share(shared_path, &child_path, req.parent) {
+                return err;
+            }
             let inode = match inodes.get_or_create_inode(child_path) {
                 Some(i) => i,
                 None => {
@@ -642,7 +669,7 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
             let has_more = dir_entries.len() > req.limit as usize;
             // Truncate to requested limit
             dir_entries.truncate(req.limit as usize);
-            let next_offset = req.offset + dir_entries.len() as u64;
+            let next_offset = req.offset.saturating_add(dir_entries.len() as u64);
 
             NetMessage::ListDirResponse(ListDirResponse {
                 entries: dir_entries,
@@ -670,7 +697,11 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
     }
 }
 
-fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable) -> NetMessage {
+fn handle_read_chunk(
+    req: ReadChunkRequest,
+    inodes: &InodeTable,
+    shared_path: &Path,
+) -> NetMessage {
     let path = match inodes.get_path(req.chunk_id.inode) {
         Some(p) => p,
         None => {
@@ -681,6 +712,12 @@ fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable) -> NetMessage {
             });
         }
     };
+
+    // SECURITY: reject reads whose path escapes the share via a symlink, before
+    // fs::File::open (which follows symlinks).
+    if let Some(err) = enforce_within_share(shared_path, &path, req.chunk_id.inode) {
+        return err;
+    }
 
     let file = match fs::File::open(&path) {
         Ok(f) => f,
@@ -736,6 +773,7 @@ fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable) -> NetMessage {
 fn handle_write_chunk(
     req: WriteChunkRequest,
     inodes: &InodeTable,
+    shared_path: &Path,
     lock_manager: &LockManager,
 ) -> NetMessage {
     let inode = req.chunk_id.inode;
@@ -769,6 +807,12 @@ fn handle_write_chunk(
             });
         }
     };
+
+    // SECURITY: reject writes whose path escapes the share via a symlink, before
+    // OpenOptions::open (which follows symlinks).
+    if let Some(err) = enforce_within_share(shared_path, &path, inode) {
+        return err;
+    }
 
     // Open file for writing
     let mut file = match OpenOptions::new().write(true).open(&path) {
@@ -1308,6 +1352,7 @@ fn handle_rename(
 fn handle_truncate(
     req: TruncateRequest,
     inodes: &InodeTable,
+    shared_path: &Path,
     lock_manager: &LockManager,
 ) -> NetMessage {
     let path = match inodes.get_path(req.inode) {
@@ -1320,6 +1365,11 @@ fn handle_truncate(
             });
         }
     };
+
+    // SECURITY: reject truncation of a path that escapes the share via a symlink.
+    if let Some(err) = enforce_within_share(shared_path, &path, req.inode) {
+        return err;
+    }
 
     // SECURITY: Require lock token for truncate
     if let Some(ref token) = req.lock_token {
@@ -1372,6 +1422,7 @@ fn handle_truncate(
 fn handle_setattr(
     req: SetAttrRequest,
     inodes: &InodeTable,
+    shared_path: &Path,
     lock_manager: &LockManager,
 ) -> NetMessage {
     let path = match inodes.get_path(req.inode) {
@@ -1384,6 +1435,11 @@ fn handle_setattr(
             });
         }
     };
+
+    // SECURITY: reject attribute changes on a path that escapes the share via a symlink.
+    if let Some(err) = enforce_within_share(shared_path, &path, req.inode) {
+        return err;
+    }
 
     // SECURITY: Require lock token for modifications
     let needs_lock =
@@ -1608,7 +1664,7 @@ mod tests {
             priority: 0,
         };
 
-        let response = handle_read_chunk(request, &table);
+        let response = handle_read_chunk(request, &table, temp_dir.path());
 
         match response {
             NetMessage::ReadChunkResponse(resp) => {
@@ -1645,7 +1701,7 @@ mod tests {
             chunk_id: ChunkId::new(file_inode, 0),
             priority: 0,
         };
-        let resp1 = handle_read_chunk(req1, &table);
+        let resp1 = handle_read_chunk(req1, &table, temp_dir.path());
 
         match resp1 {
             NetMessage::ReadChunkResponse(r) => {
@@ -1661,7 +1717,7 @@ mod tests {
             chunk_id: ChunkId::new(file_inode, 1),
             priority: 0,
         };
-        let resp2 = handle_read_chunk(req2, &table);
+        let resp2 = handle_read_chunk(req2, &table, temp_dir.path());
 
         match resp2 {
             NetMessage::ReadChunkResponse(r) => {
@@ -1677,7 +1733,7 @@ mod tests {
             chunk_id: ChunkId::new(file_inode, 2),
             priority: 0,
         };
-        let resp3 = handle_read_chunk(req3, &table);
+        let resp3 = handle_read_chunk(req3, &table, temp_dir.path());
 
         match resp3 {
             NetMessage::ReadChunkResponse(r) => {
@@ -1700,7 +1756,7 @@ mod tests {
             priority: 0,
         };
 
-        let response = handle_read_chunk(request, &table);
+        let response = handle_read_chunk(request, &table, temp_dir.path());
 
         match response {
             NetMessage::Error(e) => {

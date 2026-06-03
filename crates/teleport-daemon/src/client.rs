@@ -155,7 +155,7 @@ impl WormholeClient {
 
         // Send Hello
         let mut client_id = [0u8; 16];
-        getrandom::getrandom(&mut client_id)
+        getrandom::fill(&mut client_id)
             .expect("RNG failed - system entropy source unavailable");
 
         let hello = NetMessage::Hello(HelloMessage {
@@ -452,9 +452,17 @@ impl WormholeClient {
                     return Err(FuseError::IoError("checksum mismatch".into()));
                 }
 
-                // Extract requested portion
+                // Extract requested portion.
+                // Bounds-check the in-chunk offset: a host (malicious or buggy) can
+                // return a chunk shorter than the requested offset, and the checksum
+                // is computed over whatever `data` was sent, so it does not protect us.
+                // Without this guard `data[chunk_offset..chunk_offset]` panics (slice
+                // start > len), aborting the FUSE request loop and hanging the mount.
                 let chunk_offset = ChunkId::offset_in_chunk(offset);
-                let available = data.len().saturating_sub(chunk_offset);
+                if chunk_offset >= data.len() {
+                    return Ok(Vec::new());
+                }
+                let available = data.len() - chunk_offset;
                 let to_read = std::cmp::min(size as usize, available);
 
                 Ok(data[chunk_offset..chunk_offset + to_read].to_vec())
@@ -974,10 +982,214 @@ pub enum ClientError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::host::{HostConfig, WormholeHost};
+    use std::net::{SocketAddr, UdpSocket};
+    use teleport_core::{FileType, CHUNK_SIZE};
 
     #[test]
     fn test_default_config() {
         let config = ClientConfig::default();
         assert_eq!(config.server_addr.port(), 4433);
+    }
+
+    /// Pick a currently-free UDP port on loopback for the test host to bind.
+    fn free_loopback_addr() -> SocketAddr {
+        let sock = UdpSocket::bind("127.0.0.1:0").expect("bind ephemeral udp");
+        let addr = sock.local_addr().expect("local_addr");
+        drop(sock);
+        addr
+    }
+
+    /// Deterministic pseudo-random bytes so the test corpus is stable across runs
+    /// (we cannot use rand in a way that varies, and we want exact byte comparison).
+    fn pseudo_bytes(len: usize) -> Vec<u8> {
+        let mut out = Vec::with_capacity(len);
+        let mut state: u32 = 0x9e3779b9;
+        for _ in 0..len {
+            // xorshift32
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            out.push((state & 0xff) as u8);
+        }
+        out
+    }
+
+    /// Read an entire file through the client by looping over chunk-sized reads,
+    /// exactly as the FUSE layer would for a sequential read.
+    async fn read_whole_file(client: &WormholeClient, inode: Inode, size: u64) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(size as usize);
+        let mut offset = 0u64;
+        while offset < size {
+            let want = std::cmp::min(CHUNK_SIZE as u64, size - offset) as u32;
+            let part = client
+                .read(inode, offset, want)
+                .await
+                .expect("read chunk");
+            assert!(!part.is_empty(), "read returned 0 bytes at offset {offset}");
+            offset += part.len() as u64;
+            buf.extend_from_slice(&part);
+        }
+        buf
+    }
+
+    /// Full end-to-end proof that the product's data plane works over real QUIC:
+    /// a host serving a real directory, a client connecting over the network,
+    /// listing the directory, looking up files, and reading their bytes back
+    /// — including a multi-chunk file — with exact byte and checksum verification.
+    ///
+    /// This is the regression guard for "the product actually works".
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn e2e_host_serve_client_read_over_quic() {
+        // 1. Build a known corpus on disk.
+        let dir = tempfile::TempDir::new().unwrap();
+        let small = b"hello wormhole over QUIC\n";
+        std::fs::write(dir.path().join("small.txt"), small).unwrap();
+
+        // A file spanning multiple 128KB chunks plus a partial trailing chunk.
+        let big = pseudo_bytes(CHUNK_SIZE * 2 + 12_345);
+        std::fs::write(dir.path().join("big.bin"), &big).unwrap();
+
+        std::fs::create_dir(dir.path().join("sub")).unwrap();
+        std::fs::write(dir.path().join("sub").join("nested.txt"), b"nested").unwrap();
+
+        // 2. Start a real host on a free loopback port.
+        let addr = free_loopback_addr();
+        let host = WormholeHost::new(HostConfig {
+            bind_addr: addr,
+            shared_path: dir.path().to_path_buf(),
+            max_connections: 4,
+            host_name: "test-host".into(),
+        });
+        tokio::spawn(async move {
+            let _ = host.serve().await;
+        });
+
+        // 3. Connect a client, retrying briefly while the host binds.
+        let mut client = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+        });
+        let mut connected = false;
+        for _ in 0..50 {
+            if client.connect().await.is_ok() {
+                connected = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert!(connected, "client failed to connect to host over QUIC");
+
+        // 4. List the root directory.
+        let entries = client.readdir(ROOT_INODE, 0).await.expect("readdir root");
+        let names: std::collections::HashSet<&str> =
+            entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains("small.txt"), "missing small.txt: {names:?}");
+        assert!(names.contains("big.bin"), "missing big.bin: {names:?}");
+        assert!(names.contains("sub"), "missing sub dir: {names:?}");
+
+        // 5. Look up + read the small file; bytes must match exactly.
+        let small_attr = client.lookup(ROOT_INODE, "small.txt").await.expect("lookup small");
+        assert_eq!(small_attr.file_type, FileType::File);
+        assert_eq!(small_attr.size, small.len() as u64);
+        let got_small = read_whole_file(&client, small_attr.inode, small_attr.size).await;
+        assert_eq!(got_small, small, "small.txt content mismatch over the wire");
+
+        // 6. Look up + read the multi-chunk file; bytes must match exactly.
+        let big_attr = client.lookup(ROOT_INODE, "big.bin").await.expect("lookup big");
+        assert_eq!(big_attr.size, big.len() as u64);
+        let got_big = read_whole_file(&client, big_attr.inode, big_attr.size).await;
+        assert_eq!(got_big.len(), big.len(), "big.bin length mismatch");
+        assert!(got_big == big, "big.bin content mismatch over the wire");
+
+        // 7. Descend into a subdirectory and read a nested file.
+        let sub_attr = client.lookup(ROOT_INODE, "sub").await.expect("lookup sub");
+        assert_eq!(sub_attr.file_type, FileType::Directory);
+        let nested_attr = client
+            .lookup(sub_attr.inode, "nested.txt")
+            .await
+            .expect("lookup nested");
+        let got_nested = read_whole_file(&client, nested_attr.inode, nested_attr.size).await;
+        assert_eq!(got_nested, b"nested");
+
+        // 8. A missing file must report NotFound, not garbage.
+        let missing = client.lookup(ROOT_INODE, "does-not-exist.txt").await;
+        assert!(matches!(missing, Err(FuseError::NotFound)), "expected NotFound, got {missing:?}");
+    }
+
+    /// SECURITY regression: a symlink inside the shared directory that points
+    /// OUTSIDE it must not allow a client to read (or otherwise reach) the
+    /// target. The host must reject both the lookup and any read by inode.
+    #[cfg(unix)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn e2e_symlink_escape_is_rejected() {
+        use std::os::unix::fs::symlink;
+
+        // Secret file OUTSIDE the shared directory.
+        let outside = tempfile::TempDir::new().unwrap();
+        let secret = outside.path().join("secret.txt");
+        std::fs::write(&secret, b"TOP SECRET - must not leak").unwrap();
+
+        // Shared directory containing a legit file and an escaping symlink.
+        let share = tempfile::TempDir::new().unwrap();
+        std::fs::write(share.path().join("ok.txt"), b"public").unwrap();
+        symlink(&secret, share.path().join("escape")).unwrap();
+
+        let addr = free_loopback_addr();
+        let host = WormholeHost::new(HostConfig {
+            bind_addr: addr,
+            shared_path: share.path().to_path_buf(),
+            max_connections: 4,
+            host_name: "test-host".into(),
+        });
+        tokio::spawn(async move {
+            let _ = host.serve().await;
+        });
+
+        let mut client = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: share.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+        });
+        let mut connected = false;
+        for _ in 0..50 {
+            if client.connect().await.is_ok() {
+                connected = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert!(connected, "client failed to connect");
+
+        // The legit file still works (the fix must not break normal reads).
+        let ok = client.lookup(ROOT_INODE, "ok.txt").await.expect("legit lookup");
+        let ok_data = read_whole_file(&client, ok.inode, ok.size).await;
+        assert_eq!(ok_data, b"public");
+
+        // Looking up the escaping symlink by name must be rejected.
+        let escaped = client.lookup(ROOT_INODE, "escape").await;
+        assert!(
+            escaped.is_err(),
+            "lookup of escaping symlink should be rejected, got {escaped:?}"
+        );
+
+        // Even if the client discovers the symlink's inode via readdir (which
+        // assigns inodes to all directory entries), reading it must be rejected
+        // and must NOT return the secret bytes.
+        let entries = client.readdir(ROOT_INODE, 0).await.expect("readdir");
+        if let Some(escape_entry) = entries.iter().find(|e| e.name == "escape") {
+            let read_attempt = client.read(escape_entry.inode, 0, 64).await;
+            assert!(
+                read_attempt.is_err(),
+                "reading escaping symlink must be rejected, got {read_attempt:?}"
+            );
+            if let Ok(bytes) = &read_attempt {
+                assert!(
+                    !bytes.windows(6).any(|w| w == b"SECRET"),
+                    "secret bytes leaked through symlink escape!"
+                );
+            }
+        }
     }
 }

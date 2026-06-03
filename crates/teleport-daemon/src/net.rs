@@ -147,11 +147,13 @@ pub type CertFingerprint = [u8; 32];
 
 /// Generate self-signed certificate for development
 pub fn generate_self_signed_cert() -> (Vec<CertificateDer<'static>>, PrivateKeyDer<'static>) {
-    let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
-    let key_der = cert.get_key_pair().serialize_der();
-    let cert_der = cert.serialize_der().unwrap();
+    // rcgen 0.13+ returns a CertifiedKey { cert, signing_key }; the cert exposes
+    // its DER via `der()` and the key serializes to PKCS#8 DER.
+    let rcgen::CertifiedKey { cert, signing_key } =
+        rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
+    let key_der = signing_key.serialize_der();
     let key = PrivatePkcs8KeyDer::from(key_der).into();
-    let cert = CertificateDer::from(cert_der);
+    let cert = cert.der().clone();
     (vec![cert], key)
 }
 

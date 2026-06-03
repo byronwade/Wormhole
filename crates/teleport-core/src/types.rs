@@ -40,9 +40,13 @@ impl ChunkId {
         }
     }
 
-    /// Byte offset this chunk starts at
+    /// Byte offset this chunk starts at.
+    ///
+    /// The chunk index is attacker-controlled (it arrives in `ReadChunkRequest`),
+    /// so saturate instead of multiplying directly to avoid a debug-build panic /
+    /// release-build wraparound on a near-`u64::MAX` index.
     pub const fn byte_offset(&self) -> u64 {
-        self.index * CHUNK_SIZE as u64
+        self.index.saturating_mul(CHUNK_SIZE as u64)
     }
 
     /// Calculate offset within this chunk
@@ -179,7 +183,7 @@ impl LockToken {
     /// Try to generate a random lock token, returning an error if RNG fails
     pub fn try_generate() -> Result<Self, getrandom::Error> {
         let mut bytes = [0u8; 16];
-        getrandom::getrandom(&mut bytes)?;
+        getrandom::fill(&mut bytes)?;
         Ok(Self(bytes))
     }
 }
@@ -212,7 +216,7 @@ impl ShareId {
     /// Try to generate a random share ID, returning an error if RNG fails
     pub fn try_generate() -> Result<Self, getrandom::Error> {
         let mut bytes = [0u8; 8];
-        getrandom::getrandom(&mut bytes)?;
+        getrandom::fill(&mut bytes)?;
         Ok(Self(bytes))
     }
 

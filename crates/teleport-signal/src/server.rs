@@ -110,7 +110,7 @@ async fn handle_connection(
 
     while let Some(msg) = ws_receiver.next().await {
         let msg = match msg {
-            Ok(Message::Text(text)) => text,
+            Ok(Message::Text(text)) => text.to_string(),
             Ok(Message::Close(_)) => break,
             Ok(Message::Ping(data)) => {
                 let _ = ws_sender.send(Message::Pong(data)).await;
@@ -129,7 +129,7 @@ async fn handle_connection(
                 let error =
                     SignalMessage::error(ErrorCode::InternalError, format!("Invalid JSON: {}", e));
                 let _ = ws_sender
-                    .send(Message::Text(error.to_json().unwrap()))
+                    .send(Message::text(error.to_json().unwrap()))
                     .await;
                 continue;
             }
@@ -146,7 +146,7 @@ async fn handle_connection(
 
         if let Some(response) = response {
             let json = response.to_json().unwrap();
-            if ws_sender.send(Message::Text(json)).await.is_err() {
+            if ws_sender.send(Message::text(json)).await.is_err() {
                 break;
             }
         }
@@ -386,7 +386,7 @@ fn generate_peer_id() -> String {
 /// Try to generate a unique peer ID, returning an error if RNG fails
 fn try_generate_peer_id() -> Result<String, getrandom::Error> {
     let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes)?;
+    getrandom::fill(&mut bytes)?;
     Ok(hex::encode(bytes))
 }
 
