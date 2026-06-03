@@ -64,7 +64,7 @@ Constraints fakebase imposes on the "now" phase (its docs flag OAuth/MFA/RLS as 
 - Authorization: **RLS deferred** to the real backend; enforce in UI/app logic for the mock.
 - Token signing: the Rust `teleport-cloud` service is **stubbed** (e.g. a fakebase RPC returning a fake token) until it's built.
 
-*Open implementation detail (resolve at frontend kickoff, not now): whether fakebase is consumed as an in-process npm package (`createMemoryKernel`) or a hosted endpoint at the URL. This changes wiring but not architecture.*
+**Wiring (resolved):** fakebase is an in-process npm package — `@byronwade/fakebase` (bundles `@byronwade/core`, `client`, `adapter-memory`, `auth`). It exposes `createClient` + `createMemoryKernel(schema)`, and a **`@byronwade/fakebase/next` subpath that mirrors `@supabase/ssr`** — `createBrowserClient(url, key, { kernel })` and `createServerClient(url, key, { kernel, cookies })`. So migration to real Supabase = swap the import `@byronwade/fakebase/next` → `@supabase/ssr`, drop the `kernel` option, point at the real URL/key. Schema is defined as a `ProjectSchemaIR` (tables/columns); auth uses the Supabase-shaped client (`auth.signInWithPassword`, `signUp`, `getSession`, `onAuthStateChange`).
 
 ## 7. Sequencing
 
