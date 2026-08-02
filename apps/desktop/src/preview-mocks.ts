@@ -81,6 +81,12 @@ if (!isTauri) {
         case "stop_hosting_by_id":
         case "disconnect_by_id":
           return null;
+        case "shell_integration_status":
+          return { installed: false, detail: "Not installed (preview)" };
+        case "install_shell_integration":
+          return { installed: true, detail: "Installed (preview)" };
+        case "uninstall_shell_integration":
+          return { installed: false, detail: "Removed (preview)" };
         default:
           return null;
       }

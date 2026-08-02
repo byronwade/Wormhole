@@ -53,6 +53,8 @@ pub struct WormholeClient {
     root_inode: Inode,
     /// Human device name from HelloAck (e.g. "Studio-Render-Box")
     host_name: Option<String>,
+    /// Optional live throughput meter for Portal speed UI
+    throughput: Option<std::sync::Arc<crate::throughput::SessionMeter>>,
     /// Sync engine for tracking dirty chunks and locks (Phase 7)
     sync_engine: std::sync::Arc<SyncEngine>,
 }
@@ -66,6 +68,7 @@ impl WormholeClient {
             codec: WireCodec::Bincode,
             root_inode: ROOT_INODE,
             host_name: None,
+            throughput: None,
             sync_engine: std::sync::Arc::new(SyncEngine::default()),
         }
     }
@@ -73,6 +76,11 @@ impl WormholeClient {
     /// Peer device name from the HelloAck handshake, if connected.
     pub fn host_name(&self) -> Option<&str> {
         self.host_name.as_deref()
+    }
+
+    /// Attach a session meter so FUSE/WinFSP reads update live Portal speed.
+    pub fn set_throughput(&mut self, meter: std::sync::Arc<crate::throughput::SessionMeter>) {
+        self.throughput = Some(meter);
     }
 
     /// Get the sync engine (for sharing with FUSE)
@@ -266,6 +274,9 @@ impl WormholeClient {
                         reply,
                     } => {
                         let result = self.read(inode, offset, size).await;
+                        if let (Ok(ref data), Some(meter)) = (&result, &self.throughput) {
+                            meter.record(data.len() as u64);
+                        }
                         let _ = reply.send(result);
                     }
                     // Phase 7: Write operations
@@ -275,7 +286,13 @@ impl WormholeClient {
                         data,
                         reply,
                     } => {
+                        let nbytes = data.len() as u64;
                         let result = self.write(inode, offset, data).await;
+                        if result.is_ok() {
+                            if let Some(meter) = &self.throughput {
+                                meter.record(nbytes);
+                            }
+                        }
                         let _ = reply.send(result);
                     }
                     FuseRequest::AcquireLock {

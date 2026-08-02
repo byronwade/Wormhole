@@ -3,14 +3,17 @@
 //! This module provides the Tauri commands and state management for the
 //! Wormhole desktop application.
 
+mod cli;
 mod commands;
 mod lan;
+mod shell_integration;
 
 use std::sync::Arc;
 use tauri::{Emitter, Listener, Manager};
 use tracing::info;
 
 pub use commands::{AppState, ServiceEvent};
+use cli::{parse_launch_args, parse_wormhole_url, LaunchAction};
 
 /// Deep link event payload for join links
 #[derive(Clone, serde::Serialize)]
@@ -80,11 +83,18 @@ pub fn run() {
 
     info!("Starting Wormhole desktop application");
 
+    let launch = parse_launch_args(std::env::args());
+    let start_hidden = launch.hidden;
+
     tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_drag::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--hidden"]),
+        ))
         .manage(Arc::new(AppState::default()))
         .invoke_handler(tauri::generate_handler![
             // Legacy single-share commands (backwards compatible)
@@ -128,9 +138,43 @@ pub fn run() {
             commands::export_file,
             commands::export_files_batch,
             commands::get_drag_file_path,
+            // OS shell integration
+            shell_integration::install_shell_integration,
+            shell_integration::uninstall_shell_integration,
+            shell_integration::shell_integration_status,
         ])
-        .setup(|app| {
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Always-on: close hides to tray; Quit from tray exits.
+                if window.label() == "main" {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+            }
+        })
+        .setup(move |app| {
             info!("Wormhole app setup complete");
+
+            let state = Arc::clone(app.state::<Arc<AppState>>().inner());
+            commands::start_throughput_poller(app.handle().clone(), state);
+
+            if start_hidden {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+            }
+
+            // Emit CLI / shell-integration actions once the UI can listen
+            if !launch.actions.is_empty() {
+                let handle = app.handle().clone();
+                let actions = launch.actions.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(600));
+                    for action in actions {
+                        let _ = handle.emit("launch-action", action);
+                    }
+                });
+            }
 
             // Set window and webview background color on macOS to eliminate white border
             #[cfg(target_os = "macos")]
@@ -188,26 +232,27 @@ pub fn run() {
                 }
             }
 
-            // Handle deep links
+            // Handle deep links (join codes + share paths)
             #[cfg(desktop)]
             {
                 let handle = app.handle().clone();
                 app.listen("deep-link://new-url", move |event| {
                     let payload_str = event.payload();
-                    // Parse the payload as JSON array of URLs
                     if let Ok(urls) = serde_json::from_str::<Vec<String>>(payload_str) {
                         for url in urls {
                             info!("Received deep link: {}", url);
-                            if let Some(join_code) = parse_deep_link(&url) {
-                                info!("Extracted join code: {}", join_code);
-                                // Emit event to frontend
-                                let payload = DeepLinkPayload {
-                                    join_code,
-                                    url: url.clone(),
-                                };
-                                if let Err(e) = handle.emit("deep-link-join", payload) {
-                                    tracing::error!("Failed to emit deep-link-join: {}", e);
+                            if let Some(action) = parse_wormhole_url(&url) {
+                                match &action {
+                                    LaunchAction::Connect { code } => {
+                                        let payload = DeepLinkPayload {
+                                            join_code: code.clone(),
+                                            url: url.clone(),
+                                        };
+                                        let _ = handle.emit("deep-link-join", payload);
+                                    }
+                                    LaunchAction::Share { .. } | LaunchAction::Portal => {}
                                 }
+                                let _ = handle.emit("launch-action", action);
                             }
                         }
                     }
@@ -233,7 +278,7 @@ pub fn run() {
 
                 let _tray = TrayIconBuilder::new()
                     .menu(&menu)
-                    .tooltip("Wormhole")
+                    .tooltip("Wormhole — running in background")
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "quit" => {
                             info!("Quit requested from tray");
@@ -251,6 +296,24 @@ pub fn run() {
                             );
                         }
                         _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let tauri::tray::TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            let app = tray.app_handle();
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            let _ = app.emit(
+                                "tray-action",
+                                serde_json::json!({ "action": "portal" }),
+                            );
+                        }
                     })
                     .build(app)?;
             }

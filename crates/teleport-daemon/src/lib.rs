@@ -70,6 +70,7 @@ pub mod rate_limiter;
 pub mod rendezvous;
 pub mod stream_pool;
 pub mod sync_engine;
+pub mod throughput;
 pub mod updater;
 
 pub use content_store::ContentStore;
@@ -115,6 +116,7 @@ pub use stream_pool::{
     MAX_STREAMS, MIN_STREAMS,
 };
 pub use sync_engine::{DirtyChunk, FileLock, SyncEngine, SyncRunner, SyncStatus};
+pub use throughput::SessionMeter;
 
 /// Default mount options
 pub const DEFAULT_MOUNT_OPTIONS: &[&str] =

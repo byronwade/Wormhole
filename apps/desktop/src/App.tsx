@@ -106,6 +106,7 @@ function getRelativePath(fullPath: string, rootPath: string): string[] {
 
 // shadcn components
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -1437,11 +1438,13 @@ function ShareDialog({
   isOpen,
   onClose,
   onShareCreated,
+  initialPath,
   previewMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onShareCreated: (path: string, joinCode: string, port: number, shareId: string, expirationOption: ExpirationOption, expiresAt: number | null, shareMode: ShareMode) => void;
+  initialPath?: string | null;
   previewMode?: string | null;
 }) {
   const [sharePath, setSharePath] = useState("");
@@ -1466,6 +1469,13 @@ function ShareDialog({
     setHostIpAddress("192.168.1.42");
     setIsHosting(true);
   }, [isOpen, previewMode]);
+
+  useEffect(() => {
+    if (!isOpen || !initialPath) return;
+    setSharePath(initialPath);
+    setIsHosting(false);
+    setJoinCode("");
+  }, [isOpen, initialPath]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -2105,8 +2115,56 @@ function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<number | null>(null);
   const [showTelemetryDetails, setShowTelemetryDetails] = useState(false);
+  const [autostartOn, setAutostartOn] = useState(false);
+  const [shellInstalled, setShellInstalled] = useState(false);
+  const [shellDetail, setShellDetail] = useState("");
+  const [integrationBusy, setIntegrationBusy] = useState(false);
 
   const { settings: telemetrySettings, updateSettings: updateTelemetrySettings, enableAll, disableAll } = useTelemetry();
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { isEnabled } = await import("@tauri-apps/plugin-autostart");
+        setAutostartOn(await isEnabled());
+      } catch {
+        // Browser preview / missing plugin
+      }
+      try {
+        const status = await invoke<{ installed: boolean; detail: string }>("shell_integration_status");
+        setShellInstalled(status.installed);
+        setShellDetail(status.detail);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  const toggleAutostart = async (next: boolean) => {
+    try {
+      const { enable, disable } = await import("@tauri-apps/plugin-autostart");
+      if (next) await enable();
+      else await disable();
+      setAutostartOn(next);
+    } catch (e) {
+      console.error("Autostart toggle failed:", e);
+    }
+  };
+
+  const toggleShellIntegration = async () => {
+    setIntegrationBusy(true);
+    try {
+      const status = shellInstalled
+        ? await invoke<{ installed: boolean; detail: string }>("uninstall_shell_integration")
+        : await invoke<{ installed: boolean; detail: string }>("install_shell_integration");
+      setShellInstalled(status.installed);
+      setShellDetail(status.detail);
+    } catch (e) {
+      setShellDetail(String(e));
+    } finally {
+      setIntegrationBusy(false);
+    }
+  };
 
   const checkForUpdates = async () => {
     setCheckingUpdate(true);
@@ -2220,6 +2278,52 @@ function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
                   <p className="text-sm text-zinc-400">You're running the latest version!</p>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Background & OS Integration */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">Background &amp; OS</h2>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-medium text-white">Keep running in the background</h3>
+                  <p className="text-sm text-zinc-500">
+                    Closing the window hides Wormhole to the tray. Quit from the tray menu to exit.
+                  </p>
+                </div>
+                <span className="text-xs font-medium text-teal-400 whitespace-nowrap">Always on</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-medium text-white">Start at login</h3>
+                  <p className="text-sm text-zinc-500">
+                    Launch Wormhole hidden in the tray when you sign in.
+                  </p>
+                </div>
+                <Switch
+                  checked={autostartOn}
+                  onCheckedChange={(v) => { void toggleAutostart(v); }}
+                  aria-label="Start Wormhole at login"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-medium text-white">Share from Finder / Explorer</h3>
+                  <p className="text-sm text-zinc-500">
+                    {shellDetail || "Right-click a folder → Share with Wormhole."}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={integrationBusy}
+                  onClick={() => { void toggleShellIntegration(); }}
+                  className="gap-2 border-zinc-700 hover:bg-zinc-800 min-h-10"
+                >
+                  {integrationBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {shellInstalled ? "Remove" : "Install"}
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -2416,6 +2520,7 @@ function App() {
   });
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [pendingPeerName, setPendingPeerName] = useState<string | null>(null);
+  const [pendingSharePath, setPendingSharePath] = useState<string | null>(null);
   const [localIp, setLocalIp] = useState<string>("");
   /** Browser-preview deep links: ?preview=share|share-success|connect|connect-success|sharing|mounts */
   const [uiPreview, setUiPreview] = useState<string | null>(null);
@@ -2637,6 +2742,27 @@ function App() {
       if (action === "share") setActiveDialog("share");
       if (action === "connect") setActiveDialog("connect");
       if (action === "portal") setActiveView("all-files");
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, []);
+
+  // CLI / shell integration / deep-link launch actions
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<{ action: string; path?: string; code?: string }>("launch-action", (event) => {
+      const payload = event.payload;
+      if (!payload?.action) return;
+      if (payload.action === "share" && payload.path) {
+        setPendingSharePath(payload.path);
+        setActiveView("all-files");
+        setActiveDialog("share");
+      } else if (payload.action === "connect" && payload.code) {
+        setPendingJoinCode(payload.code);
+        setActiveView("all-files");
+        setActiveDialog("connect");
+      } else if (payload.action === "portal") {
+        setActiveView("all-files");
+      }
     }).then((fn) => { unlisten = fn; });
     return () => { unlisten?.(); };
   }, []);
@@ -3268,8 +3394,12 @@ function App() {
       {/* Dialogs */}
       <ShareDialog
         isOpen={activeDialog === "share"}
-        onClose={() => setActiveDialog(null)}
+        onClose={() => {
+          setActiveDialog(null);
+          setPendingSharePath(null);
+        }}
         onShareCreated={handleShareCreated}
+        initialPath={pendingSharePath}
         previewMode={uiPreview}
       />
       <ConnectDialog

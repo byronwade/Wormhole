@@ -34,6 +34,7 @@ use teleport_daemon::global::{
     connect_global, start_host_global, GlobalEvent, GlobalHostConfig, GlobalMountConfig,
 };
 use teleport_daemon::host::{HostConfig, WormholeHost};
+use teleport_daemon::SessionMeter;
 #[cfg(windows)]
 use teleport_daemon::winfsp::WormholeWinFS;
 
@@ -113,6 +114,8 @@ struct ClientHandle {
     join_code: String,
     /// Human peer device name from HelloAck (when known)
     peer_name: Option<String>,
+    /// Live FUSE/WinFSP read/write throughput for Portal
+    throughput: Arc<SessionMeter>,
 }
 
 /// Application state for managing host and client connections
@@ -142,6 +145,54 @@ impl Default for AppState {
             lan,
         }
     }
+}
+
+/// Poll mount SessionMeters and emit transfer-progress for Portal live speed.
+pub fn start_throughput_poller(app: AppHandle, state: Arc<AppState>) {
+    let state_for_task = Arc::clone(&state);
+    state.runtime.spawn(async move {
+        let mut idle_cleared = true;
+        loop {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            let snapshot: Vec<(String, f64)> = {
+                let handles = state_for_task.client_handles.lock().await;
+                handles
+                    .iter()
+                    .filter_map(|(id, h)| {
+                        let bps = h.throughput.speed_bps();
+                        if bps > 0.0 {
+                            Some((id.clone(), bps))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            };
+
+            if snapshot.is_empty() {
+                if !idle_cleared {
+                    let _ = app.emit("transfer-completed", serde_json::json!({ "reason": "idle" }));
+                    idle_cleared = true;
+                }
+                continue;
+            }
+
+            idle_cleared = false;
+            for (id, bps) in snapshot {
+                let _ = app.emit(
+                    "transfer-progress",
+                    TransferProgressEvent {
+                        transfer_id: id,
+                        file_name: "mount".to_string(),
+                        bytes_transferred: 0,
+                        total_bytes: 0,
+                        speed_bps: bps,
+                        eta_seconds: None,
+                    },
+                );
+            }
+        }
+    });
 }
 
 /// Best-effort open mount in Finder/Explorer (auto-reveal after mount).
@@ -374,6 +425,8 @@ pub async fn connect_to_peer(
     let mount_point_clone = mount_point.clone();
     let mount_path_str = mount_path.clone();
     let app_clone = app.clone();
+    let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
 
     // Spawn the mount in a separate thread (FUSE is blocking)
     let mount_thread = thread::spawn(move || {
@@ -409,6 +462,7 @@ pub async fn connect_to_peer(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             // Connect to the host
             if let Err(e) = client.connect().await {
@@ -483,6 +537,7 @@ pub async fn connect_to_peer(
                 mount_point,
                 join_code: host_address.clone(), // Use host_address as identifier
                 peer_name: None,
+                throughput,
             },
         );
     }
@@ -518,7 +573,10 @@ pub async fn connect_to_peer(
     let app_clone = app.clone();
 
     // Spawn the mount in a separate thread (WinFSP is blocking)
-    let mount_thread = thread::spawn(move || {
+        let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
+
+let mount_thread = thread::spawn(move || {
         // Create the filesystem ↔ async bridge
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
@@ -550,6 +608,7 @@ pub async fn connect_to_peer(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             // Connect to the host
             if let Err(e) = client.connect().await {
@@ -639,6 +698,7 @@ pub async fn connect_to_peer(
                 mount_point: PathBuf::from(&mount_path),
                 join_code: host_address.clone(),
                 peer_name: None,
+                throughput,
             },
         );
     }
@@ -1028,6 +1088,9 @@ pub async fn connect_with_code_and_id(
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
 
+    let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
+
     let (ready_tx, ready_rx) =
         tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
 
@@ -1060,6 +1123,7 @@ pub async fn connect_with_code_and_id(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             if let Err(e) = client.connect().await {
                 error!("Failed to connect: {:?}", e);
@@ -1147,6 +1211,7 @@ pub async fn connect_with_code_and_id(
                 mount_point,
                 join_code,
                 peer_name,
+                throughput,
             },
         );
     }
@@ -1280,6 +1345,9 @@ pub async fn connect_with_code_and_id(
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
 
+    let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
+
     let (ready_tx, ready_rx) =
         tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
 
@@ -1312,6 +1380,7 @@ pub async fn connect_with_code_and_id(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             if let Err(e) = client.connect().await {
                 error!("Failed to connect: {:?}", e);
@@ -1414,6 +1483,7 @@ pub async fn connect_with_code_and_id(
                 mount_point,
                 join_code,
                 peer_name,
+                throughput,
             },
         );
     }

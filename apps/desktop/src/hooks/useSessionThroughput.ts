@@ -9,7 +9,7 @@ interface TransferProgressPayload {
 }
 
 /**
- * Live speed labels keyed by transfer/session id (best-effort from export + transfer events).
+ * Live speed labels keyed by transfer/session id (export + mount FUSE reads).
  */
 export function useSessionThroughput() {
   const [speedById, setSpeedById] = useState<Record<string, string>>({});
@@ -21,6 +21,10 @@ export function useSessionThroughput() {
 
     void listen<TransferProgressPayload>("transfer-progress", (event) => {
       const bps = event.payload.speed_bps ?? 0;
+      if (bps <= 0) {
+        setGlobalSpeed(null);
+        return;
+      }
       const label = formatSpeedBps(bps);
       setGlobalSpeed(label);
       const id = event.payload.transfer_id;
@@ -33,6 +37,7 @@ export function useSessionThroughput() {
 
     void listen("transfer-completed", () => {
       setGlobalSpeed(null);
+      setSpeedById({});
     }).then((fn) => {
       unlistenDone = fn;
     });
