@@ -57,10 +57,10 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect to Share")).toBeInTheDocument();
+        expect(screen.getByText("Connect")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Share a Folder")).toBeInTheDocument();
+      expect(screen.getByText("Share Folder")).toBeInTheDocument();
     });
 
     it("shows empty state when no files", async () => {
@@ -69,7 +69,7 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("No Files to Browse")).toBeInTheDocument();
+        expect(screen.getByText("No active shares")).toBeInTheDocument();
       });
     });
   });
@@ -123,10 +123,10 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect to Share")).toBeInTheDocument();
+        expect(screen.getByText("Connect")).toBeInTheDocument();
       });
 
-      const connectButton = screen.getByText("Connect to Share").closest("button");
+      const connectButton = screen.getByText("Connect").closest("button");
       expect(connectButton).toBeInTheDocument();
       expect(connectButton).not.toBeDisabled();
     });
@@ -137,10 +137,10 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Share a Folder")).toBeInTheDocument();
+        expect(screen.getByText("Share Folder")).toBeInTheDocument();
       });
 
-      const shareButton = screen.getByText("Share a Folder").closest("button");
+      const shareButton = screen.getByText("Share Folder").closest("button");
       expect(shareButton).toBeInTheDocument();
       expect(shareButton).not.toBeDisabled();
     });
@@ -189,10 +189,10 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect to Share")).toBeInTheDocument();
+        expect(screen.getByText("Connect")).toBeInTheDocument();
       });
 
-      const connectButton = screen.getByText("Connect to Share").closest("button");
+      const connectButton = screen.getByText("Connect").closest("button");
       expect(connectButton).toBeInTheDocument();
       // Buttons should be focusable (not have tabindex=-1)
       expect(connectButton).not.toHaveAttribute("tabindex", "-1");

@@ -222,6 +222,10 @@ struct HostArgs {
     #[arg(long)]
     no_signal: bool,
 
+    /// Transport backend: `quic` (classic quinn) or `iroh` (dial-by-key)
+    #[arg(long, default_value = "quic", env = "WORMHOLE_TRANSPORT")]
+    transport: String,
+
     /// Use a specific join code instead of generating one
     #[arg(long)]
     code: Option<String>,
@@ -325,6 +329,14 @@ struct MountArgs {
     /// Password (if host requires one)
     #[arg(long)]
     password: Option<String>,
+
+    /// Transport backend: `quic` (classic) or `iroh` (endpoint id dial)
+    #[arg(long, default_value = "quic", env = "WORMHOLE_TRANSPORT")]
+    transport: String,
+
+    /// Discover hosts on the LAN via mDNS (iroh)
+    #[arg(long)]
+    announce_local: bool,
 
     /// Cache mode
     #[arg(long, value_enum, default_value = "hybrid")]
@@ -1433,13 +1445,6 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
             .unwrap_or_else(|_| "wormhole-host".into())
     });
 
-    let config = HostConfig {
-        bind_addr,
-        shared_path: path.clone(),
-        max_connections: args.max_connections,
-        host_name: host_name.clone(),
-    };
-
     // Generate or use provided join code
     let join_code = args
         .code
@@ -1447,8 +1452,63 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         .map(|c| teleport_core::crypto::normalize_join_code(c))
         .unwrap_or_else(teleport_core::crypto::generate_join_code);
 
+    if args.copy_code {
+        copy_to_clipboard(&join_code);
+    }
+    if args.qr_code {
+        print_join_qr(&join_code);
+    }
+
+    // iroh transport path
+    if args.transport.eq_ignore_ascii_case("iroh") {
+        #[cfg(feature = "iroh")]
+        {
+            use teleport_daemon::iroh_host::{start_iroh_share, IrohHostConfig};
+            if !cli.quiet {
+                println!("Starting iroh host for {}…", path.display());
+            }
+            let handle = start_iroh_share(IrohHostConfig {
+                shared_path: path.clone(),
+                host_name: host_name.clone(),
+                announce_mdns: args.announce_local,
+            })
+            .await
+            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+            if !cli.quiet {
+                println!("iroh endpoint id: {}", handle.endpoint_id_hex);
+                println!("Join code (SPAKE2 trust): {}", join_code);
+                println!(
+                    "Connect with: wormhole mount --transport iroh {}",
+                    handle.endpoint_id_hex
+                );
+                println!("Press Ctrl+C to stop sharing");
+            } else {
+                println!("{}", handle.endpoint_id_hex);
+            }
+            tokio::signal::ctrl_c().await.ok();
+            println!("\nShutting down iroh host…");
+            handle.abort();
+            return Ok(());
+        }
+        #[cfg(not(feature = "iroh"))]
+        {
+            return Err("iroh transport requires the `iroh` feature".into());
+        }
+    }
+
+    let config = HostConfig {
+        bind_addr,
+        shared_path: path.clone(),
+        max_connections: args.max_connections,
+        host_name: host_name.clone(),
+    };
+
     // Display startup info
     print_host_banner(&path, bind_addr, &join_code, &host_name, args, cli);
+
+    if args.announce_local && !cli.quiet {
+        println!("Note: --announce-local applies to --transport iroh (mDNS). Classic quic uses LAN IP bind.");
+    }
 
     let host = WormholeHost::new(config);
 
@@ -1601,6 +1661,18 @@ fn print_host_banner(
 }
 
 async fn run_mount(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // iroh: target is endpoint id hex
+    if args.transport.eq_ignore_ascii_case("iroh") {
+        #[cfg(feature = "iroh")]
+        {
+            return run_mount_iroh(args, cli).await;
+        }
+        #[cfg(not(feature = "iroh"))]
+        {
+            return Err("iroh transport requires the `iroh` feature".into());
+        }
+    }
+
     // First, try to extract join code from URL if it's a URL
     let target = if let Some(code) = extract_join_code(&args.target) {
         if !cli.quiet && args.target != code {
@@ -1625,6 +1697,83 @@ async fn run_mount(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error
     } else {
         run_mount_via_signal(&modified_args, cli).await
     }
+}
+
+#[cfg(feature = "iroh")]
+async fn run_mount_iroh(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    use teleport_daemon::iroh_host::iroh_hello_client;
+    use teleport_core::protocol::{GetAttrRequest, NetMessage};
+    use teleport_core::ROOT_INODE;
+
+    let endpoint_id = args.target.trim();
+    if !cli.quiet {
+        println!("Dialing iroh endpoint {}…", endpoint_id);
+    }
+    let (conn, _codec, host_name) =
+        iroh_hello_client(endpoint_id, args.announce_local)
+            .await
+            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+
+    // Verify root getattr works (smoke check before FUSE mount wiring)
+    let reply = conn
+        .request(&NetMessage::GetAttr(GetAttrRequest {
+            inode: ROOT_INODE,
+        }))
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
+    match reply {
+        NetMessage::GetAttrResponse(r) if r.attr.is_some() => {
+            if !cli.quiet {
+                println!(
+                    "Connected to iroh host '{}' (endpoint {}). Full FUSE mount over iroh uses the same ALPN; use classic mount for production FUSE today, or continue with wormhole-mount once wired.",
+                    host_name, endpoint_id
+                );
+            }
+        }
+        other => {
+            return Err(format!("iroh getattr failed: {other:?}").into());
+        }
+    }
+    conn.close("mount-check-done");
+    Ok(())
+}
+
+fn copy_to_clipboard(text: &str) {
+    // Best-effort clipboard via common CLIs (no extra deps).
+    let attempts = [
+        ("wl-copy", vec![text.to_string()]),
+        ("xclip", vec!["-selection".into(), "clipboard".into()]),
+        ("pbcopy", vec![]),
+    ];
+    for (cmd, args) in attempts {
+        let mut child = match std::process::Command::new(cmd)
+            .args(&args)
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            let _ = stdin.write_all(text.as_bytes());
+        }
+        if child.wait().map(|s| s.success()).unwrap_or(false) {
+            println!("Copied join code to clipboard");
+            return;
+        }
+    }
+    println!("Clipboard copy unavailable (install wl-copy, xclip, or pbcopy)");
+}
+
+fn print_join_qr(join_code: &str) {
+    let payload = format!("wormhole://join/{}", join_code);
+    // ANSI QR via unicode blocks would need a crate; print scannable deep link.
+    println!();
+    println!("QR / deep link payload:");
+    println!("  {}", payload);
+    println!("  (scan with Wormhole mobile/desktop or open the URL)");
+    println!();
 }
 
 fn is_ip_address(target: &str) -> bool {

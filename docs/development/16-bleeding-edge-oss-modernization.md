@@ -1,7 +1,7 @@
 # Wormhole Bleeding-Edge OSS Modernization
 
 **Date:** 2026-08-02  
-**Status:** Accepted — Waves A–E implemented in tree (2026-08-02). Remaining polish: full iroh-blobs streaming swap, UI React 19 desktop parity.  
+**Status:** Accepted — Waves A–E landed in tree (2026-08-02+). Production paths: session postcard after Hello, hybrid cache content-store dual-write, CLI `--transport iroh`, mDNS via `iroh-mdns-address-lookup`, desktop React 19 / Tailwind 4 + `@wormhole/shared` JoinCodePanel. Optional: `teleport-blobs` feature `iroh-blobs` for ticket helpers; full FUSE-over-iroh mount wiring continues.  
 **Audience:** Engineering + product  
 **Related:** `00-master-implementation-plan.md`, `03-architecture-decisions.md`, `docs/superpowers/specs/2026-06-03-open-core-team-cloud-architecture.md`
 

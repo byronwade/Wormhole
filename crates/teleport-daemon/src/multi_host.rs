@@ -28,7 +28,11 @@ use teleport_core::{
 };
 
 use crate::lock_manager::LockManager;
-use crate::net::{create_server_endpoint, recv_message, send_message, ConnectionError};
+use teleport_core::WireCodec;
+use crate::net::{
+    create_server_endpoint, host_capabilities, negotiate_session_codec, recv_message,
+    recv_message_with, send_message, send_message_with, ConnectionError,
+};
 use crate::rate_limiter::RateLimiter;
 
 /// SECURITY: Maximum session duration before forced re-authentication (24 hours)
@@ -366,7 +370,7 @@ async fn handle_connection(
     // Receive Hello
     let hello = recv_message(&mut recv).await?;
 
-    let client_id = match hello {
+    let (client_id, remote_caps) = match hello {
         NetMessage::Hello(h) => {
             if h.protocol_version != PROTOCOL_VERSION {
                 let error = NetMessage::Error(ErrorMessage {
@@ -385,7 +389,7 @@ async fn handle_connection(
                     },
                 ));
             }
-            h.client_id
+            (h.client_id, h.capabilities)
         }
         _ => {
             return Err(ConnectionError::Receive("expected Hello".into()));
@@ -403,13 +407,14 @@ async fn handle_connection(
     );
 
     // Determine capabilities based on shares
-    let mut capabilities = crate::net::host_capabilities(config.shares.iter().any(|s| s.writable));
+    let mut capabilities = host_capabilities(config.shares.iter().any(|s| s.writable));
     capabilities.push("multi-share".into());
+    let session_codec = negotiate_session_codec(&capabilities, &remote_caps);
 
     // For backward compatibility, use first share as root
     let root_inode = ROOT_INODE;
 
-    // Send HelloAck
+    // Send HelloAck (handshake remains bincode)
     let ack = NetMessage::HelloAck(HelloAckMessage {
         protocol_version: PROTOCOL_VERSION,
         session_id,
@@ -420,9 +425,10 @@ async fn handle_connection(
     send_message(&mut send, &ack).await?;
 
     info!(
-        "Client {:?} authenticated, session {:?}",
-        &client_id[..4],
-        &session_id[..4]
+        client = ?&client_id[..4],
+        session = ?&session_id[..4],
+        codec = ?session_codec,
+        "Client authenticated"
     );
 
     // SECURITY: Track session start time for expiration enforcement
@@ -462,6 +468,7 @@ async fn handle_connection(
                         &lock_manager,
                         &holder_id,
                         &config,
+                        session_codec,
                     )
                     .await
                     {
@@ -486,6 +493,7 @@ async fn handle_connection(
 }
 
 /// Handle a single request
+#[allow(clippy::too_many_arguments)]
 async fn handle_request(
     send: &mut quinn::SendStream,
     recv: &mut quinn::RecvStream,
@@ -494,8 +502,9 @@ async fn handle_request(
     lock_manager: &LockManager,
     holder_id: &str,
     config: &MultiHostConfig,
+    codec: WireCodec,
 ) -> Result<(), ConnectionError> {
-    let request = recv_message(recv).await?;
+    let request = recv_message_with(recv, codec).await?;
 
     // For now, use the first share as default (backward compatibility)
     let default_share = config.shares.first();
@@ -631,7 +640,7 @@ async fn handle_request(
         }),
     };
 
-    send_message(send, &response).await
+    send_message_with(send, &response, codec).await
 }
 
 fn handle_lookup(req: LookupRequest, table: &ShareInodeTable, shared_path: &Path) -> NetMessage {

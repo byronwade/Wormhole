@@ -15,8 +15,10 @@ use lru::LruCache;
 use parking_lot::RwLock;
 use tracing::{debug, trace, warn};
 
-use teleport_core::{ChunkId, DirEntry, FileAttr, Inode, CHUNK_SIZE};
+use dashmap::DashMap;
+use teleport_core::{ChunkId, ContentHash, DirEntry, FileAttr, Inode, CHUNK_SIZE};
 
+use crate::content_store::ContentStore;
 use crate::disk_cache::DiskCache;
 
 /// Maximum concurrent disk write threads
@@ -305,6 +307,10 @@ pub struct HybridChunkCache {
     ram_cache: ChunkCache,
     /// L2: Disk cache (slower, larger)
     disk_cache: Option<Arc<DiskCache>>,
+    /// L3: Content-addressed BLAKE3 store (dedup / resume)
+    content_store: Option<ContentStore>,
+    /// ChunkId → content hash index for L3 lookups
+    hash_index: Arc<DashMap<ChunkId, ContentHash>>,
     /// Statistics (Arc for sharing with disk write threads)
     stats: Arc<HybridCacheStats>,
 }
@@ -352,9 +358,22 @@ impl HybridChunkCache {
             }
         };
 
+        let content_store = match ContentStore::open_default() {
+            Ok(cs) => {
+                debug!("Content-addressed blob store initialized");
+                Some(cs)
+            }
+            Err(e) => {
+                warn!("Content store unavailable: {} — continuing without", e);
+                None
+            }
+        };
+
         Self {
             ram_cache: ChunkCache::with_capacity(ram_capacity),
             disk_cache,
+            content_store,
+            hash_index: Arc::new(DashMap::new()),
             stats: Arc::new(HybridCacheStats::default()),
         }
     }
@@ -364,6 +383,8 @@ impl HybridChunkCache {
         Self {
             ram_cache: ChunkCache::with_capacity(ram_capacity),
             disk_cache: Some(disk_cache),
+            content_store: None,
+            hash_index: Arc::new(DashMap::new()),
             stats: Arc::new(HybridCacheStats::default()),
         }
     }
@@ -373,8 +394,21 @@ impl HybridChunkCache {
         Self {
             ram_cache: ChunkCache::with_capacity(ram_capacity),
             disk_cache: None,
+            content_store: None,
+            hash_index: Arc::new(DashMap::new()),
             stats: Arc::new(HybridCacheStats::default()),
         }
+    }
+
+    /// Attach a content-addressed store (tests / custom roots).
+    pub fn with_content_store(mut self, store: ContentStore) -> Self {
+        self.content_store = Some(store);
+        self
+    }
+
+    /// Look up content hash for a cached chunk, if known.
+    pub fn content_hash(&self, chunk_id: &ChunkId) -> Option<ContentHash> {
+        self.hash_index.get(chunk_id).map(|h| *h)
     }
 
     /// Get disk cache reference (for GC)
@@ -417,6 +451,29 @@ impl HybridChunkCache {
             }
         }
 
+        // Try L3 (content-addressed blob store) via ChunkId → hash index
+        if let (Some(store), Some(hash)) = (
+            self.content_store.as_ref(),
+            self.hash_index.get(chunk_id).map(|h| *h),
+        ) {
+            match store.get(&hash) {
+                Ok(data) => {
+                    self.stats.disk_hits.fetch_add(1, Ordering::Relaxed);
+                    trace!(%hash, ?chunk_id, "hybrid_cache: content-store hit");
+                    let arc_data = Arc::new(data);
+                    self.ram_cache.insert_arc(*chunk_id, arc_data.clone());
+                    return Some(arc_data);
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        %hash,
+                        "hybrid_cache: content-store read failed"
+                    );
+                }
+            }
+        }
+
         self.stats.misses.fetch_add(1, Ordering::Relaxed);
         trace!("hybrid_cache: miss for {:?}", chunk_id);
         None
@@ -444,6 +501,19 @@ impl HybridChunkCache {
     pub fn insert(&self, chunk_id: ChunkId, data: Vec<u8>) {
         // Insert into RAM immediately
         self.ram_cache.insert(chunk_id, data.clone());
+
+        // Dual-write to content-addressed store (dedup by BLAKE3)
+        if let Some(ref store) = self.content_store {
+            match store.put(&data) {
+                Ok(hash) => {
+                    self.hash_index.insert(chunk_id, hash);
+                    trace!(%hash, ?chunk_id, "hybrid_cache: content-store put");
+                }
+                Err(e) => {
+                    warn!(error = %e, "hybrid_cache: content-store put failed");
+                }
+            }
+        }
 
         // Async write to disk (bounded fire and forget)
         if let Some(ref disk_cache) = self.disk_cache {

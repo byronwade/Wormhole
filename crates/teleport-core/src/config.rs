@@ -155,6 +155,10 @@ pub struct NetworkConfig {
     pub max_streams: u32,
     /// Enable QUIC 0-RTT (faster reconnects, less secure)
     pub enable_0rtt: bool,
+    /// Announce / discover peers on the LAN via mDNS (iroh).
+    pub announce_mdns: bool,
+    /// Preferred transport: `quic` (classic) or `iroh`.
+    pub transport: String,
 }
 
 impl Default for NetworkConfig {
@@ -165,6 +169,8 @@ impl Default for NetworkConfig {
             keepalive_secs: 15,
             max_streams: 100,
             enable_0rtt: false,
+            announce_mdns: false,
+            transport: "quic".into(),
         }
     }
 }

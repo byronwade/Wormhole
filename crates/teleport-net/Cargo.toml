@@ -9,6 +9,7 @@ rust-version.workspace = true
 [dependencies]
 teleport-core = { path = "../teleport-core" }
 iroh = { workspace = true }
+iroh-mdns-address-lookup = "0.4"
 tokio = { workspace = true }
 bytes = { workspace = true }
 tracing = { workspace = true }

@@ -469,7 +469,7 @@ fn read(...) {
 - ADR-015: **iroh as networking substrate** — [`adr/015-iroh-networking.md`](./adr/015-iroh-networking.md) ✅
 - ADR-016: **postcard dual-decode** — [`adr/016-postcard-codec.md`](./adr/016-postcard-codec.md) ✅
 - ADR-017: **Polar + self-host BaaS** — [`adr/017-polar-selfhost-billing.md`](./adr/017-polar-selfhost-billing.md) ✅
-- ADR-018: Content-addressed blob store (`teleport-blobs`) ✅ implemented; iroh-blobs streaming TBD
+- ADR-018: Content-addressed blob store — [`adr/018-content-addressed-blobs.md`](./adr/018-content-addressed-blobs.md) ✅; optional `iroh-blobs` feature for tickets
 
 ### Accepted supersessions (2026-08-02)
 

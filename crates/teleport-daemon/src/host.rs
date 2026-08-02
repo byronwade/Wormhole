@@ -28,7 +28,11 @@ use teleport_core::{
 use crate::lock_manager::LockManager;
 use crate::rate_limiter::RateLimiter;
 
-use crate::net::{create_server_endpoint, recv_message, send_message, ConnectionError};
+use teleport_core::WireCodec;
+use crate::net::{
+    create_server_endpoint, host_capabilities, negotiate_session_codec, recv_message,
+    recv_message_with, send_message, send_message_with, ConnectionError,
+};
 
 /// SECURITY: Maximum session duration before forced re-authentication (24 hours)
 /// This prevents stale or compromised sessions from being used indefinitely.
@@ -65,7 +69,7 @@ impl Default for HostConfig {
 }
 
 /// Inode table mapping inodes to paths
-struct InodeTable {
+pub(crate) struct InodeTable {
     inode_to_path: DashMap<Inode, PathBuf>,
     path_to_inode: DashMap<PathBuf, Inode>,
     next_inode: RwLock<Inode>,
@@ -74,7 +78,7 @@ struct InodeTable {
 }
 
 impl InodeTable {
-    fn new(root: PathBuf) -> Self {
+    pub(crate) fn new(root: PathBuf) -> Self {
         let table = Self {
             inode_to_path: DashMap::new(),
             path_to_inode: DashMap::new(),
@@ -359,7 +363,7 @@ async fn handle_connection(
         .await
         .map_err(|_| ConnectionError::Receive("handshake timeout waiting for Hello".into()))??;
 
-    let client_id = match hello {
+    let (client_id, remote_caps) = match hello {
         NetMessage::Hello(h) => {
             if h.protocol_version != PROTOCOL_VERSION {
                 let error = NetMessage::Error(ErrorMessage {
@@ -378,12 +382,15 @@ async fn handle_connection(
                     },
                 ));
             }
-            h.client_id
+            (h.client_id, h.capabilities)
         }
         _ => {
             return Err(ConnectionError::Receive("expected Hello".into()));
         }
     };
+
+    let local_caps = host_capabilities(true);
+    let session_codec = negotiate_session_codec(&local_caps, &remote_caps);
 
     // Generate session ID
     let mut session_id = [0u8; 16];
@@ -395,20 +402,21 @@ async fn handle_connection(
         client_id[0], client_id[1], client_id[2], client_id[3]
     );
 
-    // Send HelloAck with write capability
+    // Send HelloAck with write capability (handshake remains bincode)
     let ack = NetMessage::HelloAck(HelloAckMessage {
         protocol_version: PROTOCOL_VERSION,
         session_id,
         root_inode: ROOT_INODE,
         host_name: host_name.clone(),
-        capabilities: crate::net::host_capabilities(true),
+        capabilities: local_caps,
     });
     send_message(&mut send, &ack).await?;
 
     info!(
-        "Client {:?} authenticated, session {:?}",
-        &client_id[..4],
-        &session_id[..4]
+        client = ?&client_id[..4],
+        session = ?&session_id[..4],
+        ?session_codec,
+        "Client authenticated"
     );
 
     // SECURITY: Track session start time for expiration enforcement
@@ -446,6 +454,7 @@ async fn handle_connection(
                         &shared_path,
                         &lock_manager,
                         &holder_id,
+                        session_codec,
                     )
                     .await
                     {
@@ -479,10 +488,22 @@ async fn handle_request(
     shared_path: &Path,
     lock_manager: &LockManager,
     holder_id: &str,
+    codec: WireCodec,
 ) -> Result<(), ConnectionError> {
-    let request = recv_message(recv).await?;
+    let request = recv_message_with(recv, codec).await?;
+    let response = dispatch_request(request, inodes, shared_path, lock_manager, holder_id);
+    send_message_with(send, &response, codec).await
+}
 
-    let response = match request {
+/// Dispatch a protocol request against a shared directory (quinn + iroh hosts).
+pub(crate) fn dispatch_request(
+    request: NetMessage,
+    inodes: &InodeTable,
+    shared_path: &Path,
+    lock_manager: &LockManager,
+    holder_id: &str,
+) -> NetMessage {
+    match request {
         NetMessage::Lookup(req) => handle_lookup(req, inodes, shared_path),
         NetMessage::GetAttr(req) => handle_getattr(req, inodes),
         NetMessage::ListDir(req) => handle_listdir(req, inodes),
@@ -490,7 +511,6 @@ async fn handle_request(
         NetMessage::WriteChunk(req) => handle_write_chunk(req, inodes, shared_path, lock_manager),
         NetMessage::AcquireLock(req) => handle_acquire_lock(req, lock_manager, holder_id),
         NetMessage::ReleaseLock(req) => handle_release_lock(req, lock_manager),
-        // File operations (Phase 7) - all with security validation
         NetMessage::CreateFile(req) => handle_create_file(req, inodes, shared_path, lock_manager),
         NetMessage::DeleteFile(req) => handle_delete_file(req, inodes, shared_path, lock_manager),
         NetMessage::CreateDir(req) => handle_create_dir(req, inodes, shared_path),
@@ -500,8 +520,6 @@ async fn handle_request(
         NetMessage::SetAttr(req) => handle_setattr(req, inodes, shared_path, lock_manager),
         NetMessage::Ping(p) => NetMessage::Pong(teleport_core::PongMessage {
             client_timestamp: p.timestamp,
-            // Safe conversion: millis since epoch won't overflow u64 until year 584 million,
-            // but we use min() for safety against edge cases
             server_timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_millis().min(u64::MAX as u128) as u64)
@@ -513,9 +531,7 @@ async fn handle_request(
             message: "request type not implemented".into(),
             related_inode: None,
         }),
-    };
-
-    send_message(send, &response).await
+    }
 }
 
 /// SECURITY: Reject access to a path that escapes the shared directory via a

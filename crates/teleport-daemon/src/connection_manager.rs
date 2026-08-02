@@ -23,7 +23,12 @@ use teleport_core::{
 
 use crate::bridge::FuseError;
 #[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
-use crate::net::{connect, create_client_endpoint, recv_message, send_message, QuicConnection};
+use teleport_core::WireCodec;
+#[allow(deprecated)] // create_client_endpoint is deprecated but used for LAN/dev mode
+use crate::net::{
+    connect, create_client_endpoint, negotiate_session_codec, recv_message, recv_message_with,
+    send_message, send_message_with, QuicConnection,
+};
 
 /// Configuration for connecting to a host
 #[derive(Clone, Debug)]
@@ -107,6 +112,8 @@ struct ManagedHost {
     status: ConnectionStatus,
     /// Session ID from handshake
     session_id: Option<[u8; 16]>,
+    /// Negotiated session wire codec
+    codec: WireCodec,
     /// Last successful ping time
     last_ping: Option<Instant>,
     /// Current RTT in milliseconds
@@ -130,6 +137,7 @@ impl ManagedHost {
             info: HostInfo::new(name),
             status: ConnectionStatus::Disconnected,
             session_id: None,
+            codec: WireCodec::Bincode,
             last_ping: None,
             rtt_ms: None,
             reconnect_attempts: 0,
@@ -222,12 +230,13 @@ impl ConnectionManager {
         };
 
         // Perform handshake
-        let (session_id, host_name, shares) = self.handshake(&conn).await?;
+        let (session_id, host_name, shares, codec) = self.handshake(&conn).await?;
 
         // Update host state
         if let Some(mut host) = self.hosts.get_mut(host_id) {
             host.connection = Some(conn);
             host.session_id = Some(session_id);
+            host.codec = codec;
             host.status = ConnectionStatus::Connected;
             host.info.name = host_name;
             host.info.status = ConnectionStatus::Connected;
@@ -262,7 +271,7 @@ impl ConnectionManager {
     async fn handshake(
         &self,
         conn: &QuicConnection,
-    ) -> Result<([u8; 16], String, Vec<ShareInfo>), ConnectionError> {
+    ) -> Result<([u8; 16], String, Vec<ShareInfo>, WireCodec), ConnectionError> {
         use teleport_core::{HelloMessage, NetMessage, PROTOCOL_VERSION};
 
         let (mut send, mut recv) = conn
@@ -290,7 +299,7 @@ impl ConnectionManager {
             .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-        // Receive HelloAck
+        // Receive HelloAck (handshake remains bincode)
         let response = recv_message(&mut recv)
             .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
@@ -311,7 +320,16 @@ impl ConnectionManager {
                 share.writable = ack.capabilities.iter().any(|c| c == "write");
                 shares.push(share);
 
-                Ok((ack.session_id, ack.host_name, shares))
+                let codec = negotiate_session_codec(
+                    &{
+                        let mut caps = crate::net::client_capabilities();
+                        caps.push("write".into());
+                        caps.push("multi-share".into());
+                        caps
+                    },
+                    &ack.capabilities,
+                );
+                Ok((ack.session_id, ack.host_name, shares, codec))
             }
             NetMessage::Error(e) => Err(ConnectionError::Protocol(e.message)),
             _ => Err(ConnectionError::Protocol(
@@ -461,11 +479,11 @@ impl ConnectionManager {
         Some((share, global.local_inode))
     }
 
-    /// Get connection for a share
-    fn get_connection_for_share(&self, share_id: &ShareId) -> Option<QuicConnection> {
+    /// Get connection and session codec for a share
+    fn get_connection_for_share(&self, share_id: &ShareId) -> Option<(QuicConnection, WireCodec)> {
         let share = self.shares.get(share_id)?;
         let host = self.hosts.get(&share.host_id)?;
-        host.connection.clone()
+        Some((host.connection.clone()?, host.codec))
     }
 
     /// Perform a lookup operation on the appropriate host
@@ -480,7 +498,7 @@ impl ConnectionManager {
             .resolve_inode(global_parent)
             .ok_or(FuseError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
@@ -494,11 +512,11 @@ impl ConnectionManager {
             name: name.to_string(),
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -523,7 +541,7 @@ impl ConnectionManager {
 
         let (share, local_inode) = self.resolve_inode(global).ok_or(FuseError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
@@ -534,11 +552,11 @@ impl ConnectionManager {
 
         let request = NetMessage::GetAttr(GetAttrRequest { inode: local_inode });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -581,7 +599,7 @@ impl ConnectionManager {
 
         let (share, local_inode) = self.resolve_inode(global).ok_or(FuseError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
@@ -596,11 +614,11 @@ impl ConnectionManager {
             limit: 1000,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -629,7 +647,7 @@ impl ConnectionManager {
 
         let (share, local_inode) = self.resolve_inode(global).ok_or(FuseError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(FuseError::Shutdown)?;
 
@@ -645,11 +663,11 @@ impl ConnectionManager {
             priority: 0,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -715,14 +733,16 @@ impl ConnectionManager {
     async fn ping_host(&self, host_id: &str) -> Result<Duration, ConnectionError> {
         use teleport_core::{NetMessage, PingMessage};
 
-        let conn = {
+        let (conn, codec) = {
             let host = self
                 .hosts
                 .get(host_id)
                 .ok_or_else(|| ConnectionError::HostNotFound(host_id.to_string()))?;
-            host.connection
+            let conn = host
+                .connection
                 .clone()
-                .ok_or(ConnectionError::NotConnected)?
+                .ok_or(ConnectionError::NotConnected)?;
+            (conn, host.codec)
         };
 
         let (mut send, mut recv) = conn
@@ -743,11 +763,11 @@ impl ConnectionManager {
             payload,
         });
 
-        send_message(&mut send, &ping)
+        send_message_with(&mut send, &ping, codec)
             .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, codec)
             .await
             .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
@@ -886,7 +906,7 @@ impl ConnectionManager {
             .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
@@ -905,11 +925,11 @@ impl ConnectionManager {
                 name: name.to_string(),
             });
 
-            send_message(&mut send, &request)
+            send_message_with(&mut send, &request, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv)
+            let response = recv_message_with(&mut recv, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
@@ -939,7 +959,7 @@ impl ConnectionManager {
             .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
@@ -954,11 +974,11 @@ impl ConnectionManager {
 
             let request = NetMessage::GetAttr(GetAttrRequest { inode });
 
-            send_message(&mut send, &request)
+            send_message_with(&mut send, &request, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv)
+            let response = recv_message_with(&mut recv, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
@@ -989,7 +1009,7 @@ impl ConnectionManager {
             .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
@@ -1008,11 +1028,11 @@ impl ConnectionManager {
                 limit: 1000,
             });
 
-            send_message(&mut send, &request)
+            send_message_with(&mut send, &request, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv)
+            let response = recv_message_with(&mut recv, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
@@ -1039,7 +1059,7 @@ impl ConnectionManager {
             .get_share_by_index(share_index)
             .ok_or(ConnectionError::NotFound)?;
 
-        let conn = self
+        let (conn, codec) = self
             .get_connection_for_share(&share.info.id)
             .ok_or(ConnectionError::NotConnected)?;
 
@@ -1057,11 +1077,11 @@ impl ConnectionManager {
                 priority: 0,
             });
 
-            send_message(&mut send, &request)
+            send_message_with(&mut send, &request, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv)
+            let response = recv_message_with(&mut recv, codec)
                 .await
                 .map_err(|e| ConnectionError::Connection(format!("{:?}", e)))?;
 

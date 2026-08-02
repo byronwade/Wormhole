@@ -43,6 +43,8 @@ import {
 import { SetupWizard } from "@/components/SetupWizard";
 import { Homepage } from "@/components/Homepage";
 import { TransferPanel } from "@/components/TransferProgress";
+import { JoinCodePanel } from "@/components/JoinCodePanel";
+import { extractJoinCode, makeShareLink } from "@/lib/join-code";
 import { useWormholeHistory } from "@/hooks/useWormholeHistory";
 import { useFileIndex, type IndexEntry } from "@/hooks/useFileIndex";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
@@ -126,59 +128,6 @@ import {
 
 // Wormhole base URL for share links
 const WORMHOLE_BASE_URL = "https://wormhole.byronwade.com";
-
-// Extract join code from URL or return as-is
-function extractJoinCode(input: string): string | null {
-  const trimmed = input.trim();
-
-  // Handle wormhole:// deep links
-  if (trimmed.startsWith("wormhole://") || trimmed.startsWith("wormhole:")) {
-    const path = trimmed.replace(/^wormhole:\/?\/?/, "").replace(/^(join|j)\//, "");
-    const code = path.toUpperCase().replace(/[^A-Z0-9-]/g, "");
-    if (code.length >= 6) {
-      return formatJoinCode(code.replace(/-/g, ""));
-    }
-    return null;
-  }
-
-  // Handle https:// web links
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    const match = trimmed.match(/\/(?:j|join)\/([A-Za-z0-9-]+)/);
-    if (match) {
-      const code = match[1].toUpperCase().replace(/[^A-Z0-9]/g, "");
-      if (code.length >= 6) {
-        return formatJoinCode(code);
-      }
-    }
-    return null;
-  }
-
-  // Handle plain codes
-  const normalized = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (normalized.length === 6) {
-    return formatJoinCode(normalized);
-  }
-
-  // Already formatted code
-  if (/^[A-Z0-9]{3}-[A-Z0-9]{3}$/i.test(trimmed)) {
-    return trimmed.toUpperCase();
-  }
-
-  return null;
-}
-
-// Format a normalized join code with dash
-function formatJoinCode(normalized: string): string {
-  if (normalized.length === 6) {
-    return `${normalized.slice(0, 3)}-${normalized.slice(3)}`;
-  }
-  return normalized;
-}
-
-// Generate share link from join code
-function makeShareLink(joinCode: string): string {
-  return `${WORMHOLE_BASE_URL}/j/${joinCode}`;
-}
 
 type ViewMode = "list" | "grid";
 type NavigationView =
@@ -1669,7 +1618,7 @@ function ShareDialog({
     }
   };
 
-  const shareLink = joinCode ? makeShareLink(joinCode) : "";
+  const shareLink = joinCode ? makeShareLink(joinCode, WORMHOLE_BASE_URL) : "";
 
   const copyShareLink = async () => {
     try {
@@ -1775,15 +1724,13 @@ function ShareDialog({
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-zinc-500">
-                  <span>Code: <code className="text-zinc-300">{joinCode}</code></span>
-                  {hostIpAddress && (
-                    <>
-                      <span className="text-zinc-700">•</span>
-                      <span>LAN: <code className="text-zinc-300">{hostIpAddress}:{port}</code></span>
-                    </>
-                  )}
-                </div>
+                <JoinCodePanel code={joinCode} />
+
+                {hostIpAddress && (
+                  <div className="text-xs text-zinc-500 text-center">
+                    LAN: <code className="text-zinc-300">{hostIpAddress}:{port}</code>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 p-3 bg-zinc-800 rounded-lg">
@@ -1955,6 +1902,11 @@ function ConnectDialog({
           {!isConnected ? (
             <>
               <div className="space-y-3">
+                <JoinCodePanel
+                  code={extractJoinCode(hostAddress)}
+                  onCodeFromClipboard={(c) => setHostAddress(c)}
+                />
+
                 {/* AGENTS.md: autocomplete, meaningful name, correct type */}
                 <div className="space-y-1.5">
                   <Input

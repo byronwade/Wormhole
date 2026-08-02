@@ -4,7 +4,7 @@ import {
   detectJoinCodeFromClipboard,
   formatJoinCode,
   joinCodeQrPayload,
-} from "@/lib/join-code";
+} from "@wormhole/shared";
 import { cn } from "@/lib/utils";
 
 interface JoinCodePanelProps {

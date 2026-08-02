@@ -3,7 +3,9 @@
 //! Chunks are keyed by [`ContentHash`] (BLAKE3). This enables:
 //! - Deduplication across files/peers
 //! - Resume after reboot without re-fetching known hashes
-//! - Future swap-in of iroh-blobs verified streaming
+//! - Optional iroh-blobs ticket helpers (`iroh-blobs` feature)
+
+pub mod iroh_tickets;
 
 use std::fs::{self, File};
 use std::io::{Read, Write};

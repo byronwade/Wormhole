@@ -79,6 +79,9 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
@@ -93,16 +96,22 @@ jobs:
       - name: Build core crates
         env:
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
         run: cargo build -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud
 
       - name: Run tests (nextest)
         env:
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
         run: cargo nextest run -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud
 
       - name: Build release
         env:
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
         run: cargo build --release -p teleport-daemon -p teleport-signal -p teleport-cloud
 
   # =============================================================================

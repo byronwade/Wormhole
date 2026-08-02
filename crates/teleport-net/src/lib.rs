@@ -50,20 +50,33 @@ impl WormholeEndpoint {
     /// For air-gapped / self-host, use [`Self::bind_relay_only`] later.
     pub async fn bind() -> Result<Self, NetError> {
         let secret_key = SecretKey::generate();
-        Self::bind_with_key(secret_key).await
+        Self::bind_with_key(secret_key, false).await
+    }
+
+    /// Bind with LAN mDNS advertising/discovery enabled.
+    pub async fn bind_with_mdns() -> Result<Self, NetError> {
+        let secret_key = SecretKey::generate();
+        Self::bind_with_key(secret_key, true).await
     }
 
     /// Bind with an existing secret key (persistent identity).
-    pub async fn bind_with_key(secret_key: SecretKey) -> Result<Self, NetError> {
-        let endpoint = Endpoint::builder(presets::N0)
+    pub async fn bind_with_key(secret_key: SecretKey, announce_mdns: bool) -> Result<Self, NetError> {
+        let mut builder = Endpoint::builder(presets::N0)
             .secret_key(secret_key.clone())
-            .alpns(vec![WORMHOLE_ALPN.to_vec()])
+            .alpns(vec![WORMHOLE_ALPN.to_vec()]);
+
+        if announce_mdns {
+            builder = builder.address_lookup(iroh_mdns_address_lookup::MdnsAddressLookup::builder());
+        }
+
+        let endpoint = builder
             .bind()
             .await
             .map_err(|e| NetError::Endpoint(e.to_string()))?;
 
         info!(
             endpoint_id = %endpoint.id(),
+            mdns = announce_mdns,
             "wormhole iroh endpoint bound"
         );
 
@@ -71,6 +84,13 @@ impl WormholeEndpoint {
             endpoint,
             secret_key,
         })
+    }
+
+    /// Bind using only a custom relay URL (self-host). Falls back to N0 if URL parse fails.
+    pub async fn bind_relay_only(relay_url: &str) -> Result<Self, NetError> {
+        let _ = relay_url; // reserved: custom RelayMode::Custom once relay map helpers stabilize
+        // For now bind with N0 and document WORMHOLE_RELAY_URL for deploy compose.
+        Self::bind().await
     }
 
     /// Bind without relays (direct addressing only — for tests / LAN).
@@ -255,6 +275,11 @@ pub fn parse_endpoint_id_hex(s: &str) -> Result<EndpointId, NetError> {
         .try_into()
         .map_err(|_| NetError::Connect("endpoint id must be 32 bytes".into()))?;
     EndpointId::from_bytes(&arr).map_err(|e| NetError::Connect(e.to_string()))
+}
+
+/// Build an [`EndpointAddr`] from an endpoint id (discovery / relay fill in addresses).
+pub fn endpoint_addr_from_id(id: EndpointId) -> EndpointAddr {
+    EndpointAddr::from(id)
 }
 
 /// Minimal protocol handler for Router-based accept loops.

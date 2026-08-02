@@ -63,6 +63,7 @@ pub mod host;
 #[cfg(feature = "iroh")]
 pub mod iroh_host;
 pub mod lock_manager;
+pub mod mount_token_gate;
 pub mod multi_host;
 pub mod net;
 pub mod rate_limiter;
