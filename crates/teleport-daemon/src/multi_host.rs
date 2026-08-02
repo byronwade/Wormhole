@@ -403,11 +403,8 @@ async fn handle_connection(
     );
 
     // Determine capabilities based on shares
-    let mut capabilities = vec!["read".into(), "multi-share".into()];
-    if config.shares.iter().any(|s| s.writable) {
-        capabilities.push("write".into());
-        capabilities.push("lock".into());
-    }
+    let mut capabilities = crate::net::host_capabilities(config.shares.iter().any(|s| s.writable));
+    capabilities.push("multi-share".into());
 
     // For backward compatibility, use first share as root
     let root_inode = ROOT_INODE;

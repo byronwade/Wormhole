@@ -13,9 +13,17 @@ path = "src/bin/wormhole.rs"
 name = "wormhole-mount"
 path = "src/bin/wormhole-mount.rs"
 
+[features]
+default = ["iroh"]
+iroh = ["dep:teleport-net"]
+cloud = ["dep:teleport-cloud"]
+
 [dependencies]
 teleport-core = { path = "../teleport-core" }
 teleport-signal = { path = "../teleport-signal" }
+teleport-blobs = { path = "../teleport-blobs" }
+teleport-net = { path = "../teleport-net", optional = true }
+teleport-cloud = { path = "../teleport-cloud", optional = true }
 
 # Async runtime
 tokio = { workspace = true }

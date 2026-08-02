@@ -160,7 +160,7 @@ impl WormholeClient {
         let hello = NetMessage::Hello(HelloMessage {
             protocol_version: PROTOCOL_VERSION,
             client_id,
-            capabilities: vec!["read".into()],
+            capabilities: crate::net::client_capabilities(),
         });
 
         // Send Hello with timeout
@@ -177,7 +177,8 @@ impl WormholeClient {
 
         match response {
             NetMessage::HelloAck(ack) => {
-                if ack.protocol_version != PROTOCOL_VERSION {
+                // Accept same major lineage (v1 legacy hosts and v2 postcard-capable).
+                if ack.protocol_version == 0 || ack.protocol_version > PROTOCOL_VERSION {
                     return Err(ClientError::VersionMismatch {
                         expected: PROTOCOL_VERSION,
                         actual: ack.protocol_version,

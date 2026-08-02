@@ -427,21 +427,19 @@ pub struct BulkChunkResponseMsg {
 
 // === Serialization ===
 
-/// Serialize a message with length prefix
+/// Serialize a message with length prefix using the legacy bincode codec.
+///
+/// Prefer [`crate::serialize_with_codec`] with [`crate::WireCodec::Postcard`]
+/// after handshake negotiation.
 pub fn serialize_message(msg: &NetMessage) -> Result<Vec<u8>, bincode::Error> {
-    let payload = bincode::serialize(msg)?;
-    let len = payload.len() as u32;
-
-    let mut result = Vec::with_capacity(4 + payload.len());
-    result.extend_from_slice(&len.to_le_bytes());
-    result.extend_from_slice(&payload);
-
-    Ok(result)
+    crate::serialize_with_codec(msg, crate::WireCodec::Bincode)
+        .map_err(|e| Box::new(bincode::ErrorKind::Custom(e.to_string())) as bincode::Error)
 }
 
-/// Deserialize a message (without length prefix)
+/// Deserialize a message (without length prefix) using legacy bincode.
 pub fn deserialize_message(data: &[u8]) -> Result<NetMessage, bincode::Error> {
-    bincode::deserialize(data)
+    crate::deserialize_with_codec(data, crate::WireCodec::Bincode)
+        .map_err(|e| Box::new(bincode::ErrorKind::Custom(e.to_string())) as bincode::Error)
 }
 
 #[cfg(test)]

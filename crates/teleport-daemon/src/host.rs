@@ -401,7 +401,7 @@ async fn handle_connection(
         session_id,
         root_inode: ROOT_INODE,
         host_name: host_name.clone(),
-        capabilities: vec!["read".into(), "write".into(), "lock".into()],
+        capabilities: crate::net::host_capabilities(true),
     });
     send_message(&mut send, &ack).await?;
 

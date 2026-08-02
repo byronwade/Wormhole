@@ -1,0 +1,6 @@
+# Optional aliases. Prefer installing mold locally for faster links:
+#   sudo apt install mold clang
+# then: RUSTFLAGS='-C link-arg=-fuse-ld=mold' cargo build
+
+[alias]
+xtest = "nextest run"

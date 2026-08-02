@@ -278,7 +278,12 @@ impl ConnectionManager {
         let hello = NetMessage::Hello(HelloMessage {
             protocol_version: PROTOCOL_VERSION,
             client_id,
-            capabilities: vec!["read".into(), "write".into(), "multi-share".into()],
+            capabilities: {
+                let mut caps = crate::net::client_capabilities();
+                caps.push("write".into());
+                caps.push("multi-share".into());
+                caps
+            },
         });
 
         send_message(&mut send, &hello)

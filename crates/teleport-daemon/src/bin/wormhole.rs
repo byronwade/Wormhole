@@ -1707,7 +1707,7 @@ async fn run_mount_via_signal(
     let mount_point = args
         .path
         .clone()
-        .unwrap_or_else(|| std::env::temp_dir().join(format!("wormhole-{}", &code)));
+        .unwrap_or_else(|| std::env::temp_dir().join(format!("wormhole-{code}")));
 
     // See run_mount_direct: don't pre-create macOS FSKit /Volumes mount points.
     #[cfg(target_os = "macos")]

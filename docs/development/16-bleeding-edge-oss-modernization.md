@@ -1,7 +1,7 @@
 # Wormhole Bleeding-Edge OSS Modernization
 
 **Date:** 2026-08-02  
-**Status:** Proposed vision (supersedes stack choices where noted; does not rewrite working phases overnight)  
+**Status:** Accepted — Waves A–E implemented in tree (2026-08-02). Remaining polish: full iroh-blobs streaming swap, UI React 19 desktop parity.  
 **Audience:** Engineering + product  
 **Related:** `00-master-implementation-plan.md`, `03-architecture-decisions.md`, `docs/superpowers/specs/2026-06-03-open-core-team-cloud-architecture.md`
 

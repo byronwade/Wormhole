@@ -31,7 +31,8 @@ pub const IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 pub const MAX_UDP_PAYLOAD_SIZE: u16 = 1350;
 
 use teleport_core::{
-    deserialize_message, serialize_message, NetMessage, ProtocolError, MAX_MESSAGE_SIZE,
+    deserialize_with_codec, serialize_with_codec, NetMessage, ProtocolError, WireCodec,
+    CAP_CODEC_POSTCARD, MAX_MESSAGE_SIZE,
 };
 
 /// QUIC connection wrapper
@@ -94,12 +95,22 @@ impl From<ProtocolError> for ConnectionError {
     }
 }
 
-/// Send a message on a stream
+/// Send a message on a stream using the legacy bincode codec.
 pub async fn send_message(
     stream: &mut SendStream,
     msg: &NetMessage,
 ) -> Result<(), ConnectionError> {
-    let data = serialize_message(msg).map_err(|e| ConnectionError::Send(e.to_string()))?;
+    send_message_with(stream, msg, WireCodec::Bincode).await
+}
+
+/// Send a message with an explicit wire codec.
+pub async fn send_message_with(
+    stream: &mut SendStream,
+    msg: &NetMessage,
+    codec: WireCodec,
+) -> Result<(), ConnectionError> {
+    let data =
+        serialize_with_codec(msg, codec).map_err(|e| ConnectionError::Send(e.to_string()))?;
 
     stream
         .write_all(&data)
@@ -109,8 +120,16 @@ pub async fn send_message(
     Ok(())
 }
 
-/// Receive a message from a stream
+/// Receive a message from a stream using the legacy bincode codec.
 pub async fn recv_message(stream: &mut RecvStream) -> Result<NetMessage, ConnectionError> {
+    recv_message_with(stream, WireCodec::Bincode).await
+}
+
+/// Receive a message with an explicit wire codec.
+pub async fn recv_message_with(
+    stream: &mut RecvStream,
+    codec: WireCodec,
+) -> Result<NetMessage, ConnectionError> {
     // Read length prefix
     let mut len_buf = [0u8; 4];
     stream
@@ -135,11 +154,29 @@ pub async fn recv_message(stream: &mut RecvStream) -> Result<NetMessage, Connect
         .await
         .map_err(|e| ConnectionError::Receive(e.to_string()))?;
 
-    // Deserialize
-    let msg = deserialize_message(&payload)
-        .map_err(|e| ConnectionError::Protocol(ProtocolError::Deserialization(e.to_string())))?;
+    let msg = deserialize_with_codec(&payload, codec)?;
 
     Ok(msg)
+}
+
+/// Negotiate session codec from Hello/HelloAck capability lists.
+pub fn negotiate_session_codec(local_caps: &[String], remote_caps: &[String]) -> WireCodec {
+    WireCodec::negotiate(local_caps, remote_caps)
+}
+
+/// Standard capability list for hosts (includes postcard).
+pub fn host_capabilities(writable: bool) -> Vec<String> {
+    let mut caps = vec![CAP_CODEC_POSTCARD.into(), "read".into()];
+    if writable {
+        caps.push("write".into());
+        caps.push("lock".into());
+    }
+    caps
+}
+
+/// Standard capability list for clients.
+pub fn client_capabilities() -> Vec<String> {
+    vec![CAP_CODEC_POSTCARD.into(), "read".into()]
 }
 
 /// Certificate fingerprint - BLAKE3 hash of DER-encoded certificate

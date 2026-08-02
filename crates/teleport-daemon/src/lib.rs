@@ -53,12 +53,15 @@ pub mod bulk_transfer;
 pub mod cache;
 pub mod client;
 pub mod connection_manager;
+pub mod content_store;
 pub mod dedup_index;
 pub mod disk_cache;
 pub mod gc;
 pub mod global;
 pub mod governor;
 pub mod host;
+#[cfg(feature = "iroh")]
+pub mod iroh_host;
 pub mod lock_manager;
 pub mod multi_host;
 pub mod net;
@@ -67,6 +70,8 @@ pub mod rendezvous;
 pub mod stream_pool;
 pub mod sync_engine;
 pub mod updater;
+
+pub use content_store::ContentStore;
 
 // Bridge re-export (platform-agnostic)
 pub use bridge::{BridgeHandler, FuseAsyncBridge, FuseError, FuseRequest};

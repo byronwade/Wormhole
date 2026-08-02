@@ -1,0 +1,28 @@
+[package]
+name = "teleport-cloud"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Control-plane helpers: mount token issuance, Polar webhooks, OPAQUE login"
+rust-version.workspace = true
+
+[[bin]]
+name = "teleport-cloud"
+path = "src/main.rs"
+
+[dependencies]
+teleport-core = { path = "../teleport-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+hex = { workspace = true }
+ed25519-dalek = { workspace = true }
+anyhow = { workspace = true }
+parking_lot = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

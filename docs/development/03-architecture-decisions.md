@@ -466,16 +466,16 @@ fn read(...) {
 - ADR-012: File Locking Protocol
 - ADR-013: Versioning and Migration
 - ADR-014: Telemetry and Analytics (if any)
-- ADR-015: **iroh as networking substrate** (proposed — see [`16-bleeding-edge-oss-modernization.md`](./16-bleeding-edge-oss-modernization.md))
-- ADR-016: **postcard (+ rkyv indexes) superseding bincode** (proposed)
-- ADR-017: **Polar + self-host BaaS for open-core billing** (proposed)
-- ADR-018: Content-addressed chunk store aligned with iroh-blobs (proposed)
+- ADR-015: **iroh as networking substrate** — [`adr/015-iroh-networking.md`](./adr/015-iroh-networking.md) ✅
+- ADR-016: **postcard dual-decode** — [`adr/016-postcard-codec.md`](./adr/016-postcard-codec.md) ✅
+- ADR-017: **Polar + self-host BaaS** — [`adr/017-polar-selfhost-billing.md`](./adr/017-polar-selfhost-billing.md) ✅
+- ADR-018: Content-addressed blob store (`teleport-blobs`) ✅ implemented; iroh-blobs streaming TBD
 
-### Proposed supersessions (not yet accepted)
+### Accepted supersessions (2026-08-02)
 
-| Existing ADR | Proposed change |
-|--------------|-----------------|
-| ADR-001 quinn | Keep quinn under the hood; app code dials via iroh Endpoint |
-| ADR-002 bincode | Migrate control plane to postcard; raw/blob for file bytes |
-| ADR-007 SPAKE2 | Keep for join codes; add OPAQUE for cloud account passwords |
-| ADR-009 WebSocket signaling | Prefer iroh relay + discovery; custom signal becomes optional |
+| Existing ADR | Change |
+|--------------|--------|
+| ADR-001 quinn | quinn remains under iroh; app code uses `teleport-net` Endpoint |
+| ADR-002 bincode | postcard preferred via capability negotiation; bincode for bootstrap |
+| ADR-007 SPAKE2 | Keep for join codes; OPAQUE added for cloud passwords |
+| ADR-009 WebSocket signaling | iroh relay preferred; custom signal optional during migration |
