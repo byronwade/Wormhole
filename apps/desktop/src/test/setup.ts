@@ -14,6 +14,11 @@ vi.mock("@tauri-apps/api/core", () => ({
         return Promise.resolve(["192.168.1.100"]);
       case "check_fuse_installed":
         return Promise.resolve(true);
+      case "default_mount_path":
+        return Promise.resolve("/home/test/Wormhole/mount");
+      case "open_file":
+      case "reveal_in_explorer":
+        return Promise.resolve();
       default:
         return Promise.resolve(null);
     }

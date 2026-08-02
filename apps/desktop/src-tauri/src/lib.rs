@@ -112,6 +112,7 @@ pub fn run() {
             commands::get_mount_info,
             // File operations
             commands::delete_path,
+            commands::default_mount_path,
             commands::open_file,
             commands::reveal_in_explorer,
             // Setup wizard

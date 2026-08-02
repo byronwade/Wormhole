@@ -84,6 +84,9 @@ importers:
       lucide-react:
         specifier: ^0.460.0
         version: 0.460.0(react@19.1.0)
+      qrcode.react:
+        specifier: ^4.2.0
+        version: 4.2.0(react@19.1.0)
       react:
         specifier: 19.1.0
         version: 19.1.0
@@ -112,6 +115,9 @@ importers:
       '@types/node':
         specifier: ^24.10.2
         version: 24.10.2
+      '@types/qrcode.react':
+        specifier: ^3.0.0
+        version: 3.0.0(react@19.1.0)
       '@types/react':
         specifier: 19.1.0
         version: 19.1.0
@@ -141,7 +147,7 @@ importers:
         version: 6.4.1(@types/node@24.10.2)(jiti@2.6.1)(lightningcss@1.30.2)
       vitest:
         specifier: ^4.0.15
-        version: 4.0.15(@types/node@24.10.2)(happy-dom@20.9.0)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(lightningcss@1.30.2)
+        version: 4.0.15(@types/node@24.10.2)(happy-dom@20.9.0)(jiti@2.6.1)(jsdom@27.3.0)(lightningcss@1.30.2)
 
   apps/web:
     dependencies:
@@ -201,7 +207,7 @@ importers:
         version: 0.460.0(react@19.1.0)
       next:
         specifier: 15.5.7
-        version: 15.5.7(@babel/core@7.28.5)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 15.5.7(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -298,7 +304,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.15
-        version: 4.0.15(@types/node@24.10.2)(happy-dom@20.9.0)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(lightningcss@1.30.2)
+        version: 4.0.15(@types/node@24.10.2)(happy-dom@20.9.0)(jiti@2.6.1)(jsdom@27.3.0)(lightningcss@1.30.2)
 
 packages:
 
@@ -1918,6 +1924,10 @@ packages:
   '@types/offscreencanvas@2019.7.3':
     resolution: {integrity: sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A==}
 
+  '@types/qrcode.react@3.0.0':
+    resolution: {integrity: sha512-VPHYhnDfvt4LjlWajpYWRBVqmftEEza3GJVhe8sS5Wew0n4nTkg3+2MYunAiU6t04AZt0s/hkkMovefWeENjAQ==}
+    deprecated: This is a stub types definition. qrcode.react provides its own type definitions, so you do not need this installed.
+
   '@types/react-dom@19.1.0':
     resolution: {integrity: sha512-21E2zejNNRtjG4hKIyJz4aWswGEcNFTgttA0bZIRGjj1HA/tbSUxIJnIcYbn98pwJck0cS1bsQhn6eaKqbcFWw==}
     peerDependencies:
@@ -3426,6 +3436,11 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  qrcode.react@4.2.0:
+    resolution: {integrity: sha512-QpgqWi8rD9DsS9EP3z7BT+5lY5SFhsqGjpgW5DY/i3mK4M9DTBNz3ErMi8BWYEfI3L0d8GIbGmcdFAS1uIRGjA==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -5632,6 +5647,12 @@ snapshots:
 
   '@types/offscreencanvas@2019.7.3': {}
 
+  '@types/qrcode.react@3.0.0(react@19.1.0)':
+    dependencies:
+      qrcode.react: 4.2.0(react@19.1.0)
+    transitivePeerDependencies:
+      - react
+
   '@types/react-dom@19.1.0(@types/react@19.1.0)':
     dependencies:
       '@types/react': 19.1.0
@@ -7174,7 +7195,7 @@ snapshots:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
 
-  next@15.5.7(@babel/core@7.28.5)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  next@15.5.7(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       '@next/env': 15.5.7
       '@swc/helpers': 0.5.15
@@ -7182,7 +7203,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
-      styled-jsx: 5.1.6(@babel/core@7.28.5)(react@19.1.0)
+      styled-jsx: 5.1.6(react@19.1.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.7
       '@next/swc-darwin-x64': 15.5.7
@@ -7326,6 +7347,10 @@ snapshots:
       react-is: 16.13.1
 
   punycode@2.3.1: {}
+
+  qrcode.react@4.2.0(react@19.1.0):
+    dependencies:
+      react: 19.1.0
 
   queue-microtask@1.2.3: {}
 
@@ -7720,12 +7745,10 @@ snapshots:
 
   strip-json-comments@3.1.1: {}
 
-  styled-jsx@5.1.6(@babel/core@7.28.5)(react@19.1.0):
+  styled-jsx@5.1.6(react@19.1.0):
     dependencies:
       client-only: 0.0.1
       react: 19.1.0
-    optionalDependencies:
-      '@babel/core': 7.28.5
 
   supports-color@7.2.0:
     dependencies:
@@ -8054,7 +8077,7 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@4.0.15(@types/node@24.10.2)(happy-dom@20.9.0)(jiti@2.6.1)(jsdom@27.3.0(postcss@8.5.6))(lightningcss@1.30.2):
+  vitest@4.0.15(@types/node@24.10.2)(happy-dom@20.9.0)(jiti@2.6.1)(jsdom@27.3.0)(lightningcss@1.30.2):
     dependencies:
       '@vitest/expect': 4.0.15
       '@vitest/mocker': 4.0.15(vite@6.4.1(@types/node@24.10.2)(jiti@2.6.1)(lightningcss@1.30.2))

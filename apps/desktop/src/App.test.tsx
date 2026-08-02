@@ -6,86 +6,52 @@ import App from "./App";
 describe("App Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Clear localStorage before each test
     localStorage.clear();
-    // Set setup as complete to skip wizard
     localStorage.setItem("wormhole_setup_complete", "true");
   });
 
   describe("Sidebar Navigation", () => {
-    it("renders the sidebar with navigation items", async () => {
+    it("renders Share / Mounts / Settings-first navigation", async () => {
       await act(async () => {
         render(<App />);
       });
 
-      // Wait for initial load
       await waitFor(() => {
-        expect(screen.getByText("All Files")).toBeInTheDocument();
+        expect(screen.getByText("Home")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Shared with Me")).toBeInTheDocument();
-      expect(screen.getByText("My Shares")).toBeInTheDocument();
+      expect(screen.getByText("Sharing")).toBeInTheDocument();
+      expect(screen.getByText("Mounts")).toBeInTheDocument();
+      expect(screen.getByText("Settings")).toBeInTheDocument();
     });
 
-    it("renders Recent and Favorites sections", async () => {
+    it("buries Recent and Favorites under More", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Recent")).toBeInTheDocument();
+        expect(screen.getByText("More…")).toBeInTheDocument();
       });
 
+      // Collapsed by default — labels exist inside details
+      expect(screen.getByText("Recent")).toBeInTheDocument();
       expect(screen.getByText("Favorites")).toBeInTheDocument();
     });
-
-    it("renders Settings button", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Settings")).toBeInTheDocument();
-      });
-    });
   });
 
-  describe("Main Content Area", () => {
-    it("renders Connect and Share buttons in empty state", async () => {
+  describe("Homepage empty state", () => {
+    it("shows brand-first empty composition", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect")).toBeInTheDocument();
+        expect(screen.getByText("Mount Any Folder.")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Share Folder")).toBeInTheDocument();
-    });
-
-    it("shows empty state when no files", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("No active shares")).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe("Setup Wizard", () => {
-    it("shows setup wizard on first launch", async () => {
-      // Clear the setup complete flag
-      localStorage.removeItem("wormhole_setup_complete");
-
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Welcome to Wormhole")).toBeInTheDocument();
-      });
+      expect(screen.getByText("Share a folder")).toBeInTheDocument();
+      expect(screen.getByText("Enter a code")).toBeInTheDocument();
     });
 
     it("skips wizard when setup is complete", async () => {
@@ -96,56 +62,56 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        // Should show main app, not wizard
         expect(screen.queryByText("Welcome to Wormhole")).not.toBeInTheDocument();
-        expect(screen.getByText("All Files")).toBeInTheDocument();
+        expect(screen.getByText("Home")).toBeInTheDocument();
       });
     });
   });
 
-  describe("File Browser", () => {
-    it("renders correctly with no active folder", async () => {
+  describe("Setup Wizard", () => {
+    it("shows setup wizard on first launch", async () => {
+      localStorage.removeItem("wormhole_setup_complete");
+
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        // Should show the empty state / welcome screen
-        expect(screen.getByText("All Files")).toBeInTheDocument();
+        expect(screen.getByText("Welcome to Wormhole")).toBeInTheDocument();
       });
     });
   });
 
   describe("User Interactions", () => {
-    it("Connect to Share button is clickable", async () => {
+    it("Enter a code CTA is clickable", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect")).toBeInTheDocument();
+        expect(screen.getByText("Enter a code")).toBeInTheDocument();
       });
 
-      const connectButton = screen.getByText("Connect").closest("button");
+      const connectButton = screen.getByText("Enter a code").closest("button");
       expect(connectButton).toBeInTheDocument();
       expect(connectButton).not.toBeDisabled();
     });
 
-    it("Share a Folder button is clickable", async () => {
+    it("Share a folder CTA is clickable", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Share Folder")).toBeInTheDocument();
+        expect(screen.getByText("Share a folder")).toBeInTheDocument();
       });
 
-      const shareButton = screen.getByText("Share Folder").closest("button");
+      const shareButton = screen.getByText("Share a folder").closest("button");
       expect(shareButton).toBeInTheDocument();
       expect(shareButton).not.toBeDisabled();
     });
 
-    it("sidebar buttons are interactive", async () => {
+    it("sidebar Sharing nav is interactive", async () => {
       const user = userEvent.setup();
 
       await act(async () => {
@@ -153,48 +119,42 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("My Shares")).toBeInTheDocument();
+        expect(screen.getByText("Sharing")).toBeInTheDocument();
       });
 
-      // Click on My Shares
-      const mySharesButton = screen.getByText("My Shares").closest("button");
-      if (mySharesButton) {
-        await user.click(mySharesButton);
+      const sharingButton = screen.getByText("Sharing").closest("button");
+      if (sharingButton) {
+        await user.click(sharingButton);
       }
 
-      // Should now show My Shares view header
       await waitFor(() => {
-        // The header should show "My Shares" when that view is active
-        const headers = screen.getAllByText("My Shares");
+        const headers = screen.getAllByText("Sharing");
         expect(headers.length).toBeGreaterThan(0);
       });
     });
   });
 
   describe("Accessibility", () => {
-    it("main navigation elements are accessible", async () => {
+    it("main navigation is present", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        const sidebar = screen.getByText("All Files").closest("nav") || screen.getByText("All Files").closest("div");
-        expect(sidebar).toBeInTheDocument();
+        expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
       });
     });
 
-    it("buttons are focusable", async () => {
+    it("primary CTAs are focusable", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect")).toBeInTheDocument();
+        expect(screen.getByText("Enter a code")).toBeInTheDocument();
       });
 
-      const connectButton = screen.getByText("Connect").closest("button");
-      expect(connectButton).toBeInTheDocument();
-      // Buttons should be focusable (not have tabindex=-1)
+      const connectButton = screen.getByText("Enter a code").closest("button");
       expect(connectButton).not.toHaveAttribute("tabindex", "-1");
     });
   });
@@ -207,8 +167,7 @@ describe("ErrorBoundary", () => {
     });
 
     await waitFor(() => {
-      // App should render normally
-      expect(screen.getByText("All Files")).toBeInTheDocument();
+      expect(screen.getByText("Home")).toBeInTheDocument();
     });
   });
 });

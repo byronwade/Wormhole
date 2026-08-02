@@ -1505,6 +1505,43 @@ pub fn delete_path(path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Resolve (and create) a default mount directory under `~/Wormhole/<label>`.
+///
+/// Used by the one-field Connect flow so users never pick a mount folder.
+#[tauri::command]
+pub fn default_mount_path(label: String) -> Result<String, String> {
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+
+    let safe_label: String = label
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(64)
+        .collect();
+    let safe_label = if safe_label.is_empty() {
+        "mount".to_string()
+    } else {
+        safe_label
+    };
+
+    let wormhole_root = home.join("Wormhole");
+    let mount_dir = wormhole_root.join(&safe_label);
+
+    std::fs::create_dir_all(&mount_dir)
+        .map_err(|e| format!("Failed to create mount directory: {}", e))?;
+
+    info!("Default mount path: {}", mount_dir.display());
+    Ok(mount_dir.to_string_lossy().to_string())
+}
+
 /// Open a file with the default application
 #[tauri::command]
 pub fn open_file(path: String) -> Result<(), String> {
