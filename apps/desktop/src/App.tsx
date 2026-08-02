@@ -38,7 +38,10 @@ import {
   Timer,
   Link2,
   ChevronDown,
-} from "lucide-react";
+  IconBack,
+  IconDrive,
+  IconDrop,
+} from "@/components/icons";
 import { SetupWizard } from "@/components/SetupWizard";
 import { PortalHome } from "@/components/PortalHome";
 import { TransferPanel } from "@/components/TransferProgress";
@@ -949,7 +952,10 @@ function FileBrowserLegacy({
             })}
             className={isFavorite(file.path) ? "text-amber-400" : ""}
           >
-            <Star className={`w-4 h-4 mr-2 ${isFavorite(file.path) ? "fill-amber-400" : ""}`} />
+            <Star
+              className={`w-4 h-4 mr-2 ${isFavorite(file.path) ? "text-amber-400" : ""}`}
+              weight={isFavorite(file.path) ? "fill" : "duotone"}
+            />
             {isFavorite(file.path) ? "Remove from Favorites" : "Add to Favorites"}
           </ContextMenuItem>
           <ContextMenuSeparator />
@@ -1643,8 +1649,9 @@ function ShareDialog({
                     variant="outline"
                     aria-pressed={shareMode === "mount"}
                     onClick={() => setShareMode("mount")}
-                    className={`min-h-11 ${shareMode === "mount" ? "border-[#7C3AED] bg-[#7C3AED]/25 text-white ring-1 ring-[#7C3AED]/40" : "border-zinc-700 text-zinc-400"}`}
+                    className={`portal-press min-h-11 ${shareMode === "mount" ? "border-[#7C3AED] bg-[#7C3AED]/25 text-white ring-1 ring-[#7C3AED]/40" : "border-zinc-700 text-zinc-400"}`}
                   >
+                    <IconDrive className="mr-1.5 h-4 w-4" />
                     Mount
                   </Button>
                   <Button
@@ -1652,8 +1659,9 @@ function ShareDialog({
                     variant="outline"
                     aria-pressed={shareMode === "drop"}
                     onClick={() => { setShareMode("drop"); if (expirationOption === "forever") setExpirationOption("24h"); }}
-                    className={`min-h-11 ${shareMode === "drop" ? "border-[#7C3AED] bg-[#7C3AED]/25 text-white ring-1 ring-[#7C3AED]/40" : "border-zinc-700 text-zinc-400"}`}
+                    className={`portal-press min-h-11 ${shareMode === "drop" ? "border-[#7C3AED] bg-[#7C3AED]/25 text-white ring-1 ring-[#7C3AED]/40" : "border-zinc-700 text-zinc-400"}`}
                   >
+                    <IconDrop className="mr-1.5 h-4 w-4" />
                     Drop
                   </Button>
                 </div>
@@ -1688,11 +1696,12 @@ function ShareDialog({
               <Button
                 onClick={handleStartHosting}
                 disabled={!sharePath || isStarting}
-                className="w-full min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                className="portal-press w-full min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                aria-busy={isStarting}
               >
                 {isStarting ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 motion-safe:animate-spin" aria-hidden />
+                    <Loader2 className="w-4 h-4 mr-2" />
                     Starting…
                   </>
                 ) : (
@@ -2048,11 +2057,12 @@ function ConnectDialog({
               <Button
                 onClick={handleConnect}
                 disabled={!isValidCode || isConnecting}
-                className="w-full min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                className="portal-press w-full min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                aria-busy={isConnecting}
               >
                 {isConnecting ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 motion-safe:animate-spin" aria-hidden />
+                    <Loader2 className="w-4 h-4 mr-2" />
                     Connecting…
                   </>
                 ) : (
@@ -2977,7 +2987,8 @@ function App() {
                   onClick={() => setActiveView("all-files")}
                   className="portal-press min-h-10 text-zinc-400 hover:text-white"
                 >
-                  ← Portal
+                  <IconBack className="mr-1.5 h-4 w-4" />
+                  Portal
                 </Button>
                 <h1 className="font-display text-base font-medium text-white">
                   {activeView === "shared-with-me" && "Mounts"}
@@ -3376,7 +3387,7 @@ function App() {
                             className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-amber-500/20 hover:text-amber-400"
                             aria-label="Remove from favorites"
                           >
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <Star className="w-3.5 h-3.5 text-amber-400" weight="fill" />
                           </Button>
                         </div>
                       </div>

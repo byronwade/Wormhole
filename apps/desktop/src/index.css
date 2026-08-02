@@ -376,7 +376,8 @@ button, .select-none {
     background-color 160ms ease,
     color 160ms ease,
     border-color 160ms ease,
-    opacity 160ms ease;
+    opacity 160ms ease,
+    box-shadow 160ms ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -385,12 +386,21 @@ button, .select-none {
   transform: scale(0.97);
 }
 
+.portal-press:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #0f0f0f, 0 0 0 4px rgba(124, 58, 237, 0.85);
+}
+
 .portal-row {
   transition: background-color 180ms ease;
 }
 
 .portal-row:hover {
   background-color: rgba(255, 255, 255, 0.03);
+}
+
+.portal-row:focus-within {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 @media (prefers-reduced-motion: reduce) {

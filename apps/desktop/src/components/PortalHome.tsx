@@ -9,6 +9,7 @@ import {
   IconSettings,
   IconShare,
   IconSpeed,
+  IconSpinner,
 } from "@/components/icons";
 import {
   filterFreshPeers,
@@ -186,8 +187,13 @@ export function PortalHome({
                           disabled={mountingId === peer.id}
                           className="portal-press min-h-10 bg-[#7C3AED] px-4 transition-all duration-200 hover:bg-[#6D28D9] disabled:opacity-70"
                           onClick={() => handleQuickMount(peer.join_code!, peer.id, peer.name)}
+                          aria-busy={mountingId === peer.id}
                         >
-                          <IconMount className="mr-1.5 h-4 w-4" />
+                          {mountingId === peer.id ? (
+                            <IconSpinner className="mr-1.5 h-4 w-4" />
+                          ) : (
+                            <IconMount className="mr-1.5 h-4 w-4" />
+                          )}
                           {mountingId === peer.id ? "Mounting…" : "Mount"}
                         </Button>
                       )}
@@ -215,6 +221,7 @@ export function PortalHome({
 
               {empty ? (
                 <div className="rounded-2xl border border-dashed border-white/[0.06] px-5 py-10">
+                  <IconNearby className="mb-3 h-7 w-7 text-zinc-700" />
                   <p className="text-sm text-zinc-400">No active tunnels</p>
                   <p className="mt-2 max-w-sm text-xs leading-relaxed text-zinc-600">
                     Tip: use the menu-bar icon to share or enter a code without opening this window.

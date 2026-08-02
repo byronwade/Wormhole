@@ -97,7 +97,7 @@ describe("App Component — Portal shell", () => {
 
       await waitFor(() => {
         expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
-        expect(screen.getByText("← Portal")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Portal/i })).toBeInTheDocument();
       });
     });
   });

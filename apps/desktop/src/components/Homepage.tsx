@@ -1,4 +1,4 @@
-import { Upload, Download } from "lucide-react";
+import { IconShare, IconConnect } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
 interface HomepageProps {
@@ -36,17 +36,17 @@ export function Homepage({ onOpenShareDialog, onOpenConnectDialog }: HomepagePro
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Button
             onClick={onOpenShareDialog}
-            className="min-h-12 px-8 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-base"
+            className="portal-press min-h-12 px-8 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-base"
           >
-            <Upload className="w-4 h-4 mr-2" aria-hidden />
+            <IconShare className="w-4 h-4 mr-2" />
             Share a folder
           </Button>
           <Button
             onClick={onOpenConnectDialog}
             variant="outline"
-            className="min-h-12 px-8 border-zinc-600 hover:border-[#7C3AED]/50 hover:bg-zinc-900/80 text-zinc-100 text-base"
+            className="portal-press min-h-12 px-8 border-zinc-600 hover:border-[#7C3AED]/50 hover:bg-zinc-900/80 text-zinc-100 text-base"
           >
-            <Download className="w-4 h-4 mr-2" aria-hidden />
+            <IconConnect className="w-4 h-4 mr-2" />
             Enter a code
           </Button>
         </div>
