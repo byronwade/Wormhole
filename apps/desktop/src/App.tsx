@@ -2942,13 +2942,22 @@ function App() {
   // Note: getActiveShare() and getActiveConnection() are available from useWormholeHistory
   // for future use if needed (e.g., showing active status in header)
 
+  // Sidebar retired — keep hooks warm for buried history views / future tray summary
+  void sidebarTransfers;
+  void totalRecent;
+  void totalFavorites;
+  void projects;
+  void createProject;
+  void mediaFilter;
+  void setMediaFilter;
+
   // Show setup wizard on first run
   if (showSetupWizard) {
     return <SetupWizard onComplete={handleSetupComplete} />;
   }
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-900 text-white select-none overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#0F0F0F] text-white select-none overflow-hidden">
       {/* Title bar background */}
       <div className="h-8 w-full flex-shrink-0 bg-zinc-900 absolute top-0 left-0 right-0 z-40" />
       {/* Draggable title bar region for macOS */}
@@ -2957,67 +2966,50 @@ function App() {
         className="h-8 w-full flex-shrink-0 absolute top-0 left-0 right-0 z-50"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       />
-      {/* Layout */}
-      <div className="flex flex-1 min-h-0 pt-8">
-        {/* Left Sidebar */}
-        <Sidebar
-          activeView={activeView}
-          onViewChange={(view) => {
-            setActiveView(view);
-            // Reset folder navigation when switching to all-files view
-            if (view === "all-files") {
-              setCurrentFolder("");
-              setCurrentFolderSource(null);
-            }
-          }}
-          shareCount={shares.length}
-          connectionCount={connections.length}
-          recentCount={totalRecent}
-          favoritesCount={totalFavorites}
-          mediaFilter={mediaFilter}
-          onMediaFilterChange={setMediaFilter}
-          projects={projects}
-          onCreateProject={createProject}
-          activeTransfers={sidebarTransfers}
-        />
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Minimal Header - only show when not in file browser */}
+      {/* Full-bleed content — no sidebar; Portal is the shell */}
+      <div className="flex flex-1 min-h-0 flex-col pt-8">
           {activeView !== "all-files" && (
-            <div className="h-12 flex items-center justify-between px-6 flex-shrink-0">
-              <h1 className="text-base font-medium text-white">
-                {activeView === "shared-with-me" && "Mounts"}
-                {activeView === "my-shares" && "Sharing"}
-                {activeView === "recent" && "Recent"}
-                {activeView === "favorites" && "Favorites"}
-                {activeView === "settings" && "Settings"}
-              </h1>
+            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/[0.06] px-6 md:px-10">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveView("all-files")}
+                  className="min-h-10 text-zinc-400 hover:text-white"
+                >
+                  ← Portal
+                </Button>
+                <h1 className="font-display text-base font-medium text-white">
+                  {activeView === "shared-with-me" && "Mounts"}
+                  {activeView === "my-shares" && "Sharing"}
+                  {activeView === "recent" && "Recent"}
+                  {activeView === "favorites" && "Favorites"}
+                  {activeView === "settings" && "Settings"}
+                </h1>
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveDialog("connect")}
-                  className="text-zinc-400 hover:text-white min-h-9"
+                  className="min-h-9 text-zinc-400 hover:text-white"
                 >
-                  <Download className="w-4 h-4 mr-2" aria-hidden />
+                  <Download className="mr-2 h-4 w-4" aria-hidden />
                   Enter code
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => setActiveDialog("share")}
-                  className="bg-[#7C3AED] hover:bg-[#6D28D9] min-h-9"
+                  className="min-h-9 bg-[#7C3AED] hover:bg-[#6D28D9]"
                 >
-                  <Upload className="w-4 h-4 mr-2" aria-hidden />
+                  <Upload className="mr-2 h-4 w-4" aria-hidden />
                   Share
                 </Button>
               </div>
             </div>
           )}
 
-          {/* View Content */}
           {activeView === "all-files" && (
-            <>
               <PortalHome
                 deviceName={deviceName}
                 sessions={portalSessions}
@@ -3025,6 +3017,7 @@ function App() {
                 globalSpeed={globalSpeed}
                 onShare={() => setActiveDialog("share")}
                 onConnect={() => setActiveDialog("connect")}
+                onOpenSettings={() => setActiveView("settings")}
                 onQuickMount={(code, peerName) => { void handleQuickMount(code, peerName); }}
                 onOpenFinder={openInFinder}
                 onStopShare={(id) => { void handleStopShare(id); }}
@@ -3034,7 +3027,6 @@ function App() {
                   if (conn) void handleReconnect(conn);
                 }}
               />
-            </>
           )}
 
           {activeView === "shared-with-me" && (
@@ -3423,8 +3415,11 @@ function App() {
             </div>
           )}
 
-          {activeView === "settings" && <SettingsPage onRunSetupWizard={() => setShowSetupWizard(true)} />}
-        </div>
+          {activeView === "settings" && (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <SettingsPage onRunSetupWizard={() => setShowSetupWizard(true)} />
+            </div>
+          )}
       </div>
 
       {/* Dialogs */}
@@ -3498,7 +3493,8 @@ function App() {
   );
 }
 
-// Legacy in-app browsers retained for gradual extraction (Portal opens Finder instead)
+// Legacy chrome retained for gradual extraction (Portal is the shell; Finder is the browser)
+void Sidebar;
 void FileBrowserLegacy;
 void AllFilesViewLegacy;
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, ExternalLink, Radio, Upload, Zap } from "lucide-react";
+import { Download, ExternalLink, Radio, Settings, Upload, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MountStatusStrip } from "@/components/MountStatusStrip";
 import {
@@ -17,6 +17,7 @@ interface PortalHomeProps {
   globalSpeed?: string | null;
   onShare: () => void;
   onConnect: () => void;
+  onOpenSettings: () => void;
   /** One-tap mount from Nearby (no code dialog). */
   onQuickMount: (code: string, peerName?: string) => void;
   onOpenFinder: (path: string) => void;
@@ -36,6 +37,7 @@ export function PortalHome({
   globalSpeed,
   onShare,
   onConnect,
+  onOpenSettings,
   onQuickMount,
   onOpenFinder,
   onStopShare,
@@ -83,25 +85,37 @@ export function PortalHome({
                 : "Share a folder or enter a code. Files open in Finder — this is the tunnel."}
             </p>
           </div>
-          {showPrimaryCtas && (
-            <div className="flex flex-shrink-0 flex-wrap gap-3">
-              <Button
-                onClick={onShare}
-                className="min-h-12 px-7 bg-[#7C3AED] text-white shadow-[0_0_40px_rgba(124,58,237,0.18)] hover:bg-[#6D28D9]"
-              >
-                <Upload className="mr-2 h-4 w-4" aria-hidden />
-                Share a folder
-              </Button>
-              <Button
-                onClick={onConnect}
-                variant="outline"
-                className="min-h-12 border-white/10 bg-white/[0.02] px-7 text-zinc-100 hover:border-[#7C3AED]/40 hover:bg-white/[0.04]"
-              >
-                <Download className="mr-2 h-4 w-4" aria-hidden />
-                Enter a code
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+            {showPrimaryCtas && (
+              <>
+                <Button
+                  onClick={onShare}
+                  className="min-h-12 px-7 bg-[#7C3AED] text-white shadow-[0_0_40px_rgba(124,58,237,0.18)] hover:bg-[#6D28D9]"
+                >
+                  <Upload className="mr-2 h-4 w-4" aria-hidden />
+                  Share a folder
+                </Button>
+                <Button
+                  onClick={onConnect}
+                  variant="outline"
+                  className="min-h-12 border-white/10 bg-white/[0.02] px-7 text-zinc-100 hover:border-[#7C3AED]/40 hover:bg-white/[0.04]"
+                >
+                  <Download className="mr-2 h-4 w-4" aria-hidden />
+                  Enter a code
+                </Button>
+              </>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onOpenSettings}
+              className="h-12 w-12 text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" aria-hidden />
+            </Button>
+          </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-8 px-6 py-8 md:px-10">

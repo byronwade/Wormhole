@@ -10,17 +10,18 @@ describe("App Component — Portal shell", () => {
     localStorage.setItem("wormhole_setup_complete", "true");
   });
 
-  describe("Sidebar Navigation", () => {
-    it("renders Portal-first navigation", async () => {
+  describe("Chrome", () => {
+    it("has no left sidebar navigation", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getAllByText("Portal").length).toBeGreaterThan(0);
+        expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Settings")).toBeInTheDocument();
+      expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     });
   });
 
@@ -81,7 +82,7 @@ describe("App Component — Portal shell", () => {
       expect(connectBtn).not.toBeDisabled();
     });
 
-    it("Settings nav is interactive", async () => {
+    it("Settings opens from Portal header", async () => {
       const user = userEvent.setup();
 
       await act(async () => {
@@ -89,26 +90,14 @@ describe("App Component — Portal shell", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Settings")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
       });
 
-      const settings = screen.getByText("Settings").closest("button");
-      if (settings) await user.click(settings);
+      await user.click(screen.getByRole("button", { name: "Settings" }));
 
       await waitFor(() => {
-        expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
-      });
-    });
-  });
-
-  describe("Accessibility", () => {
-    it("main navigation is present", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+        expect(screen.getByText("← Portal")).toBeInTheDocument();
       });
     });
   });
