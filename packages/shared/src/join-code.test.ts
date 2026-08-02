@@ -5,6 +5,7 @@ import {
   isValidJoinCode,
   joinCodeQrPayload,
   normalizeJoinCode,
+  speakJoinCode,
 } from "./join-code";
 
 describe("join-code", () => {
@@ -28,5 +29,11 @@ describe("join-code", () => {
 
   it("builds qr payload", () => {
     expect(joinCodeQrPayload("ABC234")).toBe("wormhole://join/ABC-234");
+  });
+
+  it("speaks codes for phone calls", () => {
+    expect(speakJoinCode("7KJMXB")).toBe(
+      "seven · kilo · juliet — mike · xray · bravo",
+    );
   });
 });

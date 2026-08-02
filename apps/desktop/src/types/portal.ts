@@ -3,6 +3,7 @@ import type {
   ExpirationOption,
   ShareHistoryItem,
 } from "@/types/history";
+import { formatDeviceName } from "@/lib/device-name";
 
 /** Long-lived mount vs ephemeral drop share. */
 export type ShareMode = "mount" | "drop";
@@ -59,25 +60,32 @@ export function sessionsFromHistory(
     speedLabel: speedById[s.id] ?? null,
   }));
 
-  const mounted: PortalSession[] = connections.map((c) => ({
-    id: c.id,
-    kind: "mounted",
-    title: c.name || c.remoteHost || folderLeaf(c.mountPoint) || "Mounted share",
-    subtitle: c.mountPoint,
-    joinCode: c.joinCode,
-    path: c.mountPoint,
-    status:
-      c.status === "connected"
-        ? "live"
-        : c.status === "connecting"
-          ? "connecting"
-          : c.status === "error"
-            ? "error"
-            : "idle",
-    peerName: c.remoteHost,
-    speedLabel: speedById[c.id] ?? null,
-    errorMessage: c.errorMessage,
-  }));
+  const mounted: PortalSession[] = connections.map((c) => {
+    const human =
+      formatDeviceName(c.remoteHost) ||
+      formatDeviceName(c.name) ||
+      folderLeaf(c.mountPoint) ||
+      "Mounted share";
+    return {
+      id: c.id,
+      kind: "mounted" as const,
+      title: human,
+      subtitle: c.mountPoint,
+      joinCode: c.joinCode,
+      path: c.mountPoint,
+      status:
+        c.status === "connected"
+          ? ("live" as const)
+          : c.status === "connecting"
+            ? ("connecting" as const)
+            : c.status === "error"
+              ? ("error" as const)
+              : ("idle" as const),
+      peerName: formatDeviceName(c.remoteHost) || c.remoteHost,
+      speedLabel: speedById[c.id] ?? null,
+      errorMessage: c.errorMessage,
+    };
+  });
 
   // Live sessions first
   const rank = (s: PortalSession) =>

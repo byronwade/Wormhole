@@ -50,3 +50,51 @@ export function makeShareLink(code: string, baseUrl = "https://wormhole.byronwad
 export function joinCodeQrPayload(code: string): string {
   return `wormhole://join/${formatJoinCode(code)}`;
 }
+
+/** Phonetic alphabet for reading codes over the phone (unambiguous chars only). */
+const PHONETIC: Record<string, string> = {
+  "2": "two",
+  "3": "three",
+  "4": "four",
+  "5": "five",
+  "6": "six",
+  "7": "seven",
+  "8": "eight",
+  "9": "nine",
+  A: "alpha",
+  B: "bravo",
+  C: "charlie",
+  D: "delta",
+  E: "echo",
+  F: "foxtrot",
+  G: "golf",
+  H: "hotel",
+  J: "juliet",
+  K: "kilo",
+  M: "mike",
+  N: "november",
+  P: "papa",
+  Q: "quebec",
+  R: "romeo",
+  S: "sierra",
+  T: "tango",
+  U: "uniform",
+  V: "victor",
+  W: "whiskey",
+  X: "xray",
+  Y: "yankee",
+  Z: "zulu",
+};
+
+/**
+ * Speakable form for phone calls: "seven · kilo · juliet — mike · xray · bravo"
+ */
+export function speakJoinCode(code: string): string {
+  const n = normalizeJoinCode(code);
+  if (!n) return "";
+  const words = n.split("").map((ch) => PHONETIC[ch] ?? ch.toLowerCase());
+  if (words.length === 6) {
+    return `${words.slice(0, 3).join(" · ")} — ${words.slice(3).join(" · ")}`;
+  }
+  return words.join(" · ");
+}

@@ -1,11 +1,18 @@
 import { useEffect } from "react";
-import { IconCheck, IconClose } from "@/components/icons";
+import { IconCheck, IconClose, IconMount } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export interface ToastMessage {
   id: string;
   text: string;
   tone?: "success" | "info" | "error";
+  /** Optional primary action (e.g. Mount from clipboard). */
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+  /** Longer linger when an action is present. */
+  durationMs?: number;
 }
 
 interface ToastStackProps {
@@ -14,7 +21,7 @@ interface ToastStackProps {
 }
 
 /**
- * Polite toast stack for post-mount and status feedback.
+ * Polite toast stack for post-mount, clipboard offers, and status feedback.
  */
 export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
   if (toasts.length === 0) return null;
@@ -33,10 +40,12 @@ export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
 }
 
 function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () => void }) {
+  const duration = toast.durationMs ?? (toast.action ? 12_000 : 4_200);
+
   useEffect(() => {
-    const t = window.setTimeout(onDismiss, 4200);
+    const t = window.setTimeout(onDismiss, duration);
     return () => window.clearTimeout(t);
-  }, [onDismiss]);
+  }, [onDismiss, duration]);
 
   return (
     <div
@@ -52,10 +61,26 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () =>
     >
       {toast.tone !== "error" && (
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500/15 text-teal-400">
-          <IconCheck className="h-4 w-4" />
+          {toast.action ? (
+            <IconMount className="h-4 w-4" />
+          ) : (
+            <IconCheck className="h-4 w-4" />
+          )}
         </span>
       )}
       <p className="min-w-0 flex-1 text-sm font-medium">{toast.text}</p>
+      {toast.action && (
+        <button
+          type="button"
+          className="portal-press min-h-9 shrink-0 rounded-lg bg-[#7C3AED] px-3 text-sm font-medium text-white transition-colors hover:bg-[#6D28D9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A78BFA]"
+          onClick={() => {
+            toast.action?.onClick();
+            onDismiss();
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         type="button"
         onClick={onDismiss}

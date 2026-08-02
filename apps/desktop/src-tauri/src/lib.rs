@@ -279,23 +279,53 @@ pub fn run() {
                 let _tray = TrayIconBuilder::with_id("main")
                     .menu(&menu)
                     .tooltip("Wormhole — idle")
-                    .on_menu_event(|app, event| match event.id.as_ref() {
-                        "quit" => {
-                            info!("Quit requested from tray");
-                            app.exit(0);
-                        }
-                        "share" | "connect" | "portal" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
+                    .on_menu_event(|app, event| {
+                        let id = event.id.as_ref();
+                        match id {
+                            "quit" => {
+                                info!("Quit requested from tray");
+                                app.exit(0);
                             }
-                            let action = event.id.as_ref();
-                            let _ = app.emit(
-                                "tray-action",
-                                serde_json::json!({ "action": action }),
-                            );
+                            "share" | "connect" | "portal" => {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                                let _ = app.emit(
+                                    "tray-action",
+                                    serde_json::json!({ "action": id }),
+                                );
+                            }
+                            other if other.starts_with("copy-code:") => {
+                                let code = other.trim_start_matches("copy-code:");
+                                let _ = app.emit(
+                                    "tray-action",
+                                    serde_json::json!({ "action": "copy-code", "code": code }),
+                                );
+                            }
+                            other if other.starts_with("stop-share:") => {
+                                let share_id = other.trim_start_matches("stop-share:");
+                                let _ = app.emit(
+                                    "tray-action",
+                                    serde_json::json!({ "action": "stop-share", "id": share_id }),
+                                );
+                            }
+                            other if other.starts_with("stop-mount:") => {
+                                let mount_id = other.trim_start_matches("stop-mount:");
+                                let _ = app.emit(
+                                    "tray-action",
+                                    serde_json::json!({ "action": "stop-mount", "id": mount_id }),
+                                );
+                            }
+                            other if other.starts_with("open-mount:") => {
+                                let path = other.trim_start_matches("open-mount:");
+                                let _ = app.emit(
+                                    "tray-action",
+                                    serde_json::json!({ "action": "open-mount", "path": path }),
+                                );
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     })
                     .on_tray_icon_event(|tray, event| {
                         if let tauri::tray::TrayIconEvent::Click {

@@ -48,13 +48,18 @@ import { TransferPanel } from "@/components/TransferProgress";
 import { JoinCodePanel } from "@/components/JoinCodePanel";
 import { MountStatusStrip } from "@/components/MountStatusStrip";
 import { ToastStack, type ToastMessage } from "@/components/Toast";
-import { extractJoinCode, detectJoinCodeFromClipboard } from "@/lib/join-code";
+import { extractJoinCode, detectJoinCodeFromClipboard, formatJoinCode } from "@/lib/join-code";
 import { resolveDefaultMountPath, folderDisplayName } from "@/lib/paths";
+import { friendlyError } from "@/lib/friendly-error";
+import { formatDeviceName } from "@/lib/device-name";
 import { useWormholeHistory } from "@/hooks/useWormholeHistory";
 import { useNearbyPeers } from "@/hooks/useNearbyPeers";
 import { useSessionThroughput } from "@/hooks/useSessionThroughput";
+import { useClipboardJoinOffer } from "@/hooks/useClipboardJoinOffer";
+import { useAutoReconnect } from "@/hooks/useAutoReconnect";
 import { sessionsFromHistory } from "@/types/portal";
 import type { ShareMode } from "@/types/history";
+import { writeClipboardText } from "@wormhole/shared";
 import { useFileIndex, type IndexEntry } from "@/hooks/useFileIndex";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -1486,7 +1491,7 @@ function ShareDialog({
       unlistenHost = await listen<ServiceEvent>("host-event", (event) => {
         const data = event.payload;
         if (data.type === "Error") {
-          setStatusMessage(`Error: ${data.message}`);
+          setStatusMessage(friendlyError(data.message, "generic"));
           setIsStarting(false);
         }
       });
@@ -1552,7 +1557,7 @@ function ShareDialog({
       setIsHosting(true);
       onShareCreated(result.share_path, result.join_code, result.port, result.id, effectiveExpiration, expiresAt, shareMode);
     } catch (e) {
-      setStatusMessage(`Error: ${e}`);
+      setStatusMessage(friendlyError(e, "generic"));
     } finally {
       setIsStarting(false);
     }
@@ -1573,7 +1578,7 @@ function ShareDialog({
       setHostIpAddress("");
       onClose();
     } catch (e) {
-      setStatusMessage(`Error: ${e}`);
+      setStatusMessage(friendlyError(e, "generic"));
     }
   };
 
@@ -1848,7 +1853,7 @@ function ConnectDialog({
         } else if (data.type === "Error") {
           setIsConnected(false);
           setIsConnecting(false);
-          setStatusMessage(`Error: ${data.message}`);
+          setStatusMessage(friendlyError(data.message, "generic"));
         }
       });
     };
@@ -1917,7 +1922,7 @@ function ConnectDialog({
         return;
       }
     } catch (e) {
-      setStatusMessage(`Error: ${e}`);
+      setStatusMessage(friendlyError(e, "generic"));
     } finally {
       setIsConnecting(false);
     }
@@ -2115,7 +2120,18 @@ interface UpdateInfo {
   published_at: string;
 }
 
-function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
+const FIRST_MOUNT_KEY = "wormhole_first_mount_done";
+const SHELL_AUTORUN_KEY = "wormhole_shell_integration_offered";
+
+function SettingsPage({
+  onRunSetupWizard,
+  onOpenSharing,
+  onOpenMounts,
+}: {
+  onRunSetupWizard: () => void;
+  onOpenSharing: () => void;
+  onOpenMounts: () => void;
+}) {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -2333,6 +2349,35 @@ function SettingsPage({ onRunSetupWizard }: { onRunSetupWizard: () => void }) {
             </div>
           </div>
 
+          {/* History — reachable from Settings (no sidebar) */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-white">History</h2>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+              <button
+                type="button"
+                onClick={onOpenSharing}
+                className="portal-press flex w-full items-center justify-between rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+              >
+                <div>
+                  <p className="text-sm font-medium text-white">Sharing</p>
+                  <p className="text-xs text-zinc-500">Folders you’ve shared</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-500" />
+              </button>
+              <button
+                type="button"
+                onClick={onOpenMounts}
+                className="portal-press flex w-full items-center justify-between rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+              >
+                <div>
+                  <p className="text-sm font-medium text-white">Mounts</p>
+                  <p className="text-xs text-zinc-500">Folders you’ve mounted</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-500" />
+              </button>
+            </div>
+          </div>
+
           {/* System Setup Section */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-white">System Setup</h2>
@@ -2532,10 +2577,14 @@ function App() {
   /** Browser-preview deep links: ?preview=share|share-drop|share-success|connect|connect-success|sessions|settings|sharing|mounts */
   const [uiPreview, setUiPreview] = useState<string | null>(null);
 
-  const pushToast = useCallback((text: string, tone: ToastMessage["tone"] = "success") => {
+  const pushToast = useCallback((toast: Omit<ToastMessage, "id"> | string, tone: ToastMessage["tone"] = "success") => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setToasts((prev) => [...prev.slice(-3), { id, text, tone }]);
+    const next: ToastMessage =
+      typeof toast === "string" ? { id, text: toast, tone } : { id, ...toast };
+    setToasts((prev) => [...prev.slice(-3), next]);
   }, []);
+
+  const suppressedReconnect = useRef<Set<string>>(new Set());
 
   // Fetch local IP on mount
   useEffect(() => {
@@ -2742,6 +2791,12 @@ function App() {
     );
   }, []);
 
+  const handleStopShareRef = useRef<(id: string) => Promise<void>>(async () => {});
+  const handleDisconnectRef = useRef<(id: string) => Promise<void>>(async () => {});
+  const handleQuickMountRef = useRef<(code: string, peerName?: string) => Promise<void>>(
+    async () => {},
+  );
+
   // Legacy browse requests → open OS file manager (Portal is not a file browser)
   useEffect(() => {
     if (!currentFolder) return;
@@ -2750,17 +2805,41 @@ function App() {
     setCurrentFolderSource(null);
   }, [currentFolder, openInFinder]);
 
-  // Tray → open dialogs
+  // Tray → primary product surface
   useEffect(() => {
     let unlisten: (() => void) | undefined;
-    void listen<{ action: string }>("tray-action", (event) => {
-      const action = event.payload?.action;
-      if (action === "share") setActiveDialog("share");
-      if (action === "connect") setActiveDialog("connect");
-      if (action === "portal") setActiveView("all-files");
-    }).then((fn) => { unlisten = fn; });
-    return () => { unlisten?.(); };
-  }, []);
+    void listen<{ action: string; code?: string; id?: string; path?: string }>(
+      "tray-action",
+      (event) => {
+        const { action, code, id, path } = event.payload ?? {};
+        if (action === "share") {
+          setActiveView("all-files");
+          setActiveDialog("share");
+        } else if (action === "connect") {
+          setActiveView("all-files");
+          setActiveDialog("connect");
+        } else if (action === "portal") {
+          setActiveView("all-files");
+        } else if (action === "copy-code" && code) {
+          void writeClipboardText(formatJoinCode(code)).then((ok) => {
+            if (ok) pushToast(`Copied ${formatJoinCode(code)}`);
+          });
+        } else if (action === "stop-share" && id) {
+          void handleStopShareRef.current(id);
+        } else if (action === "stop-mount" && id) {
+          suppressedReconnect.current.add(id);
+          void handleDisconnectRef.current(id);
+        } else if (action === "open-mount" && path) {
+          openInFinder(path);
+        }
+      },
+    ).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [openInFinder, pushToast]);
 
   // CLI / shell integration / deep-link launch actions
   useEffect(() => {
@@ -2795,7 +2874,22 @@ function App() {
   const handleSetupComplete = useCallback(() => {
     localStorage.setItem(SETUP_COMPLETE_KEY, "true");
     setShowSetupWizard(false);
-  }, []);
+    // Quiet default: offer Finder/Explorer share once after setup
+    if (localStorage.getItem(SHELL_AUTORUN_KEY) !== "1") {
+      localStorage.setItem(SHELL_AUTORUN_KEY, "1");
+      void invoke<{ installed: boolean }>("install_shell_integration")
+        .then(() => {
+          pushToast({
+            text: "Right-click any folder → Share with Wormhole",
+            tone: "info",
+            durationMs: 8_000,
+          });
+        })
+        .catch(() => {
+          /* opt-in still available in Settings */
+        });
+    }
+  }, [pushToast]);
 
   // Share operations — keep Share dialog open on success (code + QR stay visible)
   const handleShareCreated = useCallback((path: string, joinCode: string, port: number, shareId: string, expirationOption: ExpirationOption, expiresAt: number | null, shareMode: ShareMode = "mount") => {
@@ -2804,23 +2898,18 @@ function App() {
   }, [addShare]);
 
   const handleStopShare = useCallback(async (shareId: string) => {
-    // Optimistic update - immediately show as inactive
     setShareStatus(shareId, "inactive");
     try {
-      // Then call backend
       await invoke("stop_hosting_by_id", { id: shareId });
     } catch (e) {
-      console.error("Failed to stop share:", e);
-      // Revert on error by syncing with actual backend state
+      pushToast({ text: friendlyError(e, "share"), tone: "error" });
       await syncWithBackend();
     }
-  }, [setShareStatus, syncWithBackend]);
+  }, [setShareStatus, syncWithBackend, pushToast]);
 
   const handleResumeShare = useCallback(async (share: ShareHistoryItem) => {
-    // Optimistic update - immediately show as active
     setShareStatus(share.id, "active");
     try {
-      // Then call backend
       await invoke<{ id: string; share_path: string; port: number; join_code: string }>(
         "start_hosting_with_id",
         { id: share.id, path: share.path, port: share.port }
@@ -2828,11 +2917,10 @@ function App() {
       setCurrentFolder(share.path);
       setCurrentFolderSource({ id: share.id, type: "share" });
     } catch (e) {
-      console.error("Failed to resume share:", e);
-      // Revert on error by syncing with actual backend state
+      pushToast({ text: friendlyError(e, "share"), tone: "error" });
       await syncWithBackend();
     }
-  }, [setShareStatus, syncWithBackend]);
+  }, [setShareStatus, syncWithBackend, pushToast]);
 
   const handleDeleteShare = useCallback(async (shareId: string) => {
     // Stop the share if it's active before removing
@@ -2858,22 +2946,34 @@ function App() {
     connectionId: string,
     peerName?: string | null,
   ) => {
-    const displayName = peerName?.trim() || undefined;
+    const displayName =
+      formatDeviceName(peerName) || peerName?.trim() || undefined;
     const conn = addConnection(joinCode, mountPoint, displayName, connectionId);
     if (displayName) {
       updateConnection(conn.id, { remoteHost: displayName, name: displayName });
     }
     setConnectionStatus(conn.id, "connected");
     setActiveView("all-files");
+    suppressedReconnect.current.delete(connectionId);
     // Auto-open Finder/Explorer (backend also opens; this covers preview + race)
     void invoke("open_file", { path: mountPoint }).catch(() =>
       invoke("reveal_in_explorer", { path: mountPoint })
     );
     const who = displayName || "share";
-    pushToast(`Opened in Finder — ${who}`);
+    const first = localStorage.getItem(FIRST_MOUNT_KEY) !== "1";
+    if (first) {
+      localStorage.setItem(FIRST_MOUNT_KEY, "1");
+      pushToast({
+        text: `You're in — ${who} is open in Finder`,
+        tone: "success",
+        durationMs: 6_500,
+      });
+    } else {
+      pushToast(`Opened in Finder — ${who}`);
+    }
   }, [addConnection, setConnectionStatus, updateConnection, pushToast]);
 
-  /** One-tap Nearby mount — skip the code dialog. */
+  /** One-tap Nearby / clipboard mount — skip the code dialog. */
   const handleQuickMount = useCallback(async (code: string, peerName?: string) => {
     const clean = extractJoinCode(code) || code.trim();
     if (!clean) return;
@@ -2898,32 +2998,44 @@ function App() {
       );
       setActiveDialog(null);
     } catch (e) {
-      pushToast(`Couldn’t mount: ${e}`, "error");
+      pushToast({
+        text: friendlyError(e, "mount"),
+        tone: "error",
+        action: {
+          label: "Retry",
+          onClick: () => {
+            void handleQuickMountRef.current(clean, peerName);
+          },
+        },
+      });
       setPendingJoinCode(clean);
       setPendingPeerName(peerName ?? null);
-      setActiveDialog("connect");
     }
   }, [handleConnectionCreated, pushToast]);
 
   const handleDisconnect = useCallback(async (connectionId: string) => {
-    // Optimistic update - immediately show as disconnected
+    suppressedReconnect.current.add(connectionId);
     setConnectionStatus(connectionId, "disconnected");
     try {
-      // Then call backend
       await invoke("disconnect_by_id", { id: connectionId });
     } catch (e) {
       console.error("Failed to disconnect:", e);
-      // Revert on error by syncing with actual backend state
       await syncWithBackend();
     }
   }, [setConnectionStatus, syncWithBackend]);
 
   const handleReconnect = useCallback(async (connection: ConnectionHistoryItem) => {
+    suppressedReconnect.current.delete(connection.id);
     setConnectionStatus(connection.id, "connecting");
     try {
       const mountPath =
         connection.mountPoint ||
         (await resolveDefaultMountPath(connection.joinCode));
+      try {
+        await invoke("disconnect_by_id", { id: connection.id });
+      } catch {
+        /* ignore */
+      }
       await invoke("connect_with_code_and_id", {
         id: connection.id,
         joinCode: connection.joinCode,
@@ -2932,11 +3044,71 @@ function App() {
       setConnectionStatus(connection.id, "connected");
       setCurrentFolder(mountPath);
       setCurrentFolderSource({ id: connection.id, type: "connection" });
+      pushToast(`Back online — ${formatDeviceName(connection.remoteHost || connection.name) || "share"}`);
     } catch (e) {
-      console.error("Failed to reconnect:", e);
-      setConnectionStatus(connection.id, "error", String(e));
+      const msg = friendlyError(e, "mount");
+      setConnectionStatus(connection.id, "error", msg);
+      pushToast({ text: msg, tone: "error" });
     }
-  }, [setConnectionStatus]);
+  }, [setConnectionStatus, pushToast]);
+
+  handleStopShareRef.current = handleStopShare;
+  handleDisconnectRef.current = handleDisconnect;
+  handleQuickMountRef.current = handleQuickMount;
+
+  // Clipboard → one-tap mount toast
+  const ignoreClipboardCodes = useMemo(() => {
+    const codes = connections
+      .filter((c) => c.status === "connected" || c.status === "connecting")
+      .map((c) => extractJoinCode(c.joinCode) || c.joinCode);
+    return codes;
+  }, [connections]);
+
+  const { offer: clipboardOffer, dismiss: dismissClipboardOffer } = useClipboardJoinOffer({
+    enabled: !showSetupWizard && activeDialog === null,
+    ignoreCodes: ignoreClipboardCodes,
+  });
+
+  useEffect(() => {
+    if (!clipboardOffer) return;
+    const formatted = formatJoinCode(clipboardOffer);
+    pushToast({
+      text: `Join code ${formatted} is on your clipboard`,
+      tone: "info",
+      action: {
+        label: "Mount",
+        onClick: () => {
+          dismissClipboardOffer();
+          void handleQuickMountRef.current(clipboardOffer);
+        },
+      },
+      durationMs: 14_000,
+    });
+    dismissClipboardOffer();
+  }, [clipboardOffer, dismissClipboardOffer, pushToast]);
+
+  useAutoReconnect({
+    connections,
+    setConnectionStatus,
+    suppressedIds: suppressedReconnect.current,
+    onReconnected: (conn) => {
+      const who = formatDeviceName(conn.remoteHost || conn.name) || "share";
+      pushToast(`Reconnected — ${who}`);
+    },
+    onGiveUp: (_conn, message) => {
+      pushToast({
+        text: message,
+        tone: "error",
+        action: {
+          label: "Retry",
+          onClick: () => {
+            const c = connections.find((x) => x.id === _conn.id);
+            if (c) void handleReconnect(c);
+          },
+        },
+      });
+    },
+  });
 
   const handleRemoveConnection = useCallback((connectionId: string) => {
     removeConnection(connectionId);
@@ -3020,9 +3192,12 @@ function App() {
 
           {activeView === "all-files" && (
               <PortalHome
-                deviceName={deviceName}
+                deviceName={formatDeviceName(deviceName) || deviceName}
                 sessions={portalSessions}
-                nearby={nearbyPeers}
+                nearby={nearbyPeers.map((p) => ({
+                  ...p,
+                  name: formatDeviceName(p.name) || p.name,
+                }))}
                 globalSpeed={globalSpeed}
                 onShare={() => setActiveDialog("share")}
                 onConnect={() => setActiveDialog("connect")}
@@ -3034,6 +3209,10 @@ function App() {
                 onReconnect={(id) => {
                   const conn = connections.find((c) => c.id === id);
                   if (conn) void handleReconnect(conn);
+                }}
+                onFolderDropped={(path) => {
+                  setPendingSharePath(path);
+                  setActiveDialog("share");
                 }}
               />
           )}
@@ -3426,7 +3605,11 @@ function App() {
 
           {activeView === "settings" && (
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <SettingsPage onRunSetupWizard={() => setShowSetupWizard(true)} />
+              <SettingsPage
+                onRunSetupWizard={() => setShowSetupWizard(true)}
+                onOpenSharing={() => setActiveView("my-shares")}
+                onOpenMounts={() => setActiveView("shared-with-me")}
+              />
             </div>
           )}
       </div>

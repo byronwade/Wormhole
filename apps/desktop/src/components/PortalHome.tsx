@@ -1,4 +1,4 @@
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { MountStatusStrip } from "@/components/MountStatusStrip";
 import {
@@ -33,6 +33,8 @@ interface PortalHomeProps {
   onStopShare: (id: string) => void;
   onDisconnect: (id: string) => void;
   onReconnect: (id: string) => void;
+  /** Drop a folder anywhere on Portal → share. */
+  onFolderDropped?: (path: string) => void;
 }
 
 /**
@@ -51,15 +53,25 @@ export function PortalHome({
   onStopShare,
   onDisconnect,
   onReconnect,
+  onFolderDropped,
 }: PortalHomeProps) {
   const [now, setNow] = useState(() => Date.now());
   const [mountingId, setMountingId] = useState<string | null>(null);
+  const [draggingFolder, setDraggingFolder] = useState(false);
   const [, startTransition] = useTransition();
+  const dragDepth = useRef(0);
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 4000);
     return () => window.clearInterval(t);
   }, []);
+
+  const takeDroppedPath = (files: FileList | null): string | null => {
+    if (!files?.length) return null;
+    const file = files[0] as File & { path?: string };
+    if (file?.path) return file.path;
+    return null;
+  };
 
   const live = sessions.filter((s) => s.status === "live" || s.status === "connecting");
   const others = sessions.filter((s) => s.status !== "live" && s.status !== "connecting");
@@ -77,7 +89,30 @@ export function PortalHome({
   };
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        dragDepth.current += 1;
+        if (dragDepth.current === 1) setDraggingFolder(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDraggingFolder(false);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDraggingFolder(false);
+        const path = takeDroppedPath(e.dataTransfer.files);
+        if (path && onFolderDropped) onFolderDropped(path);
+      }}
+    >
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden
@@ -87,6 +122,15 @@ export function PortalHome({
         }}
       />
       <div className="portal-grain pointer-events-none absolute inset-0 opacity-35" aria-hidden />
+
+      {draggingFolder && (
+        <div
+          className="pointer-events-none absolute inset-3 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-[#7C3AED]/70 bg-[#7C3AED]/10 backdrop-blur-sm"
+          aria-hidden
+        >
+          <p className="font-display text-lg font-medium text-[#FAFAFA]">Drop folder to share</p>
+        </div>
+      )}
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
         <header className="flex flex-wrap items-end justify-between gap-6 border-b border-white/[0.06] px-6 py-8 md:px-10">
@@ -339,8 +383,16 @@ function SessionRow({
         {session.joinCode && (
           <p className="font-mono-brand mt-1 text-xs text-zinc-600">{session.joinCode}</p>
         )}
-        {session.errorMessage && (
-          <p className="mt-1 text-xs text-red-400">{session.errorMessage}</p>
+        {(session.errorMessage || session.status === "connecting") && (
+          <p
+            className={cn(
+              "mt-1 text-xs",
+              session.status === "error" ? "text-red-400" : "text-amber-400/90",
+            )}
+          >
+            {session.errorMessage ||
+              (session.status === "connecting" ? "Reconnecting…" : null)}
+          </p>
         )}
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">

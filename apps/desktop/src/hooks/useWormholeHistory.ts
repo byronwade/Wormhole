@@ -91,8 +91,20 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
 
         // Update connection statuses based on backend state
         updated.connections = prev.connections.map((conn) => {
-          if (activeMountPoints.has(conn.mountPoint)) {
-            return { ...conn, status: "connected" as const, lastConnectedAt: Date.now() };
+          if (activeMountPoints.has(conn.mountPoint) || activeMounts.some((m) => m.id === conn.id)) {
+            return {
+              ...conn,
+              status: "connected" as const,
+              lastConnectedAt: Date.now(),
+              errorMessage: undefined,
+            };
+          }
+          // Don't clobber in-flight reconnect / user-facing errors mid-flight
+          if (conn.status === "connecting") {
+            return conn;
+          }
+          if (conn.status === "error") {
+            return { ...conn, status: "disconnected" as const };
           }
           return { ...conn, status: "disconnected" as const };
         });

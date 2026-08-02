@@ -8,5 +8,6 @@ export {
   extractJoinCode,
   makeShareLink,
   joinCodeQrPayload,
+  speakJoinCode,
   detectJoinCodeFromClipboard,
 } from "@wormhole/shared";

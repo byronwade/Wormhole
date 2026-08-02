@@ -5,6 +5,7 @@ import {
   formatJoinCode,
   joinCodeQrPayload,
   makeShareLink,
+  speakJoinCode,
 } from "@wormhole/shared";
 import { IconCopy, IconLink, IconPaste } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,11 @@ export function JoinCodePanel({
       >
         {display}
       </div>
+      {code && (
+        <p className="text-center text-xs leading-relaxed text-zinc-500" title="Say this over the phone">
+          {speakJoinCode(code)}
+        </p>
+      )}
 
       <div className="flex flex-wrap justify-center gap-2">
         <button
