@@ -1,7 +1,15 @@
-import { useEffect, useState } from "react";
-import { Download, ExternalLink, Radio, Settings, Upload, Zap } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { MountStatusStrip } from "@/components/MountStatusStrip";
+import {
+  IconConnect,
+  IconMount,
+  IconNearby,
+  IconOpen,
+  IconSettings,
+  IconShare,
+  IconSpeed,
+} from "@/components/icons";
 import {
   filterFreshPeers,
   peerFreshnessLabel,
@@ -28,7 +36,6 @@ interface PortalHomeProps {
 
 /**
  * Session-first Portal — Finder is the file browser; this is the tunnel controller.
- * Full-width layout — content spans the main pane.
  */
 export function PortalHome({
   deviceName,
@@ -45,6 +52,9 @@ export function PortalHome({
   onReconnect,
 }: PortalHomeProps) {
   const [now, setNow] = useState(() => Date.now());
+  const [mountingId, setMountingId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 4000);
     return () => window.clearInterval(t);
@@ -56,6 +66,14 @@ export function PortalHome({
   const remotePeers = filterFreshPeers(nearby, 45_000, now).filter((p) => !p.is_self && p.join_code);
   const empty = sessions.length === 0;
   const showPrimaryCtas = !liveMount;
+
+  const handleQuickMount = (code: string, peerId: string, peerName?: string) => {
+    setMountingId(peerId);
+    startTransition(() => {
+      onQuickMount(code, peerName);
+    });
+    window.setTimeout(() => setMountingId(null), 2400);
+  };
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -70,7 +88,6 @@ export function PortalHome({
       <div className="portal-grain pointer-events-none absolute inset-0 opacity-35" aria-hidden />
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {/* Full-width header bar */}
         <header className="flex flex-wrap items-end justify-between gap-6 border-b border-white/[0.06] px-6 py-8 md:px-10">
           <div className="min-w-0 flex-1">
             <p className="font-mono-brand mb-3 text-[11px] uppercase tracking-[0.4em] text-[#A78BFA]/90">
@@ -90,17 +107,17 @@ export function PortalHome({
               <>
                 <Button
                   onClick={onShare}
-                  className="min-h-12 px-7 bg-[#7C3AED] text-white shadow-[0_0_40px_rgba(124,58,237,0.18)] hover:bg-[#6D28D9]"
+                  className="portal-press min-h-12 px-7 bg-[#7C3AED] text-white shadow-[0_0_40px_rgba(124,58,237,0.18)] transition-colors duration-200 hover:bg-[#6D28D9]"
                 >
-                  <Upload className="mr-2 h-4 w-4" aria-hidden />
+                  <IconShare className="mr-2 h-[1.125rem] w-[1.125rem]" />
                   Share a folder
                 </Button>
                 <Button
                   onClick={onConnect}
                   variant="outline"
-                  className="min-h-12 border-white/10 bg-white/[0.02] px-7 text-zinc-100 hover:border-[#7C3AED]/40 hover:bg-white/[0.04]"
+                  className="portal-press min-h-12 border-white/10 bg-white/[0.02] px-7 text-zinc-100 transition-colors duration-200 hover:border-[#7C3AED]/40 hover:bg-white/[0.04]"
                 >
-                  <Download className="mr-2 h-4 w-4" aria-hidden />
+                  <IconConnect className="mr-2 h-[1.125rem] w-[1.125rem]" />
                   Enter a code
                 </Button>
               </>
@@ -110,10 +127,11 @@ export function PortalHome({
               variant="ghost"
               size="icon"
               onClick={onOpenSettings}
-              className="h-12 w-12 text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+              className="portal-press h-12 w-12 text-zinc-500 transition-colors duration-200 hover:bg-white/[0.04] hover:text-[#A78BFA]"
               aria-label="Settings"
+              title="Settings"
             >
-              <Settings className="h-5 w-5" aria-hidden />
+              <IconSettings className="h-5 w-5" />
             </Button>
           </div>
         </header>
@@ -131,25 +149,24 @@ export function PortalHome({
             </div>
           )}
 
-          {/* Full-width two-column on desktop */}
           <div className="grid w-full flex-1 grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-12">
             <section className="min-w-0" aria-labelledby="nearby-heading">
               <h2
                 id="nearby-heading"
                 className="mb-4 flex items-center gap-2 font-mono-brand text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500"
               >
-                <Radio className="h-3.5 w-3.5 text-teal-400/90" aria-hidden />
+                <IconNearby className="h-4 w-4 text-teal-400/90" />
                 Nearby on this Wi‑Fi
               </h2>
               {remotePeers.length === 0 ? (
                 <p className="text-sm text-zinc-600">No peers on this network yet.</p>
               ) : (
-                <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02]">
                   {remotePeers.map((peer, i) => (
                     <li
                       key={peer.id}
-                      className="motion-peer-in flex items-center gap-3.5 px-4 py-3.5 sm:px-5"
-                      style={{ animationDelay: `${i * 50}ms` }}
+                      className="portal-row motion-peer-in flex items-center gap-3.5 px-4 py-3.5 sm:px-5"
+                      style={{ animationDelay: `${i * 45}ms` }}
                     >
                       <span
                         className="motion-status-pulse h-2 w-2 flex-shrink-0 rounded-full bg-teal-400"
@@ -166,10 +183,12 @@ export function PortalHome({
                       {peer.join_code && (
                         <Button
                           size="sm"
-                          className="min-h-10 bg-[#7C3AED] px-4 hover:bg-[#6D28D9]"
-                          onClick={() => onQuickMount(peer.join_code!, peer.name)}
+                          disabled={mountingId === peer.id}
+                          className="portal-press min-h-10 bg-[#7C3AED] px-4 transition-all duration-200 hover:bg-[#6D28D9] disabled:opacity-70"
+                          onClick={() => handleQuickMount(peer.join_code!, peer.id, peer.name)}
                         >
-                          Mount
+                          <IconMount className="mr-1.5 h-4 w-4" />
+                          {mountingId === peer.id ? "Mounting…" : "Mount"}
                         </Button>
                       )}
                     </li>
@@ -188,7 +207,7 @@ export function PortalHome({
                 </h2>
                 {globalSpeed && (
                   <span className="inline-flex items-center gap-1.5 font-mono-brand text-xs text-zinc-400 tabular-nums">
-                    <Zap className="h-3.5 w-3.5 text-[#7C3AED]" aria-hidden />
+                    <IconSpeed className="h-4 w-4 text-[#7C3AED]" />
                     {globalSpeed}
                   </span>
                 )}
@@ -202,7 +221,7 @@ export function PortalHome({
                   </p>
                 </div>
               ) : (
-                <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02]">
                   {[...live, ...others].map((session, i) => (
                     <SessionRow
                       key={`${session.kind}-${session.id}`}
@@ -229,16 +248,18 @@ export function PortalHome({
                 onClick={onShare}
                 variant="ghost"
                 size="sm"
-                className="min-h-10 text-zinc-500 hover:text-zinc-200"
+                className="portal-press min-h-10 text-zinc-500 transition-colors hover:text-zinc-200"
               >
+                <IconShare className="mr-1.5 h-4 w-4" />
                 Share another…
               </Button>
               <Button
                 onClick={onConnect}
                 variant="ghost"
                 size="sm"
-                className="min-h-10 text-zinc-500 hover:text-zinc-200"
+                className="portal-press min-h-10 text-zinc-500 transition-colors hover:text-zinc-200"
               >
+                <IconConnect className="mr-1.5 h-4 w-4" />
                 Enter a code…
               </Button>
             </div>
@@ -287,7 +308,7 @@ function SessionRow({
 
   return (
     <li
-      className="motion-peer-in flex items-center gap-3.5 px-4 py-3.5 sm:px-5"
+      className="portal-row motion-peer-in flex items-center gap-3.5 px-4 py-3.5 sm:px-5"
       style={{ animationDelay: `${index * 40}ms` }}
     >
       <span
@@ -301,7 +322,8 @@ function SessionRow({
             {modeLabel}
           </span>
           {session.speedLabel && (
-            <span className="font-mono-brand text-xs text-[#A78BFA] tabular-nums">
+            <span className="inline-flex items-center gap-1 font-mono-brand text-xs text-[#A78BFA] tabular-nums">
+              <IconSpeed className="h-3.5 w-3.5" />
               {session.speedLabel}
             </span>
           )}
@@ -319,7 +341,7 @@ function SessionRow({
           <Button
             size={emphasizeOpen ? "sm" : "icon"}
             className={cn(
-              "min-h-10",
+              "portal-press min-h-10 transition-colors duration-200",
               emphasizeOpen
                 ? "bg-[#7C3AED] px-3 hover:bg-[#6D28D9]"
                 : "bg-transparent text-zinc-400 hover:bg-white/5 hover:text-white",
@@ -329,11 +351,11 @@ function SessionRow({
           >
             {emphasizeOpen ? (
               <>
-                <ExternalLink className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                <IconOpen className="mr-1.5 h-4 w-4" />
                 Open
               </>
             ) : (
-              <ExternalLink className="h-4 w-4" />
+              <IconOpen className="h-4 w-4" />
             )}
           </Button>
         )}
@@ -341,24 +363,29 @@ function SessionRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 text-zinc-400"
+            className="portal-press h-10 w-10 text-zinc-400 transition-colors hover:text-white"
             aria-label="Reveal shared folder"
             onClick={onOpenFinder}
           >
-            <ExternalLink className="h-4 w-4" />
+            <IconOpen className="h-4 w-4" />
           </Button>
         )}
         {isLive ? (
           <Button
             variant="ghost"
             size="sm"
-            className="min-h-10 text-zinc-500 hover:text-red-300"
+            className="portal-press min-h-10 text-zinc-500 transition-colors hover:text-red-300"
             onClick={onStop}
           >
             Stop
           </Button>
         ) : session.kind === "mounted" ? (
-          <Button variant="ghost" size="sm" className="min-h-10" onClick={onReconnect}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="portal-press min-h-10 transition-colors"
+            onClick={onReconnect}
+          >
             Reconnect
           </Button>
         ) : null}

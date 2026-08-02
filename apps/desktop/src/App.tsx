@@ -2975,7 +2975,7 @@ function App() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveView("all-files")}
-                  className="min-h-10 text-zinc-400 hover:text-white"
+                  className="portal-press min-h-10 text-zinc-400 hover:text-white"
                 >
                   ← Portal
                 </Button>
@@ -2992,17 +2992,15 @@ function App() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveDialog("connect")}
-                  className="min-h-9 text-zinc-400 hover:text-white"
+                  className="portal-press min-h-9 text-zinc-400 hover:text-white"
                 >
-                  <Download className="mr-2 h-4 w-4" aria-hidden />
                   Enter code
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => setActiveDialog("share")}
-                  className="min-h-9 bg-[#7C3AED] hover:bg-[#6D28D9]"
+                  className="portal-press min-h-9 bg-[#7C3AED] hover:bg-[#6D28D9]"
                 >
-                  <Upload className="mr-2 h-4 w-4" aria-hidden />
                   Share
                 </Button>
               </div>

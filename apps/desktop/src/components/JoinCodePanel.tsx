@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, ClipboardPaste, Link2 } from "lucide-react";
 import {
   detectJoinCodeFromClipboard,
   formatJoinCode,
   joinCodeQrPayload,
   makeShareLink,
 } from "@wormhole/shared";
+import { IconCopy, IconLink, IconPaste } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 interface JoinCodePanelProps {
@@ -87,20 +87,20 @@ export function JoinCodePanel({
           type="button"
           onClick={handleCopyCode}
           disabled={!code}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] disabled:opacity-50"
+          className="portal-press inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] disabled:opacity-50"
           aria-label="Copy join code"
         >
-          <Copy className="h-4 w-4" aria-hidden />
+          <IconCopy className="h-4 w-4" />
           {copied === "code" ? "Copied" : "Copy code"}
         </button>
         {showQr && code && (
           <button
             type="button"
             onClick={handleCopyLink}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+            className="portal-press inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
             aria-label="Copy share link"
           >
-            <Link2 className="h-4 w-4" aria-hidden />
+            <IconLink className="h-4 w-4" />
             {copied === "link" ? "Link copied" : "Copy link"}
           </button>
         )}
@@ -108,10 +108,10 @@ export function JoinCodePanel({
           <button
             type="button"
             onClick={handlePasteDetect}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+            className="portal-press inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
             aria-label="Paste join code from clipboard"
           >
-            <ClipboardPaste className="h-4 w-4" aria-hidden />
+            <IconPaste className="h-4 w-4" />
             Paste…
           </button>
         )}

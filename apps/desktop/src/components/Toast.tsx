@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Check, X } from "lucide-react";
+import { IconCheck, IconClose } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export interface ToastMessage {
@@ -52,17 +52,17 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: () =>
     >
       {toast.tone !== "error" && (
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500/15 text-teal-400">
-          <Check className="h-4 w-4" aria-hidden />
+          <IconCheck className="h-4 w-4" />
         </span>
       )}
       <p className="min-w-0 flex-1 text-sm font-medium">{toast.text}</p>
       <button
         type="button"
         onClick={onDismiss}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+        className="portal-press flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
         aria-label="Dismiss"
       >
-        <X className="h-4 w-4" />
+        <IconClose className="h-4 w-4" />
       </button>
     </div>
   );

@@ -1,5 +1,5 @@
-import { ExternalLink, Loader2, Radio, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconNearby, IconOpen, IconSpeed, IconSpinner } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export interface MountStatusStripProps {
@@ -13,7 +13,6 @@ export interface MountStatusStripProps {
 
 /**
  * Post-mount “it’s working” strip — speed, peer, Open in Finder.
- * Status via dot + label only — no left accent bars.
  */
 export function MountStatusStrip({
   mountPath,
@@ -38,7 +37,7 @@ export function MountStatusStrip({
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-2.5">
           {status === "syncing" ? (
-            <Loader2 className="h-4 w-4 text-amber-400 motion-safe:animate-spin" aria-hidden />
+            <IconSpinner className="h-4 w-4 text-amber-400" />
           ) : (
             <span
               className={cn(
@@ -51,13 +50,13 @@ export function MountStatusStrip({
           <span className="text-sm font-medium text-[#FAFAFA]">{statusText}</span>
           {speedLabel && (
             <span className="inline-flex items-center gap-1.5 font-mono-brand text-xs text-zinc-400 tabular-nums">
-              <Zap className="h-3.5 w-3.5 text-[#7C3AED]" aria-hidden />
+              <IconSpeed className="h-3.5 w-3.5 text-[#7C3AED]" />
               {speedLabel}
             </span>
           )}
           {peerLabel && (
             <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
-              <Radio className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+              <IconNearby className="h-3.5 w-3.5 text-zinc-500" />
               {peerLabel}
             </span>
           )}
@@ -70,9 +69,9 @@ export function MountStatusStrip({
       <Button
         type="button"
         onClick={onOpenFinder}
-        className="min-h-11 w-full shrink-0 bg-[#7C3AED] text-white hover:bg-[#6D28D9] sm:w-auto sm:px-6"
+        className="portal-press min-h-11 w-full shrink-0 bg-[#7C3AED] text-white transition-colors duration-200 hover:bg-[#6D28D9] sm:w-auto sm:px-6"
       >
-        <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
+        <IconOpen className="mr-2 h-4 w-4" />
         Open in Finder / Explorer
       </Button>
     </div>
