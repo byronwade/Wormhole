@@ -1643,7 +1643,7 @@ function ShareDialog({
                     variant="outline"
                     aria-pressed={shareMode === "mount"}
                     onClick={() => setShareMode("mount")}
-                    className={`min-h-11 ${shareMode === "mount" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700 text-zinc-400"}`}
+                    className={`min-h-11 ${shareMode === "mount" ? "border-[#7C3AED] bg-[#7C3AED]/25 text-white ring-1 ring-[#7C3AED]/40" : "border-zinc-700 text-zinc-400"}`}
                   >
                     Mount
                   </Button>
@@ -1652,7 +1652,7 @@ function ShareDialog({
                     variant="outline"
                     aria-pressed={shareMode === "drop"}
                     onClick={() => { setShareMode("drop"); if (expirationOption === "forever") setExpirationOption("24h"); }}
-                    className={`min-h-11 ${shareMode === "drop" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700 text-zinc-400"}`}
+                    className={`min-h-11 ${shareMode === "drop" ? "border-[#7C3AED] bg-[#7C3AED]/25 text-white ring-1 ring-[#7C3AED]/40" : "border-zinc-700 text-zinc-400"}`}
                   >
                     Drop
                   </Button>
