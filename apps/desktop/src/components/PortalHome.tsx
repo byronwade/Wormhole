@@ -27,6 +27,7 @@ interface PortalHomeProps {
 
 /**
  * Session-first Portal — Finder is the file browser; this is the tunnel controller.
+ * Full-width layout — content spans the main pane.
  */
 export function PortalHome({
   deviceName,
@@ -61,182 +62,174 @@ export function PortalHome({
         aria-hidden
         style={{
           background:
-            "radial-gradient(ellipse 90% 55% at 8% -8%, rgba(124,58,237,0.22), transparent 52%), radial-gradient(ellipse 50% 35% at 100% 100%, rgba(167,139,250,0.06), transparent 45%), #0F0F0F",
+            "radial-gradient(ellipse 70% 45% at 0% 0%, rgba(124,58,237,0.2), transparent 50%), radial-gradient(ellipse 45% 30% at 100% 100%, rgba(167,139,250,0.05), transparent 40%), #0F0F0F",
         }}
       />
-      <div className="portal-grain pointer-events-none absolute inset-0 opacity-40" aria-hidden />
+      <div className="portal-grain pointer-events-none absolute inset-0 opacity-35" aria-hidden />
 
-      <div className="relative z-10 flex-1 overflow-y-auto px-6 py-10 md:px-14">
-        <header className="mb-12 max-w-lg">
-          <p className="font-mono-brand mb-5 text-[11px] uppercase tracking-[0.4em] text-[#A78BFA]/90">
-            Wormhole · {deviceName}
-          </p>
-          <h1 className="font-display mb-4 text-[2.75rem] font-semibold leading-none tracking-tight text-[#FAFAFA] sm:text-5xl">
-            Portal
-          </h1>
-          <p className="max-w-sm text-[15px] leading-relaxed text-zinc-400">
-            {liveMount
-              ? "Files are live in Finder. This window just keeps the tunnel open."
-              : "Share a folder or enter a code. Files open in Finder — this is the tunnel."}
-          </p>
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {/* Full-width header bar */}
+        <header className="flex flex-wrap items-end justify-between gap-6 border-b border-white/[0.06] px-6 py-8 md:px-10">
+          <div className="min-w-0 flex-1">
+            <p className="font-mono-brand mb-3 text-[11px] uppercase tracking-[0.4em] text-[#A78BFA]/90">
+              Wormhole · {deviceName}
+            </p>
+            <h1 className="font-display text-4xl font-semibold tracking-tight text-[#FAFAFA] sm:text-5xl">
+              Portal
+            </h1>
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-zinc-400">
+              {liveMount
+                ? "Files are live in Finder. This window just keeps the tunnel open."
+                : "Share a folder or enter a code. Files open in Finder — this is the tunnel."}
+            </p>
+          </div>
+          {showPrimaryCtas && (
+            <div className="flex flex-shrink-0 flex-wrap gap-3">
+              <Button
+                onClick={onShare}
+                className="min-h-12 px-7 bg-[#7C3AED] text-white shadow-[0_0_40px_rgba(124,58,237,0.18)] hover:bg-[#6D28D9]"
+              >
+                <Upload className="mr-2 h-4 w-4" aria-hidden />
+                Share a folder
+              </Button>
+              <Button
+                onClick={onConnect}
+                variant="outline"
+                className="min-h-12 border-white/10 bg-white/[0.02] px-7 text-zinc-100 hover:border-[#7C3AED]/40 hover:bg-white/[0.04]"
+              >
+                <Download className="mr-2 h-4 w-4" aria-hidden />
+                Enter a code
+              </Button>
+            </div>
+          )}
         </header>
 
-        {liveMount ? (
-          <div className="mb-12 max-w-md motion-peer-in">
-            <MountStatusStrip
-              mountPath={liveMount.path}
-              peerLabel={liveMount.peerName || liveMount.joinCode}
-              speedLabel={liveMount.speedLabel || globalSpeed}
-              status={liveMount.speedLabel ? "syncing" : "connected"}
-              onOpenFinder={() => onOpenFinder(liveMount.path)}
-            />
-          </div>
-        ) : (
-          <div className="mb-12 flex flex-wrap gap-3">
-            <Button
-              onClick={onShare}
-              className="min-h-12 px-8 bg-[#7C3AED] text-white shadow-[0_0_40px_rgba(124,58,237,0.2)] hover:bg-[#6D28D9]"
-            >
-              <Upload className="mr-2 h-4 w-4" aria-hidden />
-              Share a folder
-            </Button>
-            <Button
-              onClick={onConnect}
-              variant="outline"
-              className="min-h-12 border-white/10 bg-white/[0.02] px-8 text-zinc-100 hover:border-[#7C3AED]/40 hover:bg-white/[0.04]"
-            >
-              <Download className="mr-2 h-4 w-4" aria-hidden />
-              Enter a code
-            </Button>
-          </div>
-        )}
-
-        {remotePeers.length > 0 && (
-          <section className="mb-14 max-w-md" aria-labelledby="nearby-heading">
-            <h2
-              id="nearby-heading"
-              className="mb-5 flex items-center gap-2 font-mono-brand text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500"
-            >
-              <Radio className="h-3.5 w-3.5 text-teal-400/90" aria-hidden />
-              Nearby on this Wi‑Fi
-            </h2>
-            <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
-              {remotePeers.map((peer, i) => (
-                <li
-                  key={peer.id}
-                  className="motion-peer-in flex items-center gap-3.5 px-4 py-3.5"
-                  style={{ animationDelay: `${i * 50}ms` }}
-                >
-                  <span
-                    className="motion-status-pulse h-2 w-2 flex-shrink-0 rounded-full bg-teal-400"
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-[#FAFAFA]">{peer.name}</p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                      <span className="font-mono-brand text-[#A78BFA]">{peer.join_code}</span>
-                      <span aria-hidden>·</span>
-                      <span>{peerFreshnessLabel(peer.last_seen_ms, now)}</span>
-                    </p>
-                  </div>
-                  {peer.join_code && (
-                    <Button
-                      size="sm"
-                      className="min-h-10 bg-[#7C3AED] px-4 hover:bg-[#6D28D9]"
-                      onClick={() => onQuickMount(peer.join_code!, peer.name)}
-                    >
-                      Mount
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section className="max-w-md" aria-labelledby="sessions-heading">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <h2
-              id="sessions-heading"
-              className="font-mono-brand text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500"
-            >
-              Tunnels
-            </h2>
-            {globalSpeed && (
-              <span className="inline-flex items-center gap-1.5 font-mono-brand text-xs text-zinc-400 tabular-nums">
-                <Zap className="h-3.5 w-3.5 text-[#7C3AED]" aria-hidden />
-                {globalSpeed}
-              </span>
-            )}
-          </div>
-
-          {empty ? (
-            <div className="py-10">
-              <p className="text-sm text-zinc-400">No active tunnels</p>
-              <p className="mt-2 max-w-xs text-xs leading-relaxed text-zinc-600">
-                Tip: use the menu-bar icon to share or enter a code without opening this window.
-              </p>
-              {showPrimaryCtas ? null : (
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <Button
-                    onClick={onShare}
-                    size="sm"
-                    className="min-h-10 bg-[#7C3AED] hover:bg-[#6D28D9]"
-                  >
-                    Share a folder
-                  </Button>
-                  <Button
-                    onClick={onConnect}
-                    size="sm"
-                    variant="outline"
-                    className="min-h-10 border-white/10"
-                  >
-                    Enter a code
-                  </Button>
-                </div>
-              )}
+        <div className="flex flex-1 flex-col gap-8 px-6 py-8 md:px-10">
+          {liveMount && (
+            <div className="motion-peer-in w-full">
+              <MountStatusStrip
+                mountPath={liveMount.path}
+                peerLabel={liveMount.peerName || liveMount.joinCode}
+                speedLabel={liveMount.speedLabel || globalSpeed}
+                status={liveMount.speedLabel ? "syncing" : "connected"}
+                onOpenFinder={() => onOpenFinder(liveMount.path)}
+              />
             </div>
-          ) : (
-            <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
-              {[...live, ...others].map((session, i) => (
-                <SessionRow
-                  key={`${session.kind}-${session.id}`}
-                  session={session}
-                  index={i}
-                  emphasizeOpen={session.id === liveMount?.id}
-                  onOpenFinder={() => onOpenFinder(session.path)}
-                  onStop={() =>
-                    session.kind === "sharing"
-                      ? onStopShare(session.id)
-                      : onDisconnect(session.id)
-                  }
-                  onReconnect={() => onReconnect(session.id)}
-                />
-              ))}
-            </ul>
           )}
-        </section>
 
-        {liveMount && (
-          <div className="mt-10 flex flex-wrap gap-2">
-            <Button
-              onClick={onShare}
-              variant="ghost"
-              size="sm"
-              className="min-h-10 text-zinc-500 hover:text-zinc-200"
-            >
-              Share another…
-            </Button>
-            <Button
-              onClick={onConnect}
-              variant="ghost"
-              size="sm"
-              className="min-h-10 text-zinc-500 hover:text-zinc-200"
-            >
-              Enter a code…
-            </Button>
+          {/* Full-width two-column on desktop */}
+          <div className="grid w-full flex-1 grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-12">
+            <section className="min-w-0" aria-labelledby="nearby-heading">
+              <h2
+                id="nearby-heading"
+                className="mb-4 flex items-center gap-2 font-mono-brand text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500"
+              >
+                <Radio className="h-3.5 w-3.5 text-teal-400/90" aria-hidden />
+                Nearby on this Wi‑Fi
+              </h2>
+              {remotePeers.length === 0 ? (
+                <p className="text-sm text-zinc-600">No peers on this network yet.</p>
+              ) : (
+                <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                  {remotePeers.map((peer, i) => (
+                    <li
+                      key={peer.id}
+                      className="motion-peer-in flex items-center gap-3.5 px-4 py-3.5 sm:px-5"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
+                      <span
+                        className="motion-status-pulse h-2 w-2 flex-shrink-0 rounded-full bg-teal-400"
+                        aria-hidden
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[#FAFAFA]">{peer.name}</p>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                          <span className="font-mono-brand text-[#A78BFA]">{peer.join_code}</span>
+                          <span aria-hidden>·</span>
+                          <span>{peerFreshnessLabel(peer.last_seen_ms, now)}</span>
+                        </p>
+                      </div>
+                      {peer.join_code && (
+                        <Button
+                          size="sm"
+                          className="min-h-10 bg-[#7C3AED] px-4 hover:bg-[#6D28D9]"
+                          onClick={() => onQuickMount(peer.join_code!, peer.name)}
+                        >
+                          Mount
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="min-w-0" aria-labelledby="sessions-heading">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2
+                  id="sessions-heading"
+                  className="font-mono-brand text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500"
+                >
+                  Tunnels
+                </h2>
+                {globalSpeed && (
+                  <span className="inline-flex items-center gap-1.5 font-mono-brand text-xs text-zinc-400 tabular-nums">
+                    <Zap className="h-3.5 w-3.5 text-[#7C3AED]" aria-hidden />
+                    {globalSpeed}
+                  </span>
+                )}
+              </div>
+
+              {empty ? (
+                <div className="rounded-2xl border border-dashed border-white/[0.06] px-5 py-10">
+                  <p className="text-sm text-zinc-400">No active tunnels</p>
+                  <p className="mt-2 max-w-sm text-xs leading-relaxed text-zinc-600">
+                    Tip: use the menu-bar icon to share or enter a code without opening this window.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                  {[...live, ...others].map((session, i) => (
+                    <SessionRow
+                      key={`${session.kind}-${session.id}`}
+                      session={session}
+                      index={i}
+                      emphasizeOpen={session.id === liveMount?.id}
+                      onOpenFinder={() => onOpenFinder(session.path)}
+                      onStop={() =>
+                        session.kind === "sharing"
+                          ? onStopShare(session.id)
+                          : onDisconnect(session.id)
+                      }
+                      onReconnect={() => onReconnect(session.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
-        )}
+
+          {liveMount && (
+            <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-6">
+              <Button
+                onClick={onShare}
+                variant="ghost"
+                size="sm"
+                className="min-h-10 text-zinc-500 hover:text-zinc-200"
+              >
+                Share another…
+              </Button>
+              <Button
+                onClick={onConnect}
+                variant="ghost"
+                size="sm"
+                className="min-h-10 text-zinc-500 hover:text-zinc-200"
+              >
+                Enter a code…
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -280,7 +273,7 @@ function SessionRow({
 
   return (
     <li
-      className="motion-peer-in flex items-center gap-3.5 px-4 py-3.5"
+      className="motion-peer-in flex items-center gap-3.5 px-4 py-3.5 sm:px-5"
       style={{ animationDelay: `${index * 40}ms` }}
     >
       <span
