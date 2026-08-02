@@ -276,9 +276,9 @@ pub fn run() {
 
                 let menu = Menu::with_items(app, &[&share, &connect, &portal, &sep, &quit])?;
 
-                let _tray = TrayIconBuilder::new()
+                let _tray = TrayIconBuilder::with_id("main")
                     .menu(&menu)
-                    .tooltip("Wormhole — running in background")
+                    .tooltip("Wormhole — idle")
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "quit" => {
                             info!("Quit requested from tray");

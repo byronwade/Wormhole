@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { formatSpeedBps, sessionsFromHistory } from "./portal";
+import {
+  filterFreshPeers,
+  formatSpeedBps,
+  peerFreshnessLabel,
+  sessionsFromHistory,
+  type NearbyPeer,
+} from "./portal";
 import type { ConnectionHistoryItem, ShareHistoryItem } from "./history";
 
 describe("portal helpers", () => {
@@ -7,6 +13,25 @@ describe("portal helpers", () => {
     expect(formatSpeedBps(0)).toBe("—");
     expect(formatSpeedBps(512 * 1024)).toContain("KB/s");
     expect(formatSpeedBps(12 * 1024 * 1024)).toContain("MB/s");
+  });
+
+  it("peerFreshnessLabel covers age buckets", () => {
+    const now = 1_000_000;
+    expect(peerFreshnessLabel(now - 2_000, now)).toBe("just now");
+    expect(peerFreshnessLabel(now - 20_000, now)).toBe("20s ago");
+    expect(peerFreshnessLabel(now - 120_000, now)).toBe("2m ago");
+    expect(peerFreshnessLabel(now - 4_000_000, now)).toBe("a while ago");
+  });
+
+  it("filterFreshPeers drops stale remotes but keeps self", () => {
+    const now = 1_000_000;
+    const peers: NearbyPeer[] = [
+      { id: "self", name: "Me", last_seen_ms: now - 100_000, is_self: true },
+      { id: "a", name: "Fresh", last_seen_ms: now - 10_000, is_self: false, join_code: "ABC234" },
+      { id: "b", name: "Stale", last_seen_ms: now - 60_000, is_self: false, join_code: "XYZ789" },
+    ];
+    const fresh = filterFreshPeers(peers, 45_000, now);
+    expect(fresh.map((p) => p.id)).toEqual(["self", "a"]);
   });
 
   it("sessionsFromHistory merges shares and mounts with live first", () => {

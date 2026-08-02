@@ -34,8 +34,9 @@ describe("App Component — Portal shell", () => {
         expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Share a folder")).toBeInTheDocument();
-      expect(screen.getByText("Enter a code")).toBeInTheDocument();
+      expect(screen.getAllByText("Share a folder").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Enter a code").length).toBeGreaterThan(0);
+      expect(screen.getByText(/this is the tunnel/i)).toBeInTheDocument();
     });
 
     it("skips wizard when setup is complete", async () => {
@@ -71,11 +72,13 @@ describe("App Component — Portal shell", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Enter a code")).toBeInTheDocument();
+        expect(screen.getAllByText("Enter a code").length).toBeGreaterThan(0);
       });
 
-      expect(screen.getByText("Share a folder").closest("button")).not.toBeDisabled();
-      expect(screen.getByText("Enter a code").closest("button")).not.toBeDisabled();
+      const shareBtn = screen.getAllByText("Share a folder")[0]?.closest("button");
+      const connectBtn = screen.getAllByText("Enter a code")[0]?.closest("button");
+      expect(shareBtn).not.toBeDisabled();
+      expect(connectBtn).not.toBeDisabled();
     });
 
     it("Settings nav is interactive", async () => {

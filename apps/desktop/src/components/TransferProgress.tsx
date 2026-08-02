@@ -53,12 +53,17 @@ interface CompletedTransfer {
   completedAt: number;
 }
 
+/** Mount session meters use file_name "mount" and total_bytes 0 — not file UI. */
+function isMountMeter(data: TransferProgressEvent): boolean {
+  return data.file_name === "mount" || data.total_bytes === 0;
+}
+
 // Format bytes to human readable
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0\u00A0B";
   const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)}\u00A0${units[i]}`;
 }
 
 // Format speed to human readable
@@ -214,6 +219,8 @@ export function TransferPanel() {
     const setup = async () => {
       unlistenProgress = await listen<TransferProgressEvent>("transfer-progress", (event) => {
         const data = event.payload;
+        // Session throughput for mounts lives on Portal rows — ignore here.
+        if (!data.transfer_id || isMountMeter(data)) return;
         setActiveTransfers((prev) => {
           const next = new Map(prev);
           const existing = next.get(data.transfer_id);
@@ -233,11 +240,14 @@ export function TransferPanel() {
 
       unlistenCompleted = await listen<TransferCompletedEvent>("transfer-completed", (event) => {
         const data = event.payload;
+        // Idle clears from the mount poller have no transfer_id — ignore.
+        if (!data.transfer_id) return;
 
         // Remove from active
         setActiveTransfers((prev) => {
           const next = new Map(prev);
           const transfer = next.get(data.transfer_id);
+          if (!transfer) return prev;
           next.delete(data.transfer_id);
 
           // Add to completed notifications
@@ -245,7 +255,7 @@ export function TransferPanel() {
             ...old,
             {
               id: data.transfer_id,
-              fileName: transfer?.fileName || "Unknown file",
+              fileName: transfer.fileName || "Unknown file",
               success: data.success,
               bytesTransferred: data.bytes_transferred,
               durationMs: data.duration_ms,

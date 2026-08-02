@@ -97,3 +97,17 @@ export function formatSpeedBps(bps: number): string {
   const kb = bps / 1024;
   return `${kb.toFixed(0)} KB/s`;
 }
+
+/** Freshness label for LAN peers (ms since last_seen_ms epoch). */
+export function peerFreshnessLabel(lastSeenMs: number, nowMs = Date.now()): string {
+  const age = Math.max(0, nowMs - lastSeenMs);
+  if (age < 8_000) return "just now";
+  if (age < 60_000) return `${Math.round(age / 1000)}s ago`;
+  if (age < 3_600_000) return `${Math.round(age / 60_000)}m ago`;
+  return "a while ago";
+}
+
+/** Drop peers not seen within maxAgeMs (default 45s). */
+export function filterFreshPeers(peers: NearbyPeer[], maxAgeMs = 45_000, nowMs = Date.now()): NearbyPeer[] {
+  return peers.filter((p) => p.is_self || nowMs - p.last_seen_ms <= maxAgeMs);
+}

@@ -67,21 +67,27 @@ export function JoinCodePanel({
   }
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <p className="text-sm text-zinc-400 text-center">Join code</p>
+    <div className={cn("space-y-5", className)}>
+      <p className="text-center font-mono-brand text-[11px] uppercase tracking-[0.28em] text-zinc-500">
+        Join code
+      </p>
       <div
-        className="font-mono text-5xl sm:text-6xl font-medium tracking-wider text-center select-all text-[#7C3AED]"
+        key={display}
+        className={cn(
+          "join-code-hero motion-code-settle select-all text-center font-mono-brand text-5xl font-semibold tracking-[0.12em] text-[#7C3AED] sm:text-6xl",
+          !code && "opacity-40",
+        )}
         aria-label={code ? `Join code ${display}` : "No join code yet"}
       >
         {display}
       </div>
 
-      <div className="flex flex-wrap gap-2 justify-center">
+      <div className="flex flex-wrap justify-center gap-2">
         <button
           type="button"
           onClick={handleCopyCode}
           disabled={!code}
-          className="inline-flex items-center gap-2 min-h-11 px-4 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] disabled:opacity-50 text-sm text-white"
+          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] disabled:opacity-50"
           aria-label="Copy join code"
         >
           <Copy className="h-4 w-4" aria-hidden />
@@ -91,7 +97,7 @@ export function JoinCodePanel({
           <button
             type="button"
             onClick={handleCopyLink}
-            className="inline-flex items-center gap-2 min-h-11 px-4 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] text-sm text-white"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
             aria-label="Copy share link"
           >
             <Link2 className="h-4 w-4" aria-hidden />
@@ -102,7 +108,7 @@ export function JoinCodePanel({
           <button
             type="button"
             onClick={handlePasteDetect}
-            className="inline-flex items-center gap-2 min-h-11 px-4 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] text-sm text-white"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
             aria-label="Paste join code from clipboard"
           >
             <ClipboardPaste className="h-4 w-4" aria-hidden />
@@ -112,14 +118,14 @@ export function JoinCodePanel({
       </div>
 
       {pasteHint && (
-        <p className="text-sm text-center text-zinc-400" aria-live="polite">
+        <p className="text-center text-sm text-zinc-400" aria-live="polite">
           {pasteHint}
         </p>
       )}
 
       {showQr && code && (
-        <div className="flex flex-col items-center gap-3 pt-2">
-          <div className="rounded-xl bg-white p-3 shadow-sm" aria-hidden={false}>
+        <div className="flex flex-col items-center gap-3 pt-1">
+          <div className="rounded-xl bg-white p-3 shadow-sm">
             <QRCodeSVG
               value={qrPayload}
               size={168}
@@ -130,7 +136,7 @@ export function JoinCodePanel({
               title={`QR code for join code ${display}`}
             />
           </div>
-          <p className="text-xs text-zinc-500 text-center max-w-xs">
+          <p className="max-w-xs text-center text-xs text-zinc-500">
             Scan with another phone or Wormhole app — or open the deep link on that device.
           </p>
         </div>

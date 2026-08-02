@@ -147,27 +147,82 @@ impl Default for AppState {
     }
 }
 
+/// Format bytes/sec for tray tooltip (human, short).
+fn format_tray_speed(bps: f64) -> String {
+    if !bps.is_finite() || bps <= 0.0 {
+        return String::new();
+    }
+    if bps >= 1024.0 * 1024.0 {
+        format!("{:.1} MB/s", bps / (1024.0 * 1024.0))
+    } else if bps >= 1024.0 {
+        format!("{:.0} KB/s", bps / 1024.0)
+    } else {
+        format!("{:.0} B/s", bps)
+    }
+}
+
 /// Poll mount SessionMeters and emit transfer-progress for Portal live speed.
+/// Also refreshes the tray tooltip with session counts + aggregate speed.
 pub fn start_throughput_poller(app: AppHandle, state: Arc<AppState>) {
     let state_for_task = Arc::clone(&state);
     state.runtime.spawn(async move {
         let mut idle_cleared = true;
+        let mut last_tooltip = String::new();
         loop {
             tokio::time::sleep(Duration::from_millis(500)).await;
-            let snapshot: Vec<(String, f64)> = {
+
+            let host_count = {
+                let handles = state_for_task.host_handles.lock().await;
+                handles.len()
+            };
+            let (mount_count, snapshot, total_bps) = {
                 let handles = state_for_task.client_handles.lock().await;
-                handles
+                let mut total = 0.0_f64;
+                let snap: Vec<(String, f64)> = handles
                     .iter()
                     .filter_map(|(id, h)| {
                         let bps = h.throughput.speed_bps();
                         if bps > 0.0 {
+                            total += bps;
                             Some((id.clone(), bps))
                         } else {
                             None
                         }
                     })
-                    .collect()
+                    .collect();
+                (handles.len(), snap, total)
             };
+
+            // Tray session summary (id must match TrayIconBuilder::with_id)
+            let tooltip = {
+                let mut parts = Vec::new();
+                if host_count > 0 {
+                    parts.push(format!(
+                        "{} sharing",
+                        host_count
+                    ));
+                }
+                if mount_count > 0 {
+                    parts.push(format!(
+                        "{} mounted",
+                        mount_count
+                    ));
+                }
+                let speed = format_tray_speed(total_bps);
+                if parts.is_empty() {
+                    "Wormhole — idle".to_string()
+                } else if speed.is_empty() {
+                    format!("Wormhole — {}", parts.join(" · "))
+                } else {
+                    format!("Wormhole — {} · {}", parts.join(" · "), speed)
+                }
+            };
+            if tooltip != last_tooltip {
+                if let Some(tray) = app.tray_by_id("main") {
+                    let _ = tray.set_tooltip(Some(&tooltip));
+                }
+                last_tooltip = tooltip;
+            }
 
             if snapshot.is_empty() {
                 if !idle_cleared {

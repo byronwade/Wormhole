@@ -44,6 +44,7 @@ import { PortalHome } from "@/components/PortalHome";
 import { TransferPanel } from "@/components/TransferProgress";
 import { JoinCodePanel } from "@/components/JoinCodePanel";
 import { MountStatusStrip } from "@/components/MountStatusStrip";
+import { ToastStack, type ToastMessage } from "@/components/Toast";
 import { extractJoinCode, detectJoinCodeFromClipboard } from "@/lib/join-code";
 import { resolveDefaultMountPath, folderDisplayName } from "@/lib/paths";
 import { useWormholeHistory } from "@/hooks/useWormholeHistory";
@@ -628,33 +629,34 @@ function Sidebar({
   ];
 
   return (
-    <div className="w-52 bg-zinc-900 flex flex-col py-4 border-r border-zinc-800/80">
-      {/* Logo & Brand — hero-level in chrome */}
-      <div className="px-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#7C3AED] rounded-lg flex items-center justify-center flex-shrink-0">
-            <Share2 className="w-4 h-4 text-white" aria-hidden />
+    <div className="flex w-44 flex-col border-r border-white/[0.06] bg-[#0F0F0F] py-4">
+      <div className="mb-8 px-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-[#7C3AED]">
+            <Share2 className="h-3.5 w-3.5 text-white" aria-hidden />
           </div>
-          <span className="text-base font-bold text-white tracking-tight">Wormhole</span>
+          <span className="font-display text-sm font-semibold tracking-tight text-[#FAFAFA]">
+            Wormhole
+          </span>
         </div>
       </div>
 
-      <nav className="flex-1 px-3 space-y-0.5" aria-label="Main">
+      <nav className="flex-1 space-y-0.5 px-2" aria-label="Main">
         {mainNavItems.map((item) => (
           <Button
             key={item.id}
             onClick={() => onViewChange(item.id)}
             variant="ghost"
-            className={`w-full justify-start gap-3 h-10 min-h-10 ${
+            className={`h-10 min-h-10 w-full justify-start gap-2.5 ${
               activeView === item.id
                 ? "bg-[#7C3AED]/15 text-[#A78BFA]"
-                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                : "text-zinc-500 hover:bg-white/[0.04] hover:text-white"
             }`}
           >
-            <item.icon className="w-4 h-4 flex-shrink-0" aria-hidden />
-            <span className="text-sm flex-1 text-left">{item.label}</span>
+            <item.icon className="h-4 w-4 flex-shrink-0" aria-hidden />
+            <span className="flex-1 text-left text-sm">{item.label}</span>
             {item.count > 0 && (
-              <span className="text-xs bg-zinc-700/50 px-1.5 py-0.5 rounded font-variant-numeric tabular-nums">
+              <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 font-mono-brand text-[10px] tabular-nums text-zinc-400">
                 {item.count}
               </span>
             )}
@@ -663,24 +665,22 @@ function Sidebar({
 
         {activeTransfers.length > 0 && (
           <div className="pt-4">
-            <span className="px-3 text-[10px] uppercase text-zinc-600 font-medium tracking-wider">
+            <span className="px-2.5 font-mono-brand text-[10px] uppercase tracking-wider text-zinc-600">
               Transfers
             </span>
             <div className="mt-2 space-y-1">
               {activeTransfers.slice(0, 3).map((transfer) => (
-                <div key={transfer.id} className="px-3 py-1.5 text-xs">
+                <div key={transfer.id} className="px-2.5 py-1.5 text-xs">
                   <div className="flex items-center gap-2">
                     {transfer.direction === "upload" ? (
-                      <Upload className="w-3 h-3 text-teal-400 flex-shrink-0" aria-hidden />
+                      <Upload className="h-3 w-3 flex-shrink-0 text-teal-400" aria-hidden />
                     ) : (
-                      <Download className="w-3 h-3 text-[#7C3AED] flex-shrink-0" aria-hidden />
+                      <Download className="h-3 w-3 flex-shrink-0 text-[#7C3AED]" aria-hidden />
                     )}
-                    <span className="text-zinc-400 truncate flex-1">{transfer.fileName}</span>
-                    <span className="text-zinc-500 font-variant-numeric tabular-nums">
-                      {transfer.progress}%
-                    </span>
+                    <span className="flex-1 truncate text-zinc-400">{transfer.fileName}</span>
+                    <span className="tabular-nums text-zinc-500">{transfer.progress}%</span>
                   </div>
-                  <div className="mt-1 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-800">
                     <div
                       className={`h-full rounded-full transition-[width] ${
                         transfer.direction === "upload" ? "bg-teal-500" : "bg-[#7C3AED]"
@@ -695,72 +695,48 @@ function Sidebar({
         )}
       </nav>
 
-      <div className="px-3 space-y-0.5">
+      <div className="space-y-0.5 px-2">
         <details className="group">
-          <summary className="list-none cursor-pointer px-3 py-2 text-[10px] uppercase text-zinc-600 font-medium tracking-wider hover:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] rounded-md">
+          <summary className="cursor-pointer list-none rounded-md px-2.5 py-2 font-mono-brand text-[10px] uppercase tracking-wider text-zinc-600 hover:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]">
             More…
           </summary>
           <div className="mt-1 space-y-0.5">
             <Button
               onClick={() => onViewChange("my-shares")}
               variant="ghost"
-              className={`w-full justify-start gap-3 h-9 ${
+              className={`h-9 w-full justify-start gap-2.5 ${
                 activeView === "my-shares"
                   ? "bg-[#7C3AED]/15 text-[#A78BFA]"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                  : "text-zinc-500 hover:text-white"
               }`}
             >
-              <FolderUp className="w-4 h-4" aria-hidden />
-              <span className="text-sm">Sharing history</span>
+              <FolderUp className="h-4 w-4" aria-hidden />
+              <span className="text-sm">Sharing</span>
             </Button>
             <Button
               onClick={() => onViewChange("shared-with-me")}
               variant="ghost"
-              className={`w-full justify-start gap-3 h-9 ${
+              className={`h-9 w-full justify-start gap-2.5 ${
                 activeView === "shared-with-me"
                   ? "bg-[#7C3AED]/15 text-[#A78BFA]"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+                  : "text-zinc-500 hover:text-white"
               }`}
             >
-              <Download className="w-4 h-4" aria-hidden />
-              <span className="text-sm">Mount history</span>
-            </Button>
-            <Button
-              onClick={() => onViewChange("recent")}
-              variant="ghost"
-              className={`w-full justify-start gap-3 h-9 ${
-                activeView === "recent"
-                  ? "bg-[#7C3AED]/15 text-[#A78BFA]"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-              }`}
-            >
-              <Clock className="w-4 h-4" aria-hidden />
-              <span className="text-sm">Recent</span>
-            </Button>
-            <Button
-              onClick={() => onViewChange("favorites")}
-              variant="ghost"
-              className={`w-full justify-start gap-3 h-9 ${
-                activeView === "favorites"
-                  ? "bg-[#7C3AED]/15 text-[#A78BFA]"
-                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-              }`}
-            >
-              <Star className="w-4 h-4" aria-hidden />
-              <span className="text-sm">Favorites</span>
+              <Download className="h-4 w-4" aria-hidden />
+              <span className="text-sm">Mounts</span>
             </Button>
           </div>
         </details>
         <Button
           onClick={() => onViewChange("settings")}
           variant="ghost"
-          className={`w-full justify-start gap-3 h-10 min-h-10 ${
+          className={`h-10 min-h-10 w-full justify-start gap-2.5 ${
             activeView === "settings"
               ? "bg-[#7C3AED]/15 text-[#A78BFA]"
-              : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              : "text-zinc-500 hover:bg-white/[0.04] hover:text-white"
           }`}
         >
-          <Settings className="w-4 h-4 flex-shrink-0" aria-hidden />
+          <Settings className="h-4 w-4 flex-shrink-0" aria-hidden />
           <span className="text-sm">Settings</span>
         </Button>
       </div>
@@ -1599,12 +1575,12 @@ function ShareDialog({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-lg text-white">
+          <DialogTitle className="font-display text-lg text-white">
             {isHosting ? "You’re sharing" : "Share a folder"}
           </DialogTitle>
           <DialogDescription className="text-sm text-zinc-400">
             {isHosting
-              ? "Keep this open — copy the code or let them scan the QR."
+              ? "Copy the code or let them scan the QR. Finder stays the file browser."
               : "Drop a folder or pick one. They mount it with your code."}
           </DialogDescription>
         </DialogHeader>
@@ -1661,28 +1637,30 @@ function ShareDialog({
 
               <div className="space-y-2">
                 <p className="text-xs text-zinc-400">Mode</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Share mode">
                   <Button
                     type="button"
                     variant="outline"
+                    aria-pressed={shareMode === "mount"}
                     onClick={() => setShareMode("mount")}
-                    className={`min-h-11 ${shareMode === "mount" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700"}`}
+                    className={`min-h-11 ${shareMode === "mount" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700 text-zinc-400"}`}
                   >
                     Mount
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
+                    aria-pressed={shareMode === "drop"}
                     onClick={() => { setShareMode("drop"); if (expirationOption === "forever") setExpirationOption("24h"); }}
-                    className={`min-h-11 ${shareMode === "drop" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700"}`}
+                    className={`min-h-11 ${shareMode === "drop" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700 text-zinc-400"}`}
                   >
                     Drop
                   </Button>
                 </div>
-                <p className="text-[11px] text-zinc-600">
+                <p className="text-[11px] leading-relaxed text-zinc-500">
                   {shareMode === "drop"
-                    ? "Ephemeral — great for one-off handoffs. Expires automatically."
-                    : "Long-lived — stay mounted until you stop sharing."}
+                    ? "Drop = expires in 24h. One-off handoffs, then it’s gone."
+                    : "Mount = stay connected until you stop sharing."}
                 </p>
               </div>
 
@@ -1975,8 +1953,8 @@ function ConnectDialog({
           </DialogTitle>
           <DialogDescription className="text-sm text-zinc-400">
             {isConnected
-              ? "Files are live — open the folder and start working."
-              : "Paste a join code or share link. We mount it under ~/Wormhole."}
+              ? "Files are live in Finder. This window just keeps the tunnel open."
+              : "Paste a join code or share link. Mounts under ~/Wormhole — Finder opens automatically."}
           </DialogDescription>
         </DialogHeader>
 
@@ -2540,8 +2518,14 @@ function App() {
   const [pendingPeerName, setPendingPeerName] = useState<string | null>(null);
   const [pendingSharePath, setPendingSharePath] = useState<string | null>(null);
   const [localIp, setLocalIp] = useState<string>("");
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   /** Browser-preview deep links: ?preview=share|share-drop|share-success|connect|connect-success|sessions|settings|sharing|mounts */
   const [uiPreview, setUiPreview] = useState<string | null>(null);
+
+  const pushToast = useCallback((text: string, tone: ToastMessage["tone"] = "success") => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts((prev) => [...prev.slice(-3), { id, text, tone }]);
+  }, []);
 
   // Fetch local IP on mount
   useEffect(() => {
@@ -2875,7 +2859,41 @@ function App() {
     void invoke("open_file", { path: mountPoint }).catch(() =>
       invoke("reveal_in_explorer", { path: mountPoint })
     );
-  }, [addConnection, setConnectionStatus, updateConnection]);
+    const who = displayName || "share";
+    pushToast(`Opened in Finder — ${who}`);
+  }, [addConnection, setConnectionStatus, updateConnection, pushToast]);
+
+  /** One-tap Nearby mount — skip the code dialog. */
+  const handleQuickMount = useCallback(async (code: string, peerName?: string) => {
+    const clean = extractJoinCode(code) || code.trim();
+    if (!clean) return;
+    try {
+      const connectionId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const mountPath = await resolveDefaultMountPath(clean);
+      const result = await invoke<{
+        id: string;
+        mount_point: string;
+        join_code: string;
+        peer_name?: string | null;
+      }>("connect_with_code_and_id", {
+        id: connectionId,
+        joinCode: clean,
+        mountPath,
+      });
+      handleConnectionCreated(
+        result.join_code,
+        result.mount_point,
+        result.id,
+        result.peer_name || peerName,
+      );
+      setActiveDialog(null);
+    } catch (e) {
+      pushToast(`Couldn’t mount: ${e}`, "error");
+      setPendingJoinCode(clean);
+      setPendingPeerName(peerName ?? null);
+      setActiveDialog("connect");
+    }
+  }, [handleConnectionCreated, pushToast]);
 
   const handleDisconnect = useCallback(async (connectionId: string) => {
     // Optimistic update - immediately show as disconnected
@@ -3007,11 +3025,7 @@ function App() {
                 globalSpeed={globalSpeed}
                 onShare={() => setActiveDialog("share")}
                 onConnect={() => setActiveDialog("connect")}
-                onConnectWithCode={(code, peerName) => {
-                  setPendingJoinCode(code);
-                  setPendingPeerName(peerName ?? null);
-                  setActiveDialog("connect");
-                }}
+                onQuickMount={(code, peerName) => { void handleQuickMount(code, peerName); }}
                 onOpenFinder={openInFinder}
                 onStopShare={(id) => { void handleStopShare(id); }}
                 onDisconnect={(id) => { void handleDisconnect(id); }}
@@ -3476,6 +3490,10 @@ function App() {
 
       {/* Transfer progress panel - shows active file transfers */}
       <TransferPanel />
+      <ToastStack
+        toasts={toasts}
+        onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+      />
     </div>
   );
 }
