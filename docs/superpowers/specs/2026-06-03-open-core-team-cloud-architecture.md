@@ -39,19 +39,22 @@ Revocation: medium-TTL tokens (≈30d in free, short-lived + refresh in paid) **
 ## 5. Paid-cloud architecture (hybrid)
 
 ```
-┌─ Supabase  (fakebase mock for now) ─┐     ┌─ Rust cloud crate (teleport-cloud) ──┐
-│ Auth: email / OAuth / SSO           │     │ • validates Supabase JWT             │
+┌─ Self-hostable BaaS (fakebase mock) ┐     ┌─ Rust cloud crate (teleport-cloud) ──┐
+│ Auth: email / OAuth / SSO           │     │ • validates JWT from BaaS            │
 │ Postgres: teams, members, seats,    │────▶│ • looks up team + permissions        │
 │   audit log   (RLS in real backend) │     │ • SIGNS short-lived mount token ◀─── security boundary stays in our code
-└─────────────────────────────────────┘     │ • serves team pubkey + revoke list   │
-        ▲                                    └───────────────┬──────────────────────┘
-        │ Stripe per-seat billing                            │ issues token
-   web admin console (apps/web)                              ▼
-                                              wormhole CLI on any device
-                                              (login once → mount anywhere)
+│ Prefer: Supabase self-host /        │     │ • serves team pubkey + revoke list   │
+│ Appwrite / Postgres single-binary   │     └───────────────┬──────────────────────┘
+└─────────────────────────────────────┘                     │
+        ▲                                                    │ issues token
+        │ Polar (Apache-2.0) per-seat + optional             ▼
+        │ relay usage meters                    wormhole CLI on any device
+   web admin console (apps/web)                 (login once → mount anywhere)
 ```
 
-**Why hybrid:** don't reinvent auth/identity/billing (Supabase + Stripe do it well), but keep the **security-critical mount-authorization path — token signing and verification — in our own Rust code**, not in a third party.
+**Why hybrid:** don't reinvent auth/identity/billing, but prefer **open / self-hostable pieces** (Postgres BaaS you can run + [Polar](https://polar.sh) for seats/tax) over pure SaaS lock-in. Keep the **security-critical mount-authorization path — token signing and verification — in our own Rust code**. Full stack evolution: `docs/development/16-bleeding-edge-oss-modernization.md`.
+
+**Billing default:** Polar first (OSS-friendly MoR, seat + usage meters). Stripe remains an escape hatch if needed for enterprise procurement — not the default greenfield choice.
 
 ## 6. Dev strategy: fakebase now, real backend later
 
@@ -74,7 +77,8 @@ Constraints fakebase imposes on the "now" phase (its docs flag OAuth/MFA/RLS as 
    - Rust grant/token primitive in `teleport-core` (keypair, signed token, sign/verify, revoke list) + host handshake verification.
    - Free-tier CLI: `wormhole identity`, `wormhole team {init,grant,revoke}`, `--team`/`--grant` on host/mount.
    - `teleport-cloud` crate (real JWT validation + token signing + revoke endpoint).
-   - Real Supabase migration, Stripe billing, OAuth/SSO, RLS.
+   - Real BaaS migration (self-host Supabase/Appwrite-class), Polar billing, OAuth/SSO, RLS.
+   - Optional iroh-relay hosting for paid NAT fallback (bytes still E2E; see modernization doc).
 
 ## 8. Out of scope
 

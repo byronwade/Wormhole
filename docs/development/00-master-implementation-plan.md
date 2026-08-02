@@ -22,6 +22,7 @@ This is the **authoritative implementation guide** for building Project Wormhole
 12. [Platform-Specific Requirements](#12-platform-specific-requirements)
 13. [Migration & Upgrade Path](#13-migration--upgrade-path)
 14. [Production Checklist](#14-production-checklist)
+15. [Bleeding-Edge OSS Modernization](#15-bleeding-edge-oss-modernization) — proposed stack evolution
 
 ---
 
@@ -48,17 +49,22 @@ A cross-platform, peer-to-peer networked filesystem that allows users to:
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Network Layer   │  QUIC (quinn) + TLS 1.3                                  │
 │                  │  NAT traversal, hole punching, PAKE                      │
+│                  │  → proposed: iroh Endpoint (see §15)                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Filesystem      │  FUSE (fuser) + VFS                                      │
 │                  │  Inode management, read/write operations                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Cache Layer     │  L1 RAM (LRU) + L2 Disk (persistent)                     │
 │                  │  Chunked storage, prefetch, garbage collection           │
+│                  │  → proposed: content-addressed (BLAKE3 / iroh-blobs)     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Protocol        │  NetMessage (bincode serialization)                      │
 │                  │  Request/response, streaming, locking                    │
+│                  │  → proposed: postcard + raw/blob streams (see §15)       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **Stack evolution:** Proposed upgrades (iroh, postcard, Polar, self-host control plane) live in [`16-bleeding-edge-oss-modernization.md`](./16-bleeding-edge-oss-modernization.md). Current phase docs remain authoritative until those ADRs are accepted.
 
 ### Crate Structure
 
@@ -1769,6 +1775,28 @@ impl Handshake {
 
 ---
 
+## 15. Bleeding-Edge OSS Modernization
+
+**Status:** Proposed (2026-08-02)
+
+Full vision: [`16-bleeding-edge-oss-modernization.md`](./16-bleeding-edge-oss-modernization.md).
+
+**Summary of intended direction:**
+
+| Area | Keep | Adopt |
+|------|------|-------|
+| Product | Mount-as-drive, join codes, open-core | Content-addressed cache, dial-by-key identity |
+| Network | QUIC semantics | **iroh 1.0** (NAT + relay + mDNS) |
+| Blobs | 128KB chunks, BLAKE3 | **iroh-blobs** verified streaming |
+| Wire format | Additive protocol | **postcard** (+ selective **rkyv**) |
+| Auth | SPAKE2 join codes | + **OPAQUE** for cloud; evaluate CPace |
+| Control plane | Mount tokens never carry bytes | Self-host BaaS + **Polar** billing |
+| Desktop | Tauri 2 + FUSE/WinFSP | React 19 / Tailwind 4 parity with web |
+
+Do not pull Wave B+ dependencies into earlier phase work until the ADRs in that doc are accepted.
+
+---
+
 ## Appendix: Quick Reference
 
 ### Build Commands
@@ -1809,6 +1837,9 @@ cargo audit                           # Security audit
 
 - [Tauri v2 Docs](https://v2.tauri.app/)
 - [Quinn QUIC](https://docs.rs/quinn)
+- [iroh](https://iroh.computer)
 - [Fuser FUSE](https://docs.rs/fuser)
 - [macFUSE](https://osxfuse.github.io/)
 - [WinFsp](https://winfsp.dev/)
+- [Polar billing](https://polar.sh)
+- [OSS modernization vision](./16-bleeding-edge-oss-modernization.md)
