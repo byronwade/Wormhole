@@ -11,7 +11,7 @@ interface PortalHomeProps {
   globalSpeed?: string | null;
   onShare: () => void;
   onConnect: () => void;
-  onConnectWithCode: (code: string) => void;
+  onConnectWithCode: (code: string, peerName?: string) => void;
   onOpenFinder: (path: string) => void;
   onStopShare: (id: string) => void;
   onDisconnect: (id: string) => void;
@@ -120,7 +120,7 @@ export function PortalHome({
                     <Button
                       size="sm"
                       className="min-h-10 bg-[#7C3AED] hover:bg-[#6D28D9]"
-                      onClick={() => onConnectWithCode(peer.join_code!)}
+                      onClick={() => onConnectWithCode(peer.join_code!, peer.name)}
                     >
                       Mount
                     </Button>

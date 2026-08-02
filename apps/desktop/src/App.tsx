@@ -1747,12 +1747,19 @@ function ConnectDialog({
   onClose,
   onConnectionCreated,
   initialCode,
+  initialPeerName,
   previewMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConnectionCreated: (joinCode: string, mountPoint: string, connectionId: string) => void;
+  onConnectionCreated: (
+    joinCode: string,
+    mountPoint: string,
+    connectionId: string,
+    peerName?: string | null,
+  ) => void;
   initialCode?: string | null;
+  initialPeerName?: string | null;
   previewMode?: string | null;
 }) {
   const [hostAddress, setHostAddress] = useState("");
@@ -1817,7 +1824,12 @@ function ConnectDialog({
           setStatusMessage("");
 
           const extractedCode = extractJoinCode(hostAddress);
-          onConnectionCreated(extractedCode || hostAddress, data.mountpoint || "", connectionId);
+          onConnectionCreated(
+            extractedCode || hostAddress,
+            data.mountpoint || "",
+            connectionId,
+            initialPeerName,
+          );
         } else if (data.type === "Error") {
           setIsConnected(false);
           setIsConnecting(false);
@@ -1833,7 +1845,7 @@ function ConnectDialog({
         unlistenMount();
       }
     };
-  }, [isOpen, hostAddress, connectionId, onConnectionCreated]);
+  }, [isOpen, hostAddress, connectionId, onConnectionCreated, initialPeerName]);
 
   const selectFolder = async () => {
     try {
@@ -1864,17 +1876,24 @@ function ConnectDialog({
       }
 
       if (extractedCode) {
-        const result = await invoke<{ id: string; mount_point: string; join_code: string }>(
-          "connect_with_code_and_id",
-          {
-            id: newConnectionId,
-            joinCode: extractedCode,
-            mountPath: path,
-          }
-        );
+        const result = await invoke<{
+          id: string;
+          mount_point: string;
+          join_code: string;
+          peer_name?: string | null;
+        }>("connect_with_code_and_id", {
+          id: newConnectionId,
+          joinCode: extractedCode,
+          mountPath: path,
+        });
         setIsConnected(true);
         setMountPath(result.mount_point);
-        onConnectionCreated(result.join_code, result.mount_point, result.id);
+        onConnectionCreated(
+          result.join_code,
+          result.mount_point,
+          result.id,
+          result.peer_name || initialPeerName,
+        );
       } else if (hostAddress.includes(":") && !hostAddress.includes("://")) {
         await invoke("connect_to_peer", { hostAddress, mountPath: path });
       } else {
@@ -2396,6 +2415,7 @@ function App() {
     return completed !== "true";
   });
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+  const [pendingPeerName, setPendingPeerName] = useState<string | null>(null);
   const [localIp, setLocalIp] = useState<string>("");
   /** Browser-preview deep links: ?preview=share|share-success|connect|connect-success|sharing|mounts */
   const [uiPreview, setUiPreview] = useState<string | null>(null);
@@ -2445,6 +2465,7 @@ function App() {
     removeShare,
     setShareStatus,
     addConnection,
+    updateConnection,
     removeConnection,
     setConnectionStatus,
     syncWithBackend,
@@ -2689,15 +2710,24 @@ function App() {
   }, []);
 
   // Connection operations — keep Connect dialog open for Open Finder CTA
-  const handleConnectionCreated = useCallback((joinCode: string, mountPoint: string, connectionId: string) => {
-    const conn = addConnection(joinCode, mountPoint, undefined, connectionId);
+  const handleConnectionCreated = useCallback((
+    joinCode: string,
+    mountPoint: string,
+    connectionId: string,
+    peerName?: string | null,
+  ) => {
+    const displayName = peerName?.trim() || undefined;
+    const conn = addConnection(joinCode, mountPoint, displayName, connectionId);
+    if (displayName) {
+      updateConnection(conn.id, { remoteHost: displayName, name: displayName });
+    }
     setConnectionStatus(conn.id, "connected");
     setActiveView("all-files");
     // Auto-open Finder/Explorer (backend also opens; this covers preview + race)
     void invoke("open_file", { path: mountPoint }).catch(() =>
       invoke("reveal_in_explorer", { path: mountPoint })
     );
-  }, [addConnection, setConnectionStatus]);
+  }, [addConnection, setConnectionStatus, updateConnection]);
 
   const handleDisconnect = useCallback(async (connectionId: string) => {
     // Optimistic update - immediately show as disconnected
@@ -2829,8 +2859,9 @@ function App() {
                 globalSpeed={globalSpeed}
                 onShare={() => setActiveDialog("share")}
                 onConnect={() => setActiveDialog("connect")}
-                onConnectWithCode={(code) => {
+                onConnectWithCode={(code, peerName) => {
                   setPendingJoinCode(code);
+                  setPendingPeerName(peerName ?? null);
                   setActiveDialog("connect");
                 }}
                 onOpenFinder={openInFinder}
@@ -2855,7 +2886,7 @@ function App() {
                       <div className="px-4 pt-3">
                         <MountStatusStrip
                           mountPath={live.mountPoint}
-                          peerLabel={live.joinCode}
+                          peerLabel={live.remoteHost || live.name || live.joinCode}
                           status="connected"
                           onOpenFinder={() => {
                             void invoke("open_file", { path: live.mountPoint }).catch(() =>
@@ -3246,9 +3277,11 @@ function App() {
         onClose={() => {
           setActiveDialog(null);
           setPendingJoinCode(null);
+          setPendingPeerName(null);
         }}
         onConnectionCreated={handleConnectionCreated}
         initialCode={pendingJoinCode}
+        initialPeerName={pendingPeerName}
         previewMode={uiPreview}
       />
 

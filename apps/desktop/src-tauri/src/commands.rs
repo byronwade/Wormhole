@@ -111,6 +111,8 @@ struct ClientHandle {
     mount_point: PathBuf,
     /// Join code used for this connection
     join_code: String,
+    /// Human peer device name from HelloAck (when known)
+    peer_name: Option<String>,
 }
 
 /// Application state for managing host and client connections
@@ -480,6 +482,7 @@ pub async fn connect_to_peer(
                 mount_thread: Some(mount_thread),
                 mount_point,
                 join_code: host_address.clone(), // Use host_address as identifier
+                peer_name: None,
             },
         );
     }
@@ -635,6 +638,7 @@ pub async fn connect_to_peer(
                 mount_thread: Some(mount_thread),
                 mount_point: PathBuf::from(&mount_path),
                 join_code: host_address.clone(),
+                peer_name: None,
             },
         );
     }
@@ -1024,6 +1028,9 @@ pub async fn connect_with_code_and_id(
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
 
+    let (ready_tx, ready_rx) =
+        tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
+
     let mount_thread = thread::spawn(move || {
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
@@ -1037,6 +1044,7 @@ pub async fn connect_with_code_and_id(
             Ok(rt) => rt,
             Err(e) => {
                 error!("Failed to create runtime: {}", e);
+                let _ = ready_tx.send(Err(format!("Failed to create runtime: {}", e)));
                 let _ = app_for_mount.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -1055,6 +1063,7 @@ pub async fn connect_with_code_and_id(
 
             if let Err(e) = client.connect().await {
                 error!("Failed to connect: {:?}", e);
+                let _ = ready_tx.send(Err(format!("Failed to connect: {:?}", e)));
                 let _ = app_for_client.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -1063,6 +1072,9 @@ pub async fn connect_with_code_and_id(
                 );
                 return;
             }
+
+            let peer = client.host_name().map(|s| s.to_string());
+            let _ = ready_tx.send(Ok(peer));
 
             info!("Connected to host via join code!");
 
@@ -1111,11 +1123,18 @@ pub async fn connect_with_code_and_id(
         info!("Filesystem unmounted");
     });
 
+    let peer_name = match tokio::time::timeout(Duration::from_secs(35), ready_rx).await {
+        Ok(Ok(Ok(name))) => name.filter(|s| !s.is_empty()),
+        Ok(Ok(Err(e))) => return Err(e),
+        Ok(Err(_)) => return Err("Connection handshake interrupted".to_string()),
+        Err(_) => return Err("Timed out waiting for peer handshake".to_string()),
+    };
+
     let mount_info = MountInfo {
         id: id.clone(),
         mount_point: mount_point.to_string_lossy().to_string(),
         join_code: join_code.clone(),
-        peer_name: None,
+        peer_name: peer_name.clone(),
     };
 
     // Store the handle
@@ -1127,6 +1146,7 @@ pub async fn connect_with_code_and_id(
                 mount_thread: Some(mount_thread),
                 mount_point,
                 join_code,
+                peer_name,
             },
         );
     }
@@ -1260,6 +1280,9 @@ pub async fn connect_with_code_and_id(
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
 
+    let (ready_tx, ready_rx) =
+        tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
+
     let mount_thread = thread::spawn(move || {
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
@@ -1273,6 +1296,7 @@ pub async fn connect_with_code_and_id(
             Ok(rt) => rt,
             Err(e) => {
                 error!("Failed to create runtime: {}", e);
+                let _ = ready_tx.send(Err(format!("Failed to create runtime: {}", e)));
                 let _ = app_for_mount.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -1291,6 +1315,7 @@ pub async fn connect_with_code_and_id(
 
             if let Err(e) = client.connect().await {
                 error!("Failed to connect: {:?}", e);
+                let _ = ready_tx.send(Err(format!("Failed to connect: {:?}", e)));
                 let _ = app_for_client.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -1299,6 +1324,9 @@ pub async fn connect_with_code_and_id(
                 );
                 return;
             }
+
+            let peer = client.host_name().map(|s| s.to_string());
+            let _ = ready_tx.send(Ok(peer));
 
             info!("Connected to host via join code!");
 
@@ -1362,11 +1390,18 @@ pub async fn connect_with_code_and_id(
         }
     });
 
+    let peer_name = match tokio::time::timeout(Duration::from_secs(35), ready_rx).await {
+        Ok(Ok(Ok(name))) => name.filter(|s| !s.is_empty()),
+        Ok(Ok(Err(e))) => return Err(e),
+        Ok(Err(_)) => return Err("Connection handshake interrupted".to_string()),
+        Err(_) => return Err("Timed out waiting for peer handshake".to_string()),
+    };
+
     let mount_info = MountInfo {
         id: id.clone(),
         mount_point: mount_point.to_string_lossy().to_string(),
         join_code: join_code.clone(),
-        peer_name: None,
+        peer_name: peer_name.clone(),
     };
 
     // Store the handle
@@ -1378,6 +1413,7 @@ pub async fn connect_with_code_and_id(
                 mount_thread: Some(mount_thread),
                 mount_point,
                 join_code,
+                peer_name,
             },
         );
     }
@@ -1537,7 +1573,7 @@ pub async fn get_active_mounts(state: State<'_, Arc<AppState>>) -> Result<Vec<Mo
             id: id.clone(),
             mount_point: h.mount_point.to_string_lossy().to_string(),
             join_code: h.join_code.clone(),
-            peer_name: None,
+            peer_name: h.peer_name.clone(),
         })
         .collect())
 }
@@ -1557,7 +1593,7 @@ pub async fn get_mount_info(state: State<'_, Arc<AppState>>) -> Result<Option<Mo
         id: id.clone(),
         mount_point: h.mount_point.to_string_lossy().to_string(),
         join_code: h.join_code.clone(),
-        peer_name: None,
+        peer_name: h.peer_name.clone(),
     }))
 }
 

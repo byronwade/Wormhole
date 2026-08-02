@@ -51,6 +51,8 @@ pub struct WormholeClient {
     /// Negotiated session wire codec (postcard when both peers advertise it).
     codec: WireCodec,
     root_inode: Inode,
+    /// Human device name from HelloAck (e.g. "Studio-Render-Box")
+    host_name: Option<String>,
     /// Sync engine for tracking dirty chunks and locks (Phase 7)
     sync_engine: std::sync::Arc<SyncEngine>,
 }
@@ -63,8 +65,14 @@ impl WormholeClient {
             session_id: None,
             codec: WireCodec::Bincode,
             root_inode: ROOT_INODE,
+            host_name: None,
             sync_engine: std::sync::Arc::new(SyncEngine::default()),
         }
+    }
+
+    /// Peer device name from the HelloAck handshake, if connected.
+    pub fn host_name(&self) -> Option<&str> {
+        self.host_name.as_deref()
     }
 
     /// Get the sync engine (for sharing with FUSE)
@@ -195,6 +203,7 @@ impl WormholeClient {
                 }
                 self.session_id = Some(ack.session_id);
                 self.root_inode = ack.root_inode;
+                self.host_name = Some(ack.host_name.clone());
                 self.codec = negotiate_session_codec(
                     &crate::net::client_capabilities(),
                     &ack.capabilities,
