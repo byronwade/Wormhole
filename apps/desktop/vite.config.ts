@@ -14,6 +14,7 @@ export default defineConfig({
         ? {
             "@tauri-apps/plugin-deep-link": path.resolve(__dirname, "./src/shims/deep-link.ts"),
             "@tauri-apps/plugin-dialog": path.resolve(__dirname, "./src/shims/dialog.ts"),
+            "@tauri-apps/plugin-autostart": path.resolve(__dirname, "./src/shims/autostart.ts"),
             "@crabnebula/tauri-plugin-drag": path.resolve(__dirname, "./src/shims/drag.ts"),
           }
         : {}),

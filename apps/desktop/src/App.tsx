@@ -1468,6 +1468,24 @@ function ShareDialog({
     setPort(4433);
     setHostIpAddress("192.168.1.42");
     setIsHosting(true);
+    setShareMode("mount");
+  }, [isOpen, previewMode]);
+
+  useEffect(() => {
+    if (!isOpen || previewMode !== "share-drop") return;
+    setSharePath("/Users/alex/Desktop/RoughCuts");
+    setShareMode("drop");
+    setExpirationOption("24h");
+    setIsHosting(false);
+    setJoinCode("");
+  }, [isOpen, previewMode]);
+
+  useEffect(() => {
+    if (!isOpen || previewMode !== "share") return;
+    setSharePath("/Users/alex/Renders");
+    setShareMode("mount");
+    setIsHosting(false);
+    setJoinCode("");
   }, [isOpen, previewMode]);
 
   useEffect(() => {
@@ -2522,7 +2540,7 @@ function App() {
   const [pendingPeerName, setPendingPeerName] = useState<string | null>(null);
   const [pendingSharePath, setPendingSharePath] = useState<string | null>(null);
   const [localIp, setLocalIp] = useState<string>("");
-  /** Browser-preview deep links: ?preview=share|share-success|connect|connect-success|sharing|mounts */
+  /** Browser-preview deep links: ?preview=share|share-drop|share-success|connect|connect-success|sessions|settings|sharing|mounts */
   const [uiPreview, setUiPreview] = useState<string | null>(null);
 
   // Fetch local IP on mount
@@ -2543,7 +2561,7 @@ function App() {
     setUiPreview(preview);
     localStorage.setItem(SETUP_COMPLETE_KEY, "true");
     setShowSetupWizard(false);
-    if (preview === "share" || preview === "share-success") {
+    if (preview === "share" || preview === "share-drop" || preview === "share-success") {
       setActiveDialog("share");
     } else if (preview === "connect" || preview === "connect-success") {
       setPendingJoinCode("7KJMXB");
@@ -2552,6 +2570,10 @@ function App() {
       setActiveView("my-shares");
     } else if (preview === "mounts") {
       setActiveView("shared-with-me");
+    } else if (preview === "settings") {
+      setActiveView("settings");
+    } else if (preview === "sessions" || preview === "portal") {
+      setActiveView("all-files");
     }
   }, []);
 
