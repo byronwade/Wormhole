@@ -40,13 +40,17 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { SetupWizard } from "@/components/SetupWizard";
-import { Homepage } from "@/components/Homepage";
+import { PortalHome } from "@/components/PortalHome";
 import { TransferPanel } from "@/components/TransferProgress";
 import { JoinCodePanel } from "@/components/JoinCodePanel";
 import { MountStatusStrip } from "@/components/MountStatusStrip";
 import { extractJoinCode, detectJoinCodeFromClipboard } from "@/lib/join-code";
 import { resolveDefaultMountPath, folderDisplayName } from "@/lib/paths";
 import { useWormholeHistory } from "@/hooks/useWormholeHistory";
+import { useNearbyPeers } from "@/hooks/useNearbyPeers";
+import { useSessionThroughput } from "@/hooks/useSessionThroughput";
+import { sessionsFromHistory } from "@/types/portal";
+import type { ShareMode } from "@/types/history";
 import { useFileIndex, type IndexEntry } from "@/hooks/useFileIndex";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -619,9 +623,7 @@ function Sidebar({
   activeTransfers: SidebarTransfer[];
 }) {
   const mainNavItems = [
-    { id: "all-files" as NavigationView, icon: Files, label: "Home", count: 0 },
-    { id: "my-shares" as NavigationView, icon: FolderUp, label: "Sharing", count: shareCount },
-    { id: "shared-with-me" as NavigationView, icon: Download, label: "Mounts", count: connectionCount },
+    { id: "all-files" as NavigationView, icon: Share2, label: "Portal", count: shareCount + connectionCount },
   ];
 
   return (
@@ -699,6 +701,30 @@ function Sidebar({
           </summary>
           <div className="mt-1 space-y-0.5">
             <Button
+              onClick={() => onViewChange("my-shares")}
+              variant="ghost"
+              className={`w-full justify-start gap-3 h-9 ${
+                activeView === "my-shares"
+                  ? "bg-[#7C3AED]/15 text-[#A78BFA]"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              }`}
+            >
+              <FolderUp className="w-4 h-4" aria-hidden />
+              <span className="text-sm">Sharing history</span>
+            </Button>
+            <Button
+              onClick={() => onViewChange("shared-with-me")}
+              variant="ghost"
+              className={`w-full justify-start gap-3 h-9 ${
+                activeView === "shared-with-me"
+                  ? "bg-[#7C3AED]/15 text-[#A78BFA]"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+              }`}
+            >
+              <Download className="w-4 h-4" aria-hidden />
+              <span className="text-sm">Mount history</span>
+            </Button>
+            <Button
               onClick={() => onViewChange("recent")}
               variant="ghost"
               className={`w-full justify-start gap-3 h-9 ${
@@ -742,7 +768,7 @@ function Sidebar({
 }
 
 // File Browser Component
-function FileBrowser({
+function FileBrowserLegacy({
   rootPath,
   rootName,
   viewMode,
@@ -1128,7 +1154,7 @@ function FileBrowser({
 }
 
 // All Files View Component - Shows all root folders together like a file browser
-function AllFilesView({
+function AllFilesViewLegacy({
   shares,
   connections,
   searchQuery,
@@ -1411,10 +1437,12 @@ function ShareDialog({
   isOpen,
   onClose,
   onShareCreated,
+  previewMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onShareCreated: (path: string, joinCode: string, port: number, shareId: string, expirationOption: ExpirationOption, expiresAt: number | null) => void;
+  onShareCreated: (path: string, joinCode: string, port: number, shareId: string, expirationOption: ExpirationOption, expiresAt: number | null, shareMode: ShareMode) => void;
+  previewMode?: string | null;
 }) {
   const [sharePath, setSharePath] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -1426,6 +1454,18 @@ function ShareDialog({
   const [isDragging, setIsDragging] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [expirationOption, setExpirationOption] = useState<ExpirationOption>("forever");
+  const [shareMode, setShareMode] = useState<ShareMode>("mount");
+
+  // Seed success UI for screenshot/demo deep-links
+  useEffect(() => {
+    if (!isOpen || previewMode !== "share-success") return;
+    setSharePath("/Users/alex/Renders");
+    setJoinCode("7KJMXB");
+    setShareId("preview-share-1");
+    setPort(4433);
+    setHostIpAddress("192.168.1.42");
+    setIsHosting(true);
+  }, [isOpen, previewMode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1488,18 +1528,19 @@ function ShareDialog({
         setHostIpAddress(ips[0]);
       }
 
-      const expiresInMs = expirationToMs(expirationOption);
+      const effectiveExpiration = shareMode === "drop" && expirationOption === "forever" ? "24h" : expirationOption;
+      const expiresInMs = expirationToMs(effectiveExpiration);
       const expiresAt = expiresInMs ? Date.now() + expiresInMs : null;
 
-      const result = await invoke<{ id: string; share_path: string; port: number; join_code: string }>(
+      const result = await invoke<{ id: string; share_path: string; port: number; join_code: string; host_name?: string; share_mode?: string }>(
         "start_hosting_with_expiration",
-        { id: newShareId, path: sharePath, port: null, expiresInMs }
+        { id: newShareId, path: sharePath, port: null, expiresInMs, shareMode }
       );
 
       setJoinCode(result.join_code);
       setPort(result.port);
       setIsHosting(true);
-      onShareCreated(result.share_path, result.join_code, result.port, result.id, expirationOption, expiresAt);
+      onShareCreated(result.share_path, result.join_code, result.port, result.id, effectiveExpiration, expiresAt, shareMode);
     } catch (e) {
       setStatusMessage(`Error: ${e}`);
     } finally {
@@ -1591,6 +1632,33 @@ function ShareDialog({
               </div>
 
               <div className="space-y-2">
+                <p className="text-xs text-zinc-400">Mode</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShareMode("mount")}
+                    className={`min-h-11 ${shareMode === "mount" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700"}`}
+                  >
+                    Mount
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setShareMode("drop"); if (expirationOption === "forever") setExpirationOption("24h"); }}
+                    className={`min-h-11 ${shareMode === "drop" ? "border-[#7C3AED] bg-[#7C3AED]/15 text-white" : "border-zinc-700"}`}
+                  >
+                    Drop
+                  </Button>
+                </div>
+                <p className="text-[11px] text-zinc-600">
+                  {shareMode === "drop"
+                    ? "Ephemeral — great for one-off handoffs. Expires automatically."
+                    : "Long-lived — stay mounted until you stop sharing."}
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <label htmlFor="share-expiration" className="text-xs text-zinc-400">
                   Link expiration
                 </label>
@@ -1679,11 +1747,13 @@ function ConnectDialog({
   onClose,
   onConnectionCreated,
   initialCode,
+  previewMode,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onConnectionCreated: (joinCode: string, mountPoint: string, connectionId: string) => void;
   initialCode?: string | null;
+  previewMode?: string | null;
 }) {
   const [hostAddress, setHostAddress] = useState("");
   const [mountPath, setMountPath] = useState("");
@@ -1698,6 +1768,15 @@ function ConnectDialog({
     hostAddress.trim().length > 0 &&
     (extractedPreview !== null ||
       (hostAddress.includes(":") && !hostAddress.includes("://")));
+
+  // Seed mounted UI for screenshot/demo deep-links
+  useEffect(() => {
+    if (!isOpen || previewMode !== "connect-success") return;
+    setHostAddress("7KJMXB");
+    setMountPath("/home/preview/Wormhole/7KJMXB");
+    setConnectionId("preview-conn-1");
+    setIsConnected(true);
+  }, [isOpen, previewMode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -2307,9 +2386,9 @@ const SETUP_COMPLETE_KEY = "wormhole_setup_complete";
 
 function App() {
   const [activeView, setActiveView] = useState<NavigationView>("all-files");
-  const [viewMode] = useState<ViewMode>("list");
+  const [_viewMode] = useState<ViewMode>("list");
   const [currentFolder, setCurrentFolder] = useState<string>("");
-  const [currentFolderSource, setCurrentFolderSource] = useState<{ id: string; type: "share" | "connection" } | null>(null);
+  const [_currentFolderSource, setCurrentFolderSource] = useState<{ id: string; type: "share" | "connection" } | null>(null);
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(() => {
@@ -2318,6 +2397,8 @@ function App() {
   });
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [localIp, setLocalIp] = useState<string>("");
+  /** Browser-preview deep links: ?preview=share|share-success|connect|connect-success|sharing|mounts */
+  const [uiPreview, setUiPreview] = useState<string | null>(null);
 
   // Fetch local IP on mount
   useEffect(() => {
@@ -2328,6 +2409,25 @@ function App() {
         }
       })
       .catch((e) => console.error("Failed to get local IP:", e));
+  }, []);
+
+  // Screenshot / demo deep-links (browser preview only)
+  useEffect(() => {
+    const preview = new URLSearchParams(window.location.search).get("preview");
+    if (!preview) return;
+    setUiPreview(preview);
+    localStorage.setItem(SETUP_COMPLETE_KEY, "true");
+    setShowSetupWizard(false);
+    if (preview === "share" || preview === "share-success") {
+      setActiveDialog("share");
+    } else if (preview === "connect" || preview === "connect-success") {
+      setPendingJoinCode("7KJMXB");
+      setActiveDialog("connect");
+    } else if (preview === "sharing") {
+      setActiveView("my-shares");
+    } else if (preview === "mounts") {
+      setActiveView("shared-with-me");
+    }
   }, []);
 
   // Delete confirmation state
@@ -2350,16 +2450,23 @@ function App() {
     syncWithBackend,
   } = useWormholeHistory();
 
-  // Use the file index hook for instant search
+  // File index retained for search in buried history views
   const {
-    searchQuery: globalSearchQuery,
-    setSearchQuery: setGlobalSearchQuery,
-    searchResults,
-    isIndexing,
-    totalFiles,
-    totalFolders,
-    refreshIndex,
+    searchQuery: _globalSearchQuery,
+    setSearchQuery: _setGlobalSearchQuery,
+    searchResults: _searchResults,
+    isIndexing: _isIndexing,
+    totalFiles: _totalFiles,
+    totalFolders: _totalFolders,
+    refreshIndex: _refreshIndex,
   } = useFileIndex(shares, connections);
+  void _globalSearchQuery;
+  void _setGlobalSearchQuery;
+  void _searchResults;
+  void _isIndexing;
+  void _totalFiles;
+  void _totalFolders;
+  void _refreshIndex;
 
   // Use recent files hook
   const {
@@ -2372,12 +2479,13 @@ function App() {
   // Use favorites hook
   const {
     favorites,
-    // Note: addFavorite available - toggleFavorite is used via FileBrowser
     removeFavorite,
-    toggleFavorite,
-    isFavorite,
+    toggleFavorite: _toggleFavorite,
+    isFavorite: _isFavorite,
     totalFavorites,
   } = useFavorites(shares, connections);
+  void _toggleFavorite;
+  void _isFavorite;
 
   // Use projects hook
   const {
@@ -2482,17 +2590,54 @@ function App() {
     return () => clearInterval(interval);
   }, [syncWithBackend]);
 
+  const { peers: nearbyPeers, deviceName } = useNearbyPeers();
+  const { speedById, globalSpeed } = useSessionThroughput();
+  const portalSessions = sessionsFromHistory(shares, connections, speedById);
+
+  const openInFinder = useCallback((path: string) => {
+    void invoke("open_file", { path }).catch(() =>
+      invoke("reveal_in_explorer", { path })
+    );
+  }, []);
+
+  // Legacy browse requests → open OS file manager (Portal is not a file browser)
+  useEffect(() => {
+    if (!currentFolder) return;
+    openInFinder(currentFolder);
+    setCurrentFolder("");
+    setCurrentFolderSource(null);
+  }, [currentFolder, openInFinder]);
+
+  // Tray → open dialogs
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<{ action: string }>("tray-action", (event) => {
+      const action = event.payload?.action;
+      if (action === "share") setActiveDialog("share");
+      if (action === "connect") setActiveDialog("connect");
+      if (action === "portal") setActiveView("all-files");
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, []);
+
+  // share-expired → mark inactive
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listen<{ id: string }>("share-expired", (event) => {
+      if (event.payload?.id) setShareStatus(event.payload.id, "expired");
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, [setShareStatus]);
+
   const handleSetupComplete = useCallback(() => {
     localStorage.setItem(SETUP_COMPLETE_KEY, "true");
     setShowSetupWizard(false);
   }, []);
 
   // Share operations — keep Share dialog open on success (code + QR stay visible)
-  const handleShareCreated = useCallback((path: string, joinCode: string, port: number, shareId: string, expirationOption: ExpirationOption, expiresAt: number | null) => {
-    addShare(path, joinCode, port, undefined, shareId, expirationOption, expiresAt);
-    setCurrentFolder(path);
-    setCurrentFolderSource({ id: shareId, type: "share" });
-    setActiveView("my-shares");
+  const handleShareCreated = useCallback((path: string, joinCode: string, port: number, shareId: string, expirationOption: ExpirationOption, expiresAt: number | null, shareMode: ShareMode = "mount") => {
+    addShare(path, joinCode, port, undefined, shareId, expirationOption, expiresAt, shareMode);
+    setActiveView("all-files");
   }, [addShare]);
 
   const handleStopShare = useCallback(async (shareId: string) => {
@@ -2547,9 +2692,11 @@ function App() {
   const handleConnectionCreated = useCallback((joinCode: string, mountPoint: string, connectionId: string) => {
     const conn = addConnection(joinCode, mountPoint, undefined, connectionId);
     setConnectionStatus(conn.id, "connected");
-    setCurrentFolder(mountPoint);
-    setCurrentFolderSource({ id: conn.id, type: "connection" });
-    setActiveView("shared-with-me");
+    setActiveView("all-files");
+    // Auto-open Finder/Explorer (backend also opens; this covers preview + race)
+    void invoke("open_file", { path: mountPoint }).catch(() =>
+      invoke("reveal_in_explorer", { path: mountPoint })
+    );
   }, [addConnection, setConnectionStatus]);
 
   const handleDisconnect = useCallback(async (connectionId: string) => {
@@ -2675,55 +2822,25 @@ function App() {
           {/* View Content */}
           {activeView === "all-files" && (
             <>
-              {currentFolder ? (
-                <FileBrowser
-                  rootPath={currentFolder}
-                  rootName={getFileName(currentFolder) || "Folder"}
-                  viewMode={viewMode}
-                  sourceId={currentFolderSource?.id || ""}
-                  sourceType={currentFolderSource?.type || "share"}
-                  onToggleFavorite={toggleFavorite}
-                  isFavorite={isFavorite}
-                  onBackToAllFiles={() => {
-                    setCurrentFolder("");
-                    setCurrentFolderSource(null);
-                  }}
-                />
-              ) : (
-                // Show Homepage when no active sources, otherwise show AllFilesView
-                shares.filter(s => s.status === "active").length === 0 &&
-                connections.filter(c => c.status === "connected").length === 0 ? (
-                  <Homepage
-                    onOpenShareDialog={() => setActiveDialog("share")}
-                    onOpenConnectDialog={() => setActiveDialog("connect")}
-                  />
-                ) : (
-                  <AllFilesView
-                    shares={shares}
-                    connections={connections}
-                    searchQuery={globalSearchQuery}
-                    setSearchQuery={setGlobalSearchQuery}
-                    searchResults={searchResults}
-                    isIndexing={isIndexing}
-                    totalFiles={totalFiles}
-                    totalFolders={totalFolders}
-                    onRefreshIndex={refreshIndex}
-                    onBrowseShare={(path) => {
-                      const share = shares.find(s => s.path === path);
-                      setCurrentFolder(path);
-                      if (share) setCurrentFolderSource({ id: share.id, type: "share" });
-                    }}
-                    onBrowseConnection={(mountPoint) => {
-                      const conn = connections.find(c => c.mountPoint === mountPoint);
-                      setCurrentFolder(mountPoint);
-                      if (conn) setCurrentFolderSource({ id: conn.id, type: "connection" });
-                    }}
-                    onOpenShareDialog={() => setActiveDialog("share")}
-                    onOpenConnectDialog={() => setActiveDialog("connect")}
-                    mediaFilter={mediaFilter}
-                  />
-                )
-              )}
+              <PortalHome
+                deviceName={deviceName}
+                sessions={portalSessions}
+                nearby={nearbyPeers}
+                globalSpeed={globalSpeed}
+                onShare={() => setActiveDialog("share")}
+                onConnect={() => setActiveDialog("connect")}
+                onConnectWithCode={(code) => {
+                  setPendingJoinCode(code);
+                  setActiveDialog("connect");
+                }}
+                onOpenFinder={openInFinder}
+                onStopShare={(id) => { void handleStopShare(id); }}
+                onDisconnect={(id) => { void handleDisconnect(id); }}
+                onReconnect={(id) => {
+                  const conn = connections.find((c) => c.id === id);
+                  if (conn) void handleReconnect(conn);
+                }}
+              />
             </>
           )}
 
@@ -3122,6 +3239,7 @@ function App() {
         isOpen={activeDialog === "share"}
         onClose={() => setActiveDialog(null)}
         onShareCreated={handleShareCreated}
+        previewMode={uiPreview}
       />
       <ConnectDialog
         isOpen={activeDialog === "connect"}
@@ -3131,6 +3249,7 @@ function App() {
         }}
         onConnectionCreated={handleConnectionCreated}
         initialCode={pendingJoinCode}
+        previewMode={uiPreview}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -3175,5 +3294,9 @@ function App() {
     </div>
   );
 }
+
+// Legacy in-app browsers retained for gradual extraction (Portal opens Finder instead)
+void FileBrowserLegacy;
+void AllFilesViewLegacy;
 
 export default App;

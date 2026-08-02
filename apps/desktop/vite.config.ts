@@ -9,6 +9,14 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@wormhole/shared": path.resolve(__dirname, "../../packages/shared/src"),
+      // Browser preview: stub Tauri plugins that throw outside the webview
+      ...(process.env.VITE_BROWSER_PREVIEW === "1"
+        ? {
+            "@tauri-apps/plugin-deep-link": path.resolve(__dirname, "./src/shims/deep-link.ts"),
+            "@tauri-apps/plugin-dialog": path.resolve(__dirname, "./src/shims/dialog.ts"),
+            "@crabnebula/tauri-plugin-drag": path.resolve(__dirname, "./src/shims/drag.ts"),
+          }
+        : {}),
     },
   },
   // Prevent vite from obscuring rust errors

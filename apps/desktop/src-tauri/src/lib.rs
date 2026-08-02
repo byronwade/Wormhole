@@ -4,6 +4,7 @@
 //! Wormhole desktop application.
 
 mod commands;
+mod lan;
 
 use std::sync::Arc;
 use tauri::{Emitter, Listener, Manager};
@@ -115,6 +116,8 @@ pub fn run() {
             commands::default_mount_path,
             commands::open_file,
             commands::reveal_in_explorer,
+            commands::get_device_identity,
+            commands::list_nearby_peers,
             // Setup wizard
             commands::check_fuse_installed,
             // Share expiration
@@ -211,29 +214,41 @@ pub fn run() {
                 });
             }
 
-            // Set up system tray (optional, enabled in tauri.conf.json)
+            // System tray — primary product surface when window is closed
             #[cfg(desktop)]
             {
-                use tauri::menu::{Menu, MenuItem};
+                use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
                 use tauri::tray::TrayIconBuilder;
 
+                let share =
+                    MenuItem::with_id(app, "share", "Share a Folder…", true, None::<&str>)?;
+                let connect =
+                    MenuItem::with_id(app, "connect", "Enter a Code…", true, None::<&str>)?;
+                let portal =
+                    MenuItem::with_id(app, "portal", "Open Portal", true, None::<&str>)?;
+                let sep = PredefinedMenuItem::separator(app)?;
                 let quit = MenuItem::with_id(app, "quit", "Quit Wormhole", true, None::<&str>)?;
-                let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
 
-                let menu = Menu::with_items(app, &[&show, &quit])?;
+                let menu = Menu::with_items(app, &[&share, &connect, &portal, &sep, &quit])?;
 
                 let _tray = TrayIconBuilder::new()
                     .menu(&menu)
+                    .tooltip("Wormhole")
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "quit" => {
                             info!("Quit requested from tray");
                             app.exit(0);
                         }
-                        "show" => {
+                        "share" | "connect" | "portal" => {
                             if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             }
+                            let action = event.id.as_ref();
+                            let _ = app.emit(
+                                "tray-action",
+                                serde_json::json!({ "action": action }),
+                            );
                         }
                         _ => {}
                     })

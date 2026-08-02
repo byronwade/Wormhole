@@ -37,6 +37,8 @@ use teleport_daemon::host::{HostConfig, WormholeHost};
 #[cfg(windows)]
 use teleport_daemon::winfsp::WormholeWinFS;
 
+use crate::lan::{LanDiscovery, NearbyPeer};
+
 /// Events emitted to the frontend
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -76,6 +78,10 @@ pub struct HostInfo {
     pub share_path: String,
     pub port: u16,
     pub join_code: String,
+    /// Human device name (e.g. "Alexs-MacBook")
+    pub host_name: String,
+    /// "mount" (long-lived) or "drop" (ephemeral)
+    pub share_mode: String,
 }
 
 /// Mount info structure
@@ -84,12 +90,15 @@ pub struct MountInfo {
     pub id: String,
     pub mount_point: String,
     pub join_code: String,
+    pub peer_name: Option<String>,
 }
 
 /// Handle for stopping the host
 struct HostHandle {
     /// Abort handle for the host task
     abort_handle: tokio::task::AbortHandle,
+    /// Abort handle for LAN announce (if any)
+    announce_abort: Option<tokio::task::AbortHandle>,
     /// Host information
     info: HostInfo,
 }
@@ -115,17 +124,45 @@ pub struct AppState {
     next_port: Mutex<u16>,
     /// Tokio runtime for async operations
     runtime: Runtime,
+    /// LAN nearby-peer discovery
+    lan: LanDiscovery,
 }
 
 impl Default for AppState {
     fn default() -> Self {
+        let lan = LanDiscovery::new();
+        lan.start_listener();
         Self {
             host_handles: Mutex::new(HashMap::new()),
             client_handles: Mutex::new(HashMap::new()),
             next_port: Mutex::new(4433),
             runtime: Runtime::new().expect("Failed to create tokio runtime"),
+            lan,
         }
     }
+}
+
+/// Best-effort open mount in Finder/Explorer (auto-reveal after mount).
+fn auto_open_mount_path(path: &str) {
+    let path_buf = PathBuf::from(path);
+    if !path_buf.exists() {
+        return;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(&path_buf).spawn();
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("explorer")
+            .arg(&path_buf)
+            .spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(&path_buf).spawn();
+    }
+    info!("Auto-opened mount path: {}", path);
 }
 
 /// Start hosting a folder with a specific ID (supports multiple shares)
@@ -179,13 +216,15 @@ pub async fn start_hosting_with_id(
         .parse()
         .map_err(|e| format!("Invalid port: {}", e))?;
 
+    let host_name = hostname::get()
+        .map(|h| h.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| "wormhole-host".into());
+
     let config = HostConfig {
         bind_addr,
         shared_path: share_path.clone(),
         max_connections: 10,
-        host_name: hostname::get()
-            .map(|h| h.to_string_lossy().into_owned())
-            .unwrap_or_else(|_| "wormhole-host".into()),
+        host_name: host_name.clone(),
     };
 
     // Spawn the host task in the runtime
@@ -219,11 +258,18 @@ pub async fn start_hosting_with_id(
         }
     });
 
+    // Announce on LAN so nearby Portal UIs can show this device
+    let announce_handle = state
+        .lan
+        .start_announce(join_code.clone(), port);
+
     let host_info = HostInfo {
         id: id.clone(),
         share_path: share_path.to_string_lossy().to_string(),
         port,
         join_code: join_code.clone(),
+        host_name,
+        share_mode: "mount".to_string(),
     };
 
     // Store the handle with host info
@@ -233,6 +279,7 @@ pub async fn start_hosting_with_id(
             id.clone(),
             HostHandle {
                 abort_handle: host_task.abort_handle(),
+                announce_abort: Some(announce_handle.abort_handle()),
                 info: host_info.clone(),
             },
         );
@@ -246,6 +293,16 @@ pub async fn start_hosting_with_id(
 #[tauri::command]
 pub async fn stop_hosting_by_id(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
     info!("Stopping host: {}", id);
+
+    // Stop LAN announce early if present
+    {
+        let handles = state.host_handles.lock().await;
+        if let Some(h) = handles.get(&id) {
+            if let Some(a) = &h.announce_abort {
+                a.abort();
+            }
+        }
+    }
 
     let mut handles = state.host_handles.lock().await;
     if let Some(h) = handles.remove(&id) {
@@ -805,11 +862,19 @@ pub async fn start_global_hosting_with_id(
         Err(_) => return Err("Failed to get join code".to_string()),
     };
 
+    let host_name = hostname::get()
+        .map(|h| h.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| "wormhole-host".into());
+
+    let announce_handle = state.lan.start_announce(final_code.clone(), port);
+
     let host_info = HostInfo {
         id: id.clone(),
         share_path: share_path.to_string_lossy().to_string(),
         port,
         join_code: final_code.clone(),
+        host_name,
+        share_mode: "mount".to_string(),
     };
 
     {
@@ -818,6 +883,7 @@ pub async fn start_global_hosting_with_id(
             id.clone(),
             HostHandle {
                 abort_handle: host_task.abort_handle(),
+                announce_abort: Some(announce_handle.abort_handle()),
                 info: host_info.clone(),
             },
         );
@@ -1049,6 +1115,7 @@ pub async fn connect_with_code_and_id(
         id: id.clone(),
         mount_point: mount_point.to_string_lossy().to_string(),
         join_code: join_code.clone(),
+        peer_name: None,
     };
 
     // Store the handle
@@ -1063,6 +1130,9 @@ pub async fn connect_with_code_and_id(
             },
         );
     }
+
+    // Finder opens as soon as the mount is registered (OS may still be settling)
+    auto_open_mount_path(&mount_info.mount_point);
 
     Ok(mount_info)
 }
@@ -1296,6 +1366,7 @@ pub async fn connect_with_code_and_id(
         id: id.clone(),
         mount_point: mount_point.to_string_lossy().to_string(),
         join_code: join_code.clone(),
+        peer_name: None,
     };
 
     // Store the handle
@@ -1310,6 +1381,8 @@ pub async fn connect_with_code_and_id(
             },
         );
     }
+
+    auto_open_mount_path(&mount_info.mount_point);
 
     Ok(mount_info)
 }
@@ -1464,6 +1537,7 @@ pub async fn get_active_mounts(state: State<'_, Arc<AppState>>) -> Result<Vec<Mo
             id: id.clone(),
             mount_point: h.mount_point.to_string_lossy().to_string(),
             join_code: h.join_code.clone(),
+            peer_name: None,
         })
         .collect())
 }
@@ -1483,7 +1557,27 @@ pub async fn get_mount_info(state: State<'_, Arc<AppState>>) -> Result<Option<Mo
         id: id.clone(),
         mount_point: h.mount_point.to_string_lossy().to_string(),
         join_code: h.join_code.clone(),
+        peer_name: None,
     }))
+}
+
+/// Device identity for human peer labels in the Portal.
+#[tauri::command]
+pub fn get_device_identity(state: State<'_, Arc<AppState>>) -> Result<NearbyPeer, String> {
+    Ok(NearbyPeer {
+        id: state.lan.self_id().to_string(),
+        name: state.lan.self_name().to_string(),
+        join_code: None,
+        port: None,
+        last_seen_ms: 0,
+        is_self: true,
+    })
+}
+
+/// Nearby Wormhole peers discovered on the LAN.
+#[tauri::command]
+pub fn list_nearby_peers(state: State<'_, Arc<AppState>>) -> Result<Vec<NearbyPeer>, String> {
+    Ok(state.lan.list_peers())
 }
 
 /// Delete a file or folder
@@ -1875,7 +1969,9 @@ pub async fn check_for_updates(current_version: String) -> Result<Option<UpdateI
     }
 }
 
-/// Start hosting with expiration support
+/// Start hosting with expiration support.
+///
+/// `share_mode`: `"mount"` (long-lived) or `"drop"` (ephemeral — defaults to 24h if no expiry).
 #[tauri::command]
 pub async fn start_hosting_with_expiration(
     app: AppHandle,
@@ -1884,17 +1980,34 @@ pub async fn start_hosting_with_expiration(
     path: String,
     port: Option<u16>,
     expires_in_ms: Option<u64>,
+    share_mode: Option<String>,
 ) -> Result<HostInfo, String> {
+    let mode = share_mode.unwrap_or_else(|| "mount".to_string());
+    let mode = if mode == "drop" { "drop" } else { "mount" };
+
+    // Drop mode defaults to 24h when caller omits expiry
+    let expires_in_ms = match (mode, expires_in_ms) {
+        ("drop", None) => Some(24 * 60 * 60 * 1000),
+        (_, other) => other,
+    };
+
     info!(
-        "Starting host {} for path: {} with expiration: {:?}ms",
-        id, path, expires_in_ms
+        "Starting host {} for path: {} mode={} expiration: {:?}ms",
+        id, path, mode, expires_in_ms
     );
 
-    // Start the host normally first
-    let host_info =
+    let mut host_info =
         start_hosting_with_id(app.clone(), state.clone(), id.clone(), path.clone(), port).await?;
+    host_info.share_mode = mode.to_string();
 
-    // If expiration is set, spawn a task to auto-stop the share
+    // Persist mode on stored handle
+    {
+        let mut handles = state.host_handles.lock().await;
+        if let Some(h) = handles.get_mut(&id) {
+            h.info.share_mode = mode.to_string();
+        }
+    }
+
     if let Some(ms) = expires_in_ms {
         let state_clone = state.inner().clone();
         let app_clone = app.clone();
@@ -1905,12 +2018,13 @@ pub async fn start_hosting_with_expiration(
 
             info!("Share {} has expired, stopping...", id_clone);
 
-            // Stop the host
             let mut handles = state_clone.host_handles.lock().await;
             if let Some(h) = handles.remove(&id_clone) {
+                if let Some(a) = &h.announce_abort {
+                    a.abort();
+                }
                 h.abort_handle.abort();
 
-                // Emit expired event to frontend
                 let _ = app_clone.emit(
                     "share-expired",
                     serde_json::json!({

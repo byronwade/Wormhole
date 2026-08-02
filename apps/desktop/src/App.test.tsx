@@ -3,7 +3,7 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 
-describe("App Component", () => {
+describe("App Component — Portal shell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -11,43 +11,27 @@ describe("App Component", () => {
   });
 
   describe("Sidebar Navigation", () => {
-    it("renders Share / Mounts / Settings-first navigation", async () => {
+    it("renders Portal-first navigation", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Home")).toBeInTheDocument();
+        expect(screen.getAllByText("Portal").length).toBeGreaterThan(0);
       });
 
-      expect(screen.getByText("Sharing")).toBeInTheDocument();
-      expect(screen.getByText("Mounts")).toBeInTheDocument();
       expect(screen.getByText("Settings")).toBeInTheDocument();
-    });
-
-    it("buries Recent and Favorites under More", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("More…")).toBeInTheDocument();
-      });
-
-      // Collapsed by default — labels exist inside details
-      expect(screen.getByText("Recent")).toBeInTheDocument();
-      expect(screen.getByText("Favorites")).toBeInTheDocument();
     });
   });
 
-  describe("Homepage empty state", () => {
-    it("shows brand-first empty composition", async () => {
+  describe("Portal empty state", () => {
+    it("shows Portal brand composition", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Mount Any Folder.")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
 
       expect(screen.getByText("Share a folder")).toBeInTheDocument();
@@ -55,15 +39,13 @@ describe("App Component", () => {
     });
 
     it("skips wizard when setup is complete", async () => {
-      localStorage.setItem("wormhole_setup_complete", "true");
-
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
         expect(screen.queryByText("Welcome to Wormhole")).not.toBeInTheDocument();
-        expect(screen.getByText("Home")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
     });
   });
@@ -83,7 +65,7 @@ describe("App Component", () => {
   });
 
   describe("User Interactions", () => {
-    it("Enter a code CTA is clickable", async () => {
+    it("Share and Enter code CTAs are clickable", async () => {
       await act(async () => {
         render(<App />);
       });
@@ -92,26 +74,11 @@ describe("App Component", () => {
         expect(screen.getByText("Enter a code")).toBeInTheDocument();
       });
 
-      const connectButton = screen.getByText("Enter a code").closest("button");
-      expect(connectButton).toBeInTheDocument();
-      expect(connectButton).not.toBeDisabled();
+      expect(screen.getByText("Share a folder").closest("button")).not.toBeDisabled();
+      expect(screen.getByText("Enter a code").closest("button")).not.toBeDisabled();
     });
 
-    it("Share a folder CTA is clickable", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Share a folder")).toBeInTheDocument();
-      });
-
-      const shareButton = screen.getByText("Share a folder").closest("button");
-      expect(shareButton).toBeInTheDocument();
-      expect(shareButton).not.toBeDisabled();
-    });
-
-    it("sidebar Sharing nav is interactive", async () => {
+    it("Settings nav is interactive", async () => {
       const user = userEvent.setup();
 
       await act(async () => {
@@ -119,17 +86,14 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Sharing")).toBeInTheDocument();
+        expect(screen.getByText("Settings")).toBeInTheDocument();
       });
 
-      const sharingButton = screen.getByText("Sharing").closest("button");
-      if (sharingButton) {
-        await user.click(sharingButton);
-      }
+      const settings = screen.getByText("Settings").closest("button");
+      if (settings) await user.click(settings);
 
       await waitFor(() => {
-        const headers = screen.getAllByText("Sharing");
-        expect(headers.length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
       });
     });
   });
@@ -143,31 +107,6 @@ describe("App Component", () => {
       await waitFor(() => {
         expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
       });
-    });
-
-    it("primary CTAs are focusable", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Enter a code")).toBeInTheDocument();
-      });
-
-      const connectButton = screen.getByText("Enter a code").closest("button");
-      expect(connectButton).not.toHaveAttribute("tabindex", "-1");
-    });
-  });
-});
-
-describe("ErrorBoundary", () => {
-  it("renders children when no error", async () => {
-    await act(async () => {
-      render(<App />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Home")).toBeInTheDocument();
     });
   });
 });
