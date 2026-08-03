@@ -20,7 +20,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "/download/linux", priority: 0.9, changeFrequency: "weekly" },
     // Docs hubs
     { url: "/docs", priority: 0.9, changeFrequency: "weekly" },
+    { url: "/docs/features", priority: 0.95, changeFrequency: "weekly" },
     { url: "/docs/quickstart", priority: 0.9, changeFrequency: "monthly" },
+    { url: "/docs/cli/open", priority: 0.7, changeFrequency: "monthly" },
+    { url: "/docs/cli/fetch", priority: 0.7, changeFrequency: "monthly" },
+    { url: "/docs/cli/playhead", priority: 0.65, changeFrequency: "monthly" },
     { url: "/docs/installation", priority: 0.9, changeFrequency: "monthly" },
     { url: "/docs/requirements", priority: 0.7, changeFrequency: "monthly" },
     // CLI

@@ -19,6 +19,7 @@ const navigation: NavItem[] = [
     href: "/docs",
     items: [
       { title: "Introduction", href: "/docs" },
+      { title: "Revolutionary features", href: "/docs/features" },
       { title: "Quick Start", href: "/docs/quickstart" },
       { title: "Installation", href: "/docs/installation" },
       { title: "Requirements", href: "/docs/requirements" },
@@ -31,6 +32,9 @@ const navigation: NavItem[] = [
       { title: "Overview", href: "/docs/cli" },
       { title: "host", href: "/docs/cli/host" },
       { title: "mount", href: "/docs/cli/mount" },
+      { title: "open", href: "/docs/cli/open" },
+      { title: "fetch", href: "/docs/cli/fetch" },
+      { title: "playhead", href: "/docs/cli/playhead" },
       { title: "status", href: "/docs/cli/status" },
       { title: "peers", href: "/docs/cli/peers" },
       { title: "cache", href: "/docs/cli/cache" },

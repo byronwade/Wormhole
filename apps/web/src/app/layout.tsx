@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s · Wormhole",
   },
   description:
-    "Peer-to-peer folder mounts. Share a code, connect, work—no cloud uploads, no accounts, no monthly rent on your own files.",
+    "Peer-to-peer project mesh. Playhead-first scrubbing, project apertures, and BLAKE3 byte magnets—no cloud uploads, no accounts.",
   keywords: [
     "file sharing",
     "P2P",

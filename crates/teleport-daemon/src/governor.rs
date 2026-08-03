@@ -121,24 +121,50 @@ impl Governor {
                 // Same chunk (re-read), no change to streak
             }
             _ => {
-                // Random access, reset streak
+                // Random access / scrub seek — reset streak and treat as playhead
                 state.sequential_streak = 0;
                 state.direction = AccessDirection::Random;
             }
         }
 
+        let was_seek = !matches!(diff, -1 | 0 | 1);
         state.last_chunk = chunk_id.index;
 
         // Copy values before calling generate_prefetch_targets to avoid borrow issue
         let streak = state.sequential_streak;
         let direction = state.direction;
+        let inode = chunk_id.inode;
+        let index = chunk_id.index;
+        let window = self.prefetch_window;
 
-        // Generate prefetch targets if sequential pattern detected
+        // Sequential streaming: classic ahead/behind window
         if streak >= self.sequential_threshold {
-            self.generate_prefetch_targets(chunk_id, &direction)
-        } else {
-            vec![]
+            return self.generate_prefetch_targets(chunk_id, &direction);
         }
+
+        // Playhead-first: large seeks (timeline scrub, editor jump) get an
+        // immediate window around the landing chunk without waiting for a streak.
+        if was_seek {
+            let behind = (window / 2).max(1);
+            let mut targets = Vec::with_capacity((window + behind + 1) as usize);
+            targets.push(ChunkId::new(inode, index));
+            for i in 1..=window {
+                targets.push(ChunkId::new(inode, index + i));
+            }
+            for i in 1..=behind {
+                if index >= i {
+                    targets.push(ChunkId::new(inode, index - i));
+                }
+            }
+            // Arm forward streak so subsequent sequential reads continue prefetching
+            if let Some(state) = self.file_state.get_mut(&inode) {
+                state.direction = AccessDirection::Forward;
+                state.sequential_streak = self.sequential_threshold;
+            }
+            return targets;
+        }
+
+        vec![]
     }
 
     /// Generate prefetch targets based on access direction
@@ -300,21 +326,25 @@ mod tests {
     }
 
     #[test]
-    fn test_random_access_no_prefetch() {
+    fn test_random_seek_triggers_playhead_prefetch() {
         let mut gov = Governor::new();
 
-        // Random access pattern
+        // First touch — not a seek from a prior chunk
         let targets0 = gov.record_access(&ChunkId::new(1, 0));
-        let targets1 = gov.record_access(&ChunkId::new(1, 5));
-        let targets2 = gov.record_access(&ChunkId::new(1, 2));
-        let targets3 = gov.record_access(&ChunkId::new(1, 10));
-
         assert!(targets0.is_empty());
-        assert!(targets1.is_empty());
-        assert!(targets2.is_empty());
-        assert!(targets3.is_empty());
 
-        assert_eq!(gov.get_direction(1), AccessDirection::Random);
+        // Jump to chunk 5 — playhead-first window
+        let targets1 = gov.record_access(&ChunkId::new(1, 5));
+        assert!(!targets1.is_empty());
+        assert_eq!(targets1[0], ChunkId::new(1, 5));
+        assert!(targets1.contains(&ChunkId::new(1, 6)));
+
+        // Another scrub jump
+        let targets3 = gov.record_access(&ChunkId::new(1, 20));
+        assert!(!targets3.is_empty());
+        assert_eq!(targets3[0], ChunkId::new(1, 20));
+        // After playhead arming, direction is Forward for continued streaming
+        assert_eq!(gov.get_direction(1), AccessDirection::Forward);
     }
 
     #[test]

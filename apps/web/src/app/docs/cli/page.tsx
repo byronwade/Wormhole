@@ -11,6 +11,9 @@ const groups = [
     commands: [
       { name: "host", href: "/docs/cli/host", example: "wormhole host ~/Projects", blurb: "Share a local folder" },
       { name: "mount", href: "/docs/cli/mount", example: "wormhole mount CODE", blurb: "Mount a remote folder" },
+      { name: "open", href: "/docs/cli/open", example: "wormhole open .", blurb: "Inspect project aperture" },
+      { name: "fetch", href: "/docs/cli/fetch", example: "wormhole fetch blake3:…", blurb: "Resolve a byte magnet" },
+      { name: "playhead", href: "/docs/cli/playhead", example: "wormhole playhead --inode 1 --offset N", blurb: "Prefetch window helper" },
       { name: "status", href: "/docs/cli/status", example: "wormhole status", blurb: "Show hosts and mounts" },
       { name: "peers", href: "/docs/cli/peers", example: "wormhole peers", blurb: "List connected peers" },
     ],

@@ -8,6 +8,11 @@ export const metadata = {
 
 const links = [
   {
+    title: "Revolutionary features",
+    description: "Playhead-first, project aperture, byte magnets.",
+    href: "/docs/features",
+  },
+  {
     title: "Quick Start",
     description: "Host a folder and mount it in a few minutes.",
     href: "/docs/quickstart",
@@ -19,7 +24,7 @@ const links = [
   },
   {
     title: "CLI Reference",
-    description: "host, mount, status, mcp, doctor, and the rest.",
+    description: "host, mount, open, fetch, playhead, and more.",
     href: "/docs/cli",
   },
   {

@@ -2609,11 +2609,8 @@ fn run_fetch(args: &FetchArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Err
         Ok(())
     } else {
         println!("chunk is not local: {}", hash.to_hex());
-        if args.check {
-            Ok(())
-        } else {
-            Err("chunk not found in local content store".into())
-        }
+        // Always non-zero when missing so automation can detect absence.
+        Err("chunk not found in local content store".into())
     }
 }
 

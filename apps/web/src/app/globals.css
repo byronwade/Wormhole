@@ -820,6 +820,64 @@
   color: var(--ink);
 }
 
+.site-pillars {
+  display: grid;
+  gap: 2rem;
+  max-width: 56rem;
+}
+
+@media (min-width: 900px) {
+  .site-pillars {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2.25rem;
+  }
+}
+
+.site-pillar h3 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.site-pillar p {
+  margin: 0 0 0.85rem;
+  color: var(--ink-soft);
+  font-size: 0.975rem;
+  line-height: 1.55;
+}
+
+.site-pillar code {
+  display: block;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  padding: 0.7rem 0.85rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  color: var(--ink);
+  overflow-x: auto;
+}
+
+.site-pillars__more {
+  margin: 2rem 0 0;
+  max-width: 56rem;
+}
+
+.site-pillars__more a {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.site-pillars__more a:hover,
+.site-pillars__more a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .site-diff {
   display: grid;
   gap: 1px;

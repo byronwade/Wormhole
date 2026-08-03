@@ -59,18 +59,47 @@ const platformLabels: Record<Platform, string> = {
   unknown: "Download",
 };
 
+const pillars = [
+  {
+    id: "playhead",
+    title: "Playhead-first",
+    lede: "Scrub a remote timeline before the file finishes “downloading.” Seeks prefetch around the playhead—not the whole library.",
+    code: "wormhole playhead --inode 1 --offset 1310720",
+  },
+  {
+    id: "aperture",
+    title: "Project aperture",
+    lede: "A .wormhole project is the job: roots, excludes, mesh policy. Share the aperture—not a zip of yesterday’s exports.",
+    code: "wormhole init . && wormhole open .",
+  },
+  {
+    id: "magnet",
+    title: "Byte magnet",
+    lede: "BLAKE3-addressed chunks. Same hash, same bytes—any peer that already has a chunk can serve it. The room becomes the CDN.",
+    code: "wormhole fetch --check blake3:<hash>",
+  },
+];
+
 const faqs = [
   {
     q: "How is this different from Dropbox?",
-    a: "Cloud tools upload copies to someone else’s servers. Wormhole mounts a live folder over a direct peer-to-peer link—so a 50\u00A0GB project is usable in seconds, not after an upload finishes.",
+    a: "Cloud tools upload copies. Wormhole mounts a live project mesh: playhead-first scrubbing, content-addressed chunks, and a project aperture instead of “which Drive folder is canonical.”",
   },
   {
-    q: "What if the host goes offline?",
-    a: "The mount disappears, like unplugging a drive. Recently opened files can remain in local cache; everything else waits until the host is back.",
+    q: "Can editors scrub before media is fully local?",
+    a: "Yes. Large seeks arm playhead-first prefetch—landing chunk first, then ahead and a little behind—so DaVinci/Premiere can keep moving while bytes fill in.",
+  },
+  {
+    q: "What is a project aperture?",
+    a: "A .wormhole/aperture.toml that declares share roots, excludes, and mesh flags (playhead prefetch, content-addressed hosting). wormhole init writes one; wormhole open validates it.",
+  },
+  {
+    q: "What is a byte magnet?",
+    a: "A blake3:… or wormhole:magnet:blake3:… address for a chunk. Hosts build manifests and serve BulkChunk by hash; local caches become sources for the same content.",
   },
   {
     q: "Is it encrypted?",
-    a: "Yes. Sessions use end-to-end encryption over QUIC. Join codes use PAKE so the session key is never sent in the clear. Signaling only helps peers find each other.",
+    a: "Yes. Sessions use end-to-end encryption over QUIC. Join codes use PAKE so the session key is never sent in the clear.",
   },
   {
     q: "Will it stay free?",
@@ -112,9 +141,9 @@ export default function Home() {
           </Link>
 
           <nav className="site-nav__links" aria-label="Primary">
-            <a href="#how">How it works</a>
-            <a href="#why">Why</a>
-            <Link href="/docs">Docs</Link>
+            <a href="#how">How</a>
+            <a href="#shift">The shift</a>
+            <Link href="/docs/features">Features</Link>
             <a href="#faq">FAQ</a>
           </nav>
 
@@ -150,13 +179,13 @@ export default function Home() {
         {menuOpen && (
           <div id="mobile-nav" className="site-nav__drawer">
             <a href="#how" onClick={() => setMenuOpen(false)}>
-              How it works
+              How
             </a>
-            <a href="#why" onClick={() => setMenuOpen(false)}>
-              Why
+            <a href="#shift" onClick={() => setMenuOpen(false)}>
+              The shift
             </a>
-            <Link href="/docs" onClick={() => setMenuOpen(false)}>
-              Docs
+            <Link href="/docs/features" onClick={() => setMenuOpen(false)}>
+              Features
             </Link>
             <a href="#faq" onClick={() => setMenuOpen(false)}>
               FAQ
@@ -170,13 +199,13 @@ export default function Home() {
         <div className="site-hero__content">
           <p className="site-hero__brand">Wormhole</p>
           <h1 className="site-hero__title">
-            Mount any folder.
+            The project lives
             <br />
-            Any computer.
+            everywhere at once.
           </h1>
           <p className="site-hero__lede">
-            Share a code. Connect peer-to-peer. No cloud upload, no accounts, no
-            rent on your own files.
+            Not another sync folder. A peer-to-peer project mesh—scrub remote
+            media, open an aperture, pull bytes by hash. No cloud upload.
           </p>
           <div className="site-hero__cta">
             <a href={primaryHref} className="site-btn">
@@ -198,8 +227,8 @@ export default function Home() {
 
       <section id="how" className="site-section">
         <div className="site-section__intro">
-          <h2>Share a code. That’s it.</h2>
-          <p>Three steps. No setup wizard. No waiting for uploads.</p>
+          <h2>Open an aperture. Scrub. Done.</h2>
+          <p>Three steps. No upload bar. The project arrives as a drive.</p>
         </div>
         <ol className="site-steps">
           <li>
@@ -207,9 +236,9 @@ export default function Home() {
               01
             </span>
             <div>
-              <h3>Host a folder</h3>
-              <p>Point Wormhole at any directory on your machine.</p>
-              <code>wormhole host ~/renders</code>
+              <h3>Init the project</h3>
+              <p>Write a .wormhole aperture for roots and mesh policy.</p>
+              <code>wormhole init ~/job-042</code>
             </div>
           </li>
           <li>
@@ -217,9 +246,9 @@ export default function Home() {
               02
             </span>
             <div>
-              <h3>Send the join code</h3>
-              <p>A short code is your invite—Slack, text, whatever.</p>
-              <code>7KJM-XBCD-QRST</code>
+              <h3>Host and send a code</h3>
+              <p>Peers mount the aperture over an encrypted QUIC link.</p>
+              <code>wormhole host . → 7KJM-XBCD</code>
             </div>
           </li>
           <li>
@@ -227,20 +256,42 @@ export default function Home() {
               03
             </span>
             <div>
-              <h3>Mount and work</h3>
-              <p>It appears as a normal drive in Finder or Explorer.</p>
-              <code>wormhole mount 7KJM-XBCD-QRST</code>
+              <h3>Scrub and work</h3>
+              <p>Playhead-first prefetch keeps the timeline moving.</p>
+              <code>wormhole mount 7KJM-XBCD</code>
             </div>
           </li>
         </ol>
       </section>
 
-      <section id="why" className="site-section site-section--band">
+      <section id="shift" className="site-section site-section--band">
+        <div className="site-section__intro">
+          <h2>Not a better pipe. A different object.</h2>
+          <p>
+            Sync copies fight over who has the truth. Wormhole treats the job as
+            one live library with many doorways.
+          </p>
+        </div>
+        <div className="site-pillars">
+          {pillars.map((p) => (
+            <article key={p.id} id={p.id} className="site-pillar">
+              <h3>{p.title}</h3>
+              <p>{p.lede}</p>
+              <code>{p.code}</code>
+            </article>
+          ))}
+        </div>
+        <p className="site-pillars__more">
+          <Link href="/docs/features">Read how the three pillars work →</Link>
+        </p>
+      </section>
+
+      <section id="why" className="site-section">
         <div className="site-section__intro">
           <h2>Why upload when you can connect?</h2>
           <p>
             Other tools copy your files somewhere else. Wormhole opens a private
-            tunnel and mounts the folder live.
+            tunnel and mounts the project live.
           </p>
         </div>
         <dl className="site-diff">
@@ -252,17 +303,17 @@ export default function Home() {
             </dd>
           </div>
           <div>
-            <dt>Where files live</dt>
+            <dt>Scrub remote media</dt>
             <dd>
-              <span className="site-diff__good">On your machines</span>
-              <span className="site-diff__vs">never on ours</span>
+              <span className="site-diff__good">Playhead-first</span>
+              <span className="site-diff__vs">not wait-then-edit</span>
             </dd>
           </div>
           <div>
-            <dt>How it shows up</dt>
+            <dt>Where bytes come from</dt>
             <dd>
-              <span className="site-diff__good">Native drive mount</span>
-              <span className="site-diff__vs">works with any app</span>
+              <span className="site-diff__good">Any peer with the hash</span>
+              <span className="site-diff__vs">not a rented CDN</span>
             </dd>
           </div>
           <div>
