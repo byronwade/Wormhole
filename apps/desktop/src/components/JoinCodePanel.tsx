@@ -7,14 +7,12 @@ import {
   makeShareLink,
   speakJoinCode,
 } from "@wormhole/shared";
-import { IconCopy, IconLink, IconPaste } from "@/components/icons";
+import { IconCheck, IconCopy, IconLink, IconPaste } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 interface JoinCodePanelProps {
   code: string | null;
-  /** Show clipboard paste (connect flow). */
   showPaste?: boolean;
-  /** Show copy-link + QR (share success flow). */
   showQr?: boolean;
   shareLinkBase?: string;
   onCodeFromClipboard?: (code: string) => void;
@@ -22,7 +20,7 @@ interface JoinCodePanelProps {
 }
 
 /**
- * Huge join-code display + copy + optional paste + scannable QR.
+ * Join-code ceremony — code + phonetic + copy + optional QR as one composition.
  */
 export function JoinCodePanel({
   code,
@@ -41,7 +39,7 @@ export function JoinCodePanel({
 
   useEffect(() => {
     if (!copied) return;
-    const t = window.setTimeout(() => setCopied(null), 1500);
+    const t = window.setTimeout(() => setCopied(null), 1600);
     return () => window.clearTimeout(t);
   }, [copied]);
 
@@ -69,44 +67,66 @@ export function JoinCodePanel({
 
   return (
     <div className={cn("space-y-5", className)}>
-      <p className="text-center font-mono-brand text-[11px] uppercase tracking-[0.28em] text-zinc-500">
-        Join code
-      </p>
-      <div
-        key={display}
-        className={cn(
-          "join-code-hero motion-code-settle select-all text-center font-mono-brand text-5xl font-semibold tracking-[0.12em] text-[#7C3AED] sm:text-6xl",
-          !code && "opacity-40",
+      <div className="join-code-ceremony">
+        <p className="portal-label text-center text-zinc-500">Join code</p>
+        <div
+          key={display}
+          className={cn(
+            "join-code-hero motion-code-settle mt-3 select-all text-center font-mono-brand text-5xl font-semibold tracking-[0.14em] text-[#8B5CF6] sm:text-6xl",
+            !code && "opacity-35",
+          )}
+          aria-label={code ? `Join code ${display}` : "No join code yet"}
+        >
+          {display}
+        </div>
+        {code && (
+          <p
+            className="motion-peer-in mt-3 text-center text-[11px] leading-relaxed tracking-wide text-zinc-500"
+            title="Say this over the phone"
+            style={{ animationDelay: "120ms" }}
+          >
+            {speakJoinCode(code)}
+          </p>
         )}
-        aria-label={code ? `Join code ${display}` : "No join code yet"}
-      >
-        {display}
       </div>
-      {code && (
-        <p className="text-center text-xs leading-relaxed text-zinc-500" title="Say this over the phone">
-          {speakJoinCode(code)}
-        </p>
-      )}
 
       <div className="flex flex-wrap justify-center gap-2">
         <button
           type="button"
           onClick={handleCopyCode}
           disabled={!code}
-          className="portal-press inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] disabled:opacity-50"
+          className={cn(
+            "portal-press inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] disabled:opacity-45",
+            copied === "code"
+              ? "border-teal-500/40 bg-teal-500/10 text-teal-200"
+              : "border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06]",
+          )}
           aria-label="Copy join code"
         >
-          <IconCopy className="h-4 w-4" />
+          {copied === "code" ? (
+            <IconCheck className="h-4 w-4" />
+          ) : (
+            <IconCopy className="h-4 w-4" />
+          )}
           {copied === "code" ? "Copied" : "Copy code"}
         </button>
         {showQr && code && (
           <button
             type="button"
             onClick={handleCopyLink}
-            className="portal-press inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+            className={cn(
+              "portal-press inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]",
+              copied === "link"
+                ? "border-teal-500/40 bg-teal-500/10 text-teal-200"
+                : "border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06]",
+            )}
             aria-label="Copy share link"
           >
-            <IconLink className="h-4 w-4" />
+            {copied === "link" ? (
+              <IconCheck className="h-4 w-4" />
+            ) : (
+              <IconLink className="h-4 w-4" />
+            )}
             {copied === "link" ? "Link copied" : "Copy link"}
           </button>
         )}
@@ -114,7 +134,7 @@ export function JoinCodePanel({
           <button
             type="button"
             onClick={handlePasteDetect}
-            className="portal-press inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+            className="portal-press inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
             aria-label="Paste join code from clipboard"
           >
             <IconPaste className="h-4 w-4" />
@@ -131,19 +151,19 @@ export function JoinCodePanel({
 
       {showQr && code && (
         <div className="flex flex-col items-center gap-3 pt-1">
-          <div className="rounded-xl bg-white p-3 shadow-sm">
+          <div className="rounded-2xl bg-white p-3.5 shadow-[0_20px_50px_-20px_rgba(124,58,237,0.45)] ring-1 ring-white/20">
             <QRCodeSVG
               value={qrPayload}
-              size={168}
+              size={172}
               level="M"
               includeMargin={false}
               bgColor="#FFFFFF"
-              fgColor="#0F0F0F"
+              fgColor="#0B0B0C"
               title={`QR code for join code ${display}`}
             />
           </div>
-          <p className="max-w-xs text-center text-xs text-zinc-500">
-            Scan with another phone or Wormhole app — or open the deep link on that device.
+          <p className="max-w-xs text-center text-xs leading-relaxed text-zinc-500">
+            Scan with another phone or Wormhole — or open the deep link on that device.
           </p>
         </div>
       )}

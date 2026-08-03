@@ -1629,15 +1629,15 @@ function ShareDialog({
                       setIsDragging(false);
                       applyDroppedPath(e.dataTransfer.files);
                     }}
-                    className={`w-full min-h-28 rounded-xl border-2 border-dashed px-4 py-6 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] ${
+                    className={`portal-drop-magnet w-full min-h-28 rounded-2xl border border-dashed px-4 py-7 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] ${
                       isDragging
-                        ? "border-[#7C3AED] bg-[#7C3AED]/10"
-                        : "border-zinc-700/60 hover:border-[#7C3AED]/50 bg-transparent"
+                        ? "is-magnet border-[#7C3AED]/70 bg-[#7C3AED]/12"
+                        : "border-white/10 hover:border-[#7C3AED]/40 bg-white/[0.02]"
                     }`}
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <FolderUp className={`w-8 h-8 ${isDragging ? "text-[#7C3AED]" : "text-zinc-600"}`} aria-hidden />
-                      <span className="text-sm text-zinc-300">
+                      <FolderUp className={`w-8 h-8 ${isDragging ? "text-[#A78BFA]" : "text-zinc-600"}`} aria-hidden />
+                      <span className="text-sm text-zinc-200">
                         {isDragging ? "Drop folder to share" : "Drop a folder here"}
                       </span>
                       <span className="text-xs text-zinc-500">or click to browse…</span>
@@ -1701,7 +1701,7 @@ function ShareDialog({
               <Button
                 onClick={handleStartHosting}
                 disabled={!sharePath || isStarting}
-                className="portal-press w-full min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                className="portal-press portal-cta-primary w-full min-h-11 text-white"
                 aria-busy={isStarting}
               >
                 {isStarting ? (
@@ -1735,7 +1735,7 @@ function ShareDialog({
               <div className="flex gap-2">
                 <Button
                   onClick={onClose}
-                  className="flex-1 min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                  className="portal-press portal-cta-primary flex-1 min-h-11 text-white"
                 >
                   Done
                 </Button>
@@ -1962,7 +1962,7 @@ function ConnectDialog({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg text-white">
+          <DialogTitle className="font-display text-lg text-white">
             {isConnected ? "Mounted" : "Enter a code"}
           </DialogTitle>
           <DialogDescription className="text-sm text-zinc-400">
@@ -2062,7 +2062,7 @@ function ConnectDialog({
               <Button
                 onClick={handleConnect}
                 disabled={!isValidCode || isConnecting}
-                className="portal-press w-full min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                className="portal-press portal-cta-primary w-full min-h-11 text-white"
                 aria-busy={isConnecting}
               >
                 {isConnecting ? (
@@ -2086,7 +2086,7 @@ function ConnectDialog({
               <div className="flex gap-2">
                 <Button
                   onClick={onClose}
-                  className="flex-1 min-h-11 bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+                  className="portal-press portal-cta-primary flex-1 min-h-11 text-white"
                 >
                   Done
                 </Button>
@@ -2212,16 +2212,18 @@ function SettingsPage({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-zinc-900 overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+    <div className="relative flex flex-1 flex-col overflow-hidden">
+      <div className="portal-atmosphere pointer-events-none absolute inset-0 opacity-80" aria-hidden />
+      <div className="portal-grain pointer-events-none absolute inset-0 opacity-30" aria-hidden />
+      <div className="relative z-10 flex-1 overflow-y-auto px-6 py-8 md:px-10">
+        <div className="settings-prefs mx-auto space-y-8">
           {/* About Section */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">About</h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+          <div className="space-y-3">
+            <h2 className="portal-label">About</h2>
+            <div className="prefs-card p-5 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-emerald-700 rounded-2xl flex items-center justify-center">
-                  <Share2 className="w-8 h-8 text-white" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] shadow-[0_12px_40px_-16px_rgba(124,58,237,0.7)]">
+                  <Share2 className="w-7 h-7 text-white" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">Wormhole</h3>
@@ -2242,8 +2244,8 @@ function SettingsPage({
 
           {/* Updates Section */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Updates</h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+            <h2 className="portal-label">Updates</h2>
+            <div className="prefs-card p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <h3 className="font-medium text-white">Check for Updates</h3>
@@ -2305,9 +2307,9 @@ function SettingsPage({
 
           {/* Background & OS Integration */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Background &amp; OS</h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-5">
-              <div className="flex items-center justify-between gap-4">
+            <h2 className="portal-label">Background &amp; OS</h2>
+            <div className="prefs-card">
+              <div className="prefs-row">
                 <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-white">Keep running in the background</h3>
                   <p className="text-sm text-zinc-500">
@@ -2316,7 +2318,7 @@ function SettingsPage({
                 </div>
                 <span className="text-xs font-medium text-teal-400 whitespace-nowrap">Always on</span>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="prefs-row">
                 <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-white">Start at login</h3>
                   <p className="text-sm text-zinc-500">
@@ -2329,7 +2331,7 @@ function SettingsPage({
                   aria-label="Start Wormhole at login"
                 />
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="prefs-row">
                 <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-white">Share from Finder / Explorer</h3>
                   <p className="text-sm text-zinc-500">
@@ -2351,37 +2353,37 @@ function SettingsPage({
 
           {/* History — reachable from Settings (no sidebar) */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">History</h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+            <h2 className="portal-label">History</h2>
+            <div className="prefs-card">
               <button
                 type="button"
                 onClick={onOpenSharing}
-                className="portal-press flex w-full items-center justify-between rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+                className="prefs-row portal-press w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7C3AED]"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white">Sharing</p>
                   <p className="text-xs text-zinc-500">Folders you’ve shared</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-zinc-500" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
               </button>
               <button
                 type="button"
                 onClick={onOpenMounts}
-                className="portal-press flex w-full items-center justify-between rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]"
+                className="prefs-row portal-press w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7C3AED]"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white">Mounts</p>
                   <p className="text-xs text-zinc-500">Folders you’ve mounted</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-zinc-500" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
               </button>
             </div>
           </div>
 
           {/* System Setup Section */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">System Setup</h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+            <h2 className="portal-label">System Setup</h2>
+            <div className="prefs-card p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium text-white">Setup Wizard</h3>
@@ -2403,8 +2405,8 @@ function SettingsPage({
 
           {/* Security Section */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Security</h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+            <h2 className="portal-label">Security</h2>
+            <div className="prefs-card p-5 space-y-4">
               <div className="flex items-start gap-3">
                 <Check className="w-5 h-5 text-green-400 mt-0.5" />
                 <div>
@@ -2437,8 +2439,8 @@ function SettingsPage({
 
           {/* Privacy & Telemetry Section */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Privacy & Telemetry</h2>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+            <h2 className="portal-label">Privacy & Telemetry</h2>
+            <div className="prefs-card p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <h3 className="font-medium text-white">Help Improve Wormhole</h3>
@@ -3151,7 +3153,7 @@ function App() {
       {/* Full-bleed content — no sidebar; Portal is the shell */}
       <div className="flex flex-1 min-h-0 flex-col pt-8">
           {activeView !== "all-files" && (
-            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/[0.06] px-6 md:px-10">
+            <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-white/[0.05] bg-black/20 px-6 backdrop-blur-md md:px-10">
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"

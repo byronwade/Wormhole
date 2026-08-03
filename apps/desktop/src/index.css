@@ -119,16 +119,29 @@
 :root {
   --font-display: "Instrument Sans", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --void: #0f0f0f;
+  --void: #0b0b0c;
+  --void-elevated: #121214;
+  --void-glass: rgba(18, 18, 20, 0.72);
   --signal: #fafafa;
+  --signal-muted: #a1a1aa;
+  --signal-faint: #71717a;
   --portal: #7c3aed;
-  --portal-glow: rgba(124, 58, 237, 0.45);
+  --portal-bright: #8b5cf6;
+  --portal-deep: #6d28d9;
+  --portal-glow: rgba(124, 58, 237, 0.4);
+  --portal-glow-soft: rgba(124, 58, 237, 0.14);
   --teal: #14b8a6;
+  --teal-glow: rgba(20, 184, 166, 0.35);
+  --amber-live: #fbbf24;
+  --hairline: rgba(255, 255, 255, 0.07);
+  --hairline-strong: rgba(255, 255, 255, 0.12);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-press: cubic-bezier(0.22, 1, 0.36, 1);
 
   font-family: var(--font-display);
   line-height: 1.5;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -181,9 +194,9 @@ body {
   background: transparent;
 }
 
-/* Focus styles */
+/* Focus styles — brand ring */
 :focus-visible {
-  outline: 2px solid rgba(53, 94, 59, 0.5);
+  outline: 2px solid rgba(124, 58, 237, 0.7);
   outline-offset: 2px;
 }
 
@@ -357,71 +370,227 @@ button, .select-none {
 
 /* Phosphor duotone — soft secondary fill */
 .ph-duo {
-  --ph-duotone-opacity: 0.28;
+  --ph-duotone-opacity: 0.32;
 }
 
 .ph-duo path:nth-child(2) {
   opacity: var(--ph-duotone-opacity);
 }
 
-/* Portal atmosphere */
+/* ── Premium Portal system ── */
 .portal-grain {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
 }
 
-/* Smoother interactive chrome */
+.portal-atmosphere {
+  background:
+    radial-gradient(ellipse 90% 55% at 8% -5%, rgba(124, 58, 237, 0.28), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 95% 10%, rgba(139, 92, 246, 0.1), transparent 45%),
+    radial-gradient(ellipse 60% 45% at 70% 100%, rgba(20, 184, 166, 0.06), transparent 50%),
+    radial-gradient(ellipse 40% 30% at 0% 80%, rgba(124, 58, 237, 0.06), transparent 40%),
+    var(--void);
+}
+
+.portal-veil {
+  background: linear-gradient(
+    180deg,
+    rgba(11, 11, 12, 0) 0%,
+    rgba(11, 11, 12, 0.35) 70%,
+    rgba(11, 11, 12, 0.85) 100%
+  );
+}
+
+.portal-surface {
+  border: 1px solid var(--hairline);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.015) 100%
+  );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 20px 50px -30px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.portal-surface-quiet {
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.portal-instrument {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  background:
+    radial-gradient(ellipse 80% 120% at 0% 50%, var(--portal-glow-soft), transparent 55%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.02) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 60px -28px rgba(124, 58, 237, 0.35);
+}
+
+.portal-instrument::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  animation: portal-sheen 4.5s var(--ease-out-expo) infinite;
+}
+
+.portal-drop-magnet {
+  border: 1.5px dashed rgba(124, 58, 237, 0.55);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(124, 58, 237, 0.22), transparent 55%),
+    rgba(11, 11, 12, 0.55);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.15), 0 40px 80px -40px rgba(124, 58, 237, 0.5);
+  backdrop-filter: blur(16px);
+}
+
+.portal-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fafafa;
+  background: linear-gradient(145deg, #6d28d9, #3b82f6 90%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.portal-avatar-live {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+    0 0 0 2px rgba(20, 184, 166, 0.35),
+    0 0 16px var(--teal-glow);
+}
+
+.portal-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--signal-faint);
+}
+
+.portal-cta-primary {
+  background: linear-gradient(180deg, var(--portal-bright) 0%, var(--portal) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 12px 40px -12px var(--portal-glow);
+}
+
+.portal-cta-primary:hover {
+  background: linear-gradient(180deg, #9f7aea 0%, var(--portal-deep) 100%);
+}
+
 .portal-press {
   transition:
-    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 160ms ease,
-    color 160ms ease,
-    border-color 160ms ease,
-    opacity 160ms ease,
-    box-shadow 160ms ease;
+    transform 170ms var(--ease-press),
+    background-color 170ms ease,
+    color 170ms ease,
+    border-color 170ms ease,
+    opacity 170ms ease,
+    box-shadow 200ms ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
 .portal-press:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.975);
 }
 
 .portal-press:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #0f0f0f, 0 0 0 4px rgba(124, 58, 237, 0.85);
+  box-shadow: 0 0 0 2px var(--void), 0 0 0 4px rgba(124, 58, 237, 0.85);
 }
 
 .portal-row {
-  transition: background-color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    transform 200ms var(--ease-out-expo);
 }
 
 .portal-row:hover {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: rgba(255, 255, 255, 0.035);
 }
 
 .portal-row:focus-within {
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(255, 255, 255, 0.045);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .portal-press,
-  .portal-row {
-    transition: none;
-  }
+/* Dialog / ceremony surfaces */
+.dialog-premium {
+  border: 1px solid var(--hairline-strong) !important;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(124, 58, 237, 0.16), transparent 55%),
+    linear-gradient(180deg, #161618 0%, #101012 100%) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 40px 100px -20px rgba(0, 0, 0, 0.85),
+    0 0 80px -40px var(--portal-glow) !important;
+  backdrop-filter: blur(20px);
+}
 
-  .portal-press:active:not(:disabled) {
-    transform: none;
-  }
+.join-code-ceremony {
+  position: relative;
+  padding: 1.25rem 1rem 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--hairline);
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 0%, rgba(124, 58, 237, 0.18), transparent 60%),
+    rgba(255, 255, 255, 0.02);
 }
 
 .join-code-hero {
-  text-shadow: 0 0 40px var(--portal-glow), 0 0 80px rgba(124, 58, 237, 0.25);
+  text-shadow:
+    0 0 36px var(--portal-glow),
+    0 0 80px rgba(124, 58, 237, 0.28);
+}
+
+.settings-prefs {
+  max-width: 40rem;
+}
+
+.settings-prefs .prefs-card {
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.settings-prefs .prefs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-top: 1px solid var(--hairline);
+  transition: background-color 160ms ease;
+}
+
+.settings-prefs .prefs-row:first-child {
+  border-top: 0;
+}
+
+.settings-prefs .prefs-row:hover {
+  background: rgba(255, 255, 255, 0.025);
 }
 
 @keyframes portal-peer-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -436,26 +605,57 @@ button, .select-none {
     transform: scale(1);
   }
   50% {
-    opacity: 0.55;
-    transform: scale(0.92);
+    opacity: 0.5;
+    transform: scale(0.9);
   }
 }
 
 @keyframes portal-code-settle {
   from {
     opacity: 0;
-    letter-spacing: 0.35em;
-    transform: scale(0.96);
+    letter-spacing: 0.38em;
+    transform: scale(0.94);
   }
   to {
     opacity: 1;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     transform: scale(1);
   }
 }
 
+@keyframes portal-sheen {
+  0%,
+  70% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes portal-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes portal-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .motion-peer-in {
-  animation: portal-peer-in 0.35s ease-out both;
+  animation: portal-peer-in 0.42s var(--ease-out-expo) both;
 }
 
 .motion-status-pulse {
@@ -463,13 +663,36 @@ button, .select-none {
 }
 
 .motion-code-settle {
-  animation: portal-code-settle 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: portal-code-settle 0.55s var(--ease-out-expo) both;
+}
+
+.motion-toast-in {
+  animation: portal-toast-in 0.4s var(--ease-out-expo) both;
+}
+
+.motion-breathe {
+  animation: portal-breathe 3.2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .portal-press,
+  .portal-row {
+    transition: none;
+  }
+
+  .portal-press:active:not(:disabled) {
+    transform: none;
+  }
+
+  .portal-instrument::after {
+    animation: none;
+  }
+
   .motion-peer-in,
   .motion-status-pulse,
-  .motion-code-settle {
+  .motion-code-settle,
+  .motion-toast-in,
+  .motion-breathe {
     animation: none !important;
   }
 }
