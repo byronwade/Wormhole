@@ -160,6 +160,15 @@ enum Commands {
     /// Initialize wormhole in the current directory
     Init(InitArgs),
 
+    /// Open a project aperture (`.wormhole/aperture.toml`)
+    Open(OpenArgs),
+
+    /// Resolve a content magnet against the local content store
+    Fetch(FetchArgs),
+
+    /// Dev: print playhead prefetch chunk indices for an inode/offset
+    Playhead(PlayheadArgs),
+
     /// Unmount a mounted share
     #[command(visible_alias = "umount", visible_alias = "disconnect")]
     Unmount(UnmountArgs),
@@ -1128,6 +1137,45 @@ struct InitArgs {
 }
 
 #[derive(Args)]
+struct OpenArgs {
+    /// Project folder containing `.wormhole` (default: `.`)
+    path: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct FetchArgs {
+    /// Magnet URI (`wormhole:magnet:blake3:…`, `blake3:…`, or raw hex)
+    magnet: String,
+
+    /// Optional remote host for future fetch (ignored for now)
+    #[arg(long)]
+    from: Option<String>,
+
+    /// Only check whether the chunk is present locally
+    #[arg(long)]
+    check: bool,
+}
+
+#[derive(Args)]
+struct PlayheadArgs {
+    /// File inode
+    #[arg(long)]
+    inode: u64,
+
+    /// Byte offset of the playhead
+    #[arg(long)]
+    offset: u64,
+
+    /// Chunks to prefetch ahead (default 4)
+    #[arg(long, default_value = "4")]
+    ahead: u64,
+
+    /// Chunks to keep behind (default 2)
+    #[arg(long, default_value = "2")]
+    behind: u64,
+}
+
+#[derive(Args)]
 struct UnmountArgs {
     /// Mount point or share ID
     target: String,
@@ -1394,6 +1442,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Ping(args) => run_ping(args, &cli).await,
         Commands::Bench(args) => run_bench(args, &cli).await,
         Commands::Init(args) => run_init(args, &cli),
+        Commands::Open(args) => run_open(args, &cli),
+        Commands::Fetch(args) => run_fetch(args, &cli),
+        Commands::Playhead(args) => run_playhead(args, &cli),
         Commands::Unmount(args) => run_unmount(args, &cli).await,
         Commands::List(args) => run_list(args, &cli).await,
         Commands::History(args) => run_history(args, &cli),
@@ -2467,6 +2518,11 @@ fn run_init(args: &InitArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error
 "#,
         )?;
 
+        // Create project aperture
+        let aperture = teleport_daemon::aperture::ProjectAperture::default_new();
+        aperture.write(&path)?;
+        let aperture_path = teleport_daemon::aperture::ProjectAperture::aperture_path(&path);
+
         // Create .gitignore in .wormhole
         std::fs::write(wormhole_dir.join(".gitignore"), "*\n")?;
 
@@ -2474,11 +2530,105 @@ fn run_init(args: &InitArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error
         println!();
         println!("Created:");
         println!("  {}", config_path.display());
+        println!("  {}", aperture_path.display());
+        println!();
+        println!("To inspect the project aperture, run:");
+        println!("  wormhole open .");
         println!();
         println!("To share this folder, run:");
         println!("  wormhole host .");
     }
 
+    Ok(())
+}
+
+fn run_open(args: &OpenArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
+    let aperture = match teleport_daemon::aperture::ProjectAperture::load(&path)? {
+        Some(a) => a,
+        None => {
+            return Err(format!(
+                "no aperture.toml at {} — run `wormhole init` first",
+                teleport_daemon::aperture::ProjectAperture::aperture_path(&path).display()
+            )
+            .into());
+        }
+    };
+
+    println!("Project aperture: {}", path.display());
+    println!(
+        "  name: {}",
+        aperture.name.as_deref().unwrap_or("(unnamed)")
+    );
+    println!("  roots: {:?}", aperture.roots);
+    println!("  exclude: {:?}", aperture.exclude);
+    println!("  playhead_prefetch: {}", aperture.playhead_prefetch);
+    println!("  content_addressed: {}", aperture.content_addressed);
+
+    // Validate roots are non-empty and excludes don't reject everything under roots.
+    if aperture.roots.is_empty() {
+        return Err("aperture roots is empty — add at least one root".into());
+    }
+    for root in &aperture.roots {
+        if root.contains("..") {
+            return Err(format!("invalid root (contains ..): {root}").into());
+        }
+        if !aperture.allows_relative(root) && root != "." {
+            eprintln!("warning: root `{root}` is matched by an exclude pattern");
+        }
+    }
+
+    println!("Aperture OK.");
+    Ok(())
+}
+
+fn run_fetch(args: &FetchArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let hash = teleport_daemon::magnet::parse_magnet(&args.magnet).ok_or_else(|| {
+        format!(
+            "invalid magnet (expected wormhole:magnet:blake3:<hex>, blake3:<hex>, or 64-hex): {}",
+            args.magnet
+        )
+    })?;
+
+    if args.from.is_some() {
+        eprintln!("note: --from is reserved for remote fetch; checking local store only");
+    }
+
+    let store = teleport_daemon::ContentStore::open_default()
+        .map_err(|e| format!("content store unavailable: {e}"))?;
+
+    if store.contains(&hash) {
+        let hex = hash.to_hex();
+        let uri = teleport_daemon::magnet::magnet_uri(&hash);
+        println!("ok");
+        println!("  hex: {hex}");
+        println!("  magnet: {uri}");
+        if let Ok(data) = store.get(&hash) {
+            println!("  size: {} bytes", data.len());
+        }
+        Ok(())
+    } else {
+        println!("chunk is not local: {}", hash.to_hex());
+        if args.check {
+            Ok(())
+        } else {
+            Err("chunk not found in local content store".into())
+        }
+    }
+}
+
+fn run_playhead(args: &PlayheadArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let mut gov = teleport_daemon::Governor::new();
+    let targets = gov.hint_playhead(args.inode, args.offset, args.ahead, args.behind);
+    println!(
+        "playhead inode={} offset={} → {} chunk(s)",
+        args.inode,
+        args.offset,
+        targets.len()
+    );
+    for chunk in &targets {
+        println!("  inode={} index={}", chunk.inode, chunk.index);
+    }
     Ok(())
 }
 

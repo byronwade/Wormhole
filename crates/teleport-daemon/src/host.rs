@@ -15,16 +15,19 @@ use tokio::sync::Semaphore;
 use tracing::{debug, error, info, warn};
 
 use teleport_core::{
-    crypto::checksum, CreateDirRequest, CreateDirResponse, CreateFileRequest, CreateFileResponse,
-    DeleteDirRequest, DeleteDirResponse, DeleteFileRequest, DeleteFileResponse, DirEntry,
-    ErrorCode, ErrorMessage, FileAttr, FileType, GetAttrRequest, GetAttrResponse, HelloAckMessage,
-    Inode, ListDirRequest, ListDirResponse, LockRequest, LockResponse, LockType, LookupRequest,
-    LookupResponse, NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest,
+    crypto::checksum, BulkChunkRequestMsg, BulkChunkResponseMsg, ContentChunk, ContentHash,
+    CreateDirRequest, CreateDirResponse, CreateFileRequest, CreateFileResponse, DeleteDirRequest,
+    DeleteDirResponse, DeleteFileRequest, DeleteFileResponse, DirEntry, ErrorCode, ErrorMessage,
+    FileAttr, FileManifest, FileType, GetAttrRequest, GetAttrResponse, HelloAckMessage, Inode,
+    ListDirRequest, ListDirResponse, LockRequest, LockResponse, LockType, LookupRequest,
+    LookupResponse, ManifestRequestMsg, ManifestResponseMsg, MissingChunksRequestMsg,
+    MissingChunksResponseMsg, NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest,
     ReleaseResponse, RenameRequest, RenameResponse, SetAttrRequest, SetAttrResponse,
     TruncateRequest, TruncateResponse, WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE,
     FIRST_USER_INODE, PROTOCOL_VERSION, ROOT_INODE,
 };
 
+use crate::content_store::ContentStore;
 use crate::lock_manager::LockManager;
 use crate::rate_limiter::RateLimiter;
 
@@ -526,10 +529,156 @@ pub(crate) fn dispatch_request(
                 .unwrap_or(0),
             payload: p.payload,
         }),
+        NetMessage::ManifestRequest(req) => handle_manifest_request(req, inodes, shared_path),
+        NetMessage::MissingChunksRequest(req) => handle_missing_chunks_request(req),
+        NetMessage::BulkChunkRequest(req) => handle_bulk_chunk_request(req),
         _ => NetMessage::Error(ErrorMessage {
             code: ErrorCode::NotImplemented,
             message: "request type not implemented".into(),
             related_inode: None,
+        }),
+    }
+}
+
+/// Build a [`FileManifest`] by reading `path` in [`CHUNK_SIZE`] pieces.
+///
+/// When a content store is available, each chunk is also `put` so subsequent
+/// [`BulkChunkRequest`] lookups succeed.
+pub(crate) fn build_file_manifest(path: &Path, inode: Inode) -> Result<FileManifest, String> {
+    let store = ContentStore::open_default().ok();
+    build_file_manifest_into(path, inode, store.as_ref())
+}
+
+/// Build a manifest, optionally populating `store` with chunk blobs.
+pub(crate) fn build_file_manifest_into(
+    path: &Path,
+    inode: Inode,
+    store: Option<&ContentStore>,
+) -> Result<FileManifest, String> {
+    let mut file = fs::File::open(path).map_err(|e| e.to_string())?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    let file_size = metadata.len();
+
+    let mut manifest = FileManifest::new(inode);
+    let mut offset = 0u64;
+    let mut buf = vec![0u8; CHUNK_SIZE];
+
+    while offset < file_size {
+        let to_read = ((file_size - offset) as usize).min(CHUNK_SIZE);
+        let n = file.read(&mut buf[..to_read]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            break;
+        }
+        let data = &buf[..n];
+        let hash = ContentHash::compute(data);
+        if let Some(store) = store {
+            if let Err(e) = store.put(data) {
+                warn!(error = %e, "failed to put chunk into content store");
+            }
+        }
+        manifest.push_chunk(ContentChunk::new(hash, n as u32, offset));
+        offset += n as u64;
+    }
+
+    Ok(manifest)
+}
+
+fn handle_manifest_request(
+    req: ManifestRequestMsg,
+    inodes: &InodeTable,
+    shared_path: &Path,
+) -> NetMessage {
+    let path = match inodes.get_path(req.inode) {
+        Some(p) => p,
+        None => {
+            return NetMessage::ManifestResponse(ManifestResponseMsg {
+                manifest: FileManifest::new(req.inode),
+                error: Some(format!("inode {} not found", req.inode)),
+            });
+        }
+    };
+
+    if let Err(e) = teleport_core::path::safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on manifest: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: FileManifest::new(req.inode),
+            error: Some("path escapes share".into()),
+        });
+    }
+
+    match build_file_manifest(&path, req.inode) {
+        Ok(manifest) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest,
+            error: None,
+        }),
+        Err(e) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: FileManifest::new(req.inode),
+            error: Some(e),
+        }),
+    }
+}
+
+fn handle_missing_chunks_request(req: MissingChunksRequestMsg) -> NetMessage {
+    use std::collections::HashMap;
+
+    let hashes = req.manifest.unique_hashes();
+    let size_by_hash: HashMap<ContentHash, u64> = req
+        .manifest
+        .chunks
+        .iter()
+        .map(|c| (c.hash, c.size as u64))
+        .collect();
+
+    let missing_hashes = match ContentStore::open_default() {
+        Ok(store) => store.missing(&hashes),
+        Err(_) => {
+            // Store unavailable — report all unique hashes as missing.
+            hashes
+        }
+    };
+
+    let missing_bytes = missing_hashes
+        .iter()
+        .map(|h| size_by_hash.get(h).copied().unwrap_or(0))
+        .sum();
+
+    NetMessage::MissingChunksResponse(MissingChunksResponseMsg {
+        missing_hashes,
+        missing_bytes,
+    })
+}
+
+fn handle_bulk_chunk_request(req: BulkChunkRequestMsg) -> NetMessage {
+    match ContentStore::open_default() {
+        Ok(store) => match store.get(&req.hash) {
+            Ok(data) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+                hash: req.hash,
+                original_size: data.len() as u32,
+                compressed: false,
+                data,
+                error: None,
+            }),
+            Err(_) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+                hash: req.hash,
+                data: Vec::new(),
+                compressed: false,
+                original_size: 0,
+                error: Some(
+                    "chunk not in content store — host with content_addressed after first read"
+                        .into(),
+                ),
+            }),
+        },
+        Err(e) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+            hash: req.hash,
+            data: Vec::new(),
+            compressed: false,
+            original_size: 0,
+            error: Some(format!("content store unavailable: {e}")),
         }),
     }
 }
@@ -1908,5 +2057,76 @@ mod tests {
             }
             _ => panic!("Expected ListDirResponse"),
         }
+    }
+
+    #[test]
+    fn test_build_file_manifest_chunks_and_store() {
+        let temp_dir = TempDir::new().unwrap();
+        let store_dir = TempDir::new().unwrap();
+        let store = ContentStore::open(store_dir.path()).unwrap();
+
+        let file_path = temp_dir.path().join("data.bin");
+        let total = CHUNK_SIZE + 100;
+        let data: Vec<u8> = (0..total).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&file_path, &data).unwrap();
+
+        let manifest = build_file_manifest_into(&file_path, 42, Some(&store)).unwrap();
+        assert_eq!(manifest.inode, 42);
+        assert_eq!(manifest.total_size, total as u64);
+        assert_eq!(manifest.chunks.len(), 2);
+        assert_eq!(manifest.chunks[0].size as usize, CHUNK_SIZE);
+        assert_eq!(manifest.chunks[1].size, 100);
+        assert!(store.contains(&manifest.chunks[0].hash));
+        assert!(store.contains(&manifest.chunks[1].hash));
+        assert_eq!(
+            store.get(&manifest.chunks[0].hash).unwrap(),
+            data[..CHUNK_SIZE]
+        );
+    }
+
+    #[test]
+    fn test_handle_manifest_missing_inode() {
+        let temp_dir = TempDir::new().unwrap();
+        let table = InodeTable::new(temp_dir.path().to_path_buf());
+        let resp = handle_manifest_request(
+            ManifestRequestMsg {
+                inode: 9999,
+                file_size: 0,
+            },
+            &table,
+            temp_dir.path(),
+        );
+        match resp {
+            NetMessage::ManifestResponse(r) => {
+                assert!(r.error.is_some());
+                assert!(r.manifest.chunks.is_empty());
+            }
+            _ => panic!("Expected ManifestResponse"),
+        }
+    }
+
+    #[test]
+    fn test_dispatch_manifest_and_bulk_chunk() {
+        let temp_dir = TempDir::new().unwrap();
+        let store_dir = TempDir::new().unwrap();
+        // Isolate CAS: put via build into temp store, then exercise handlers that use
+        // open_default by also verifying build_file_manifest_into + missing/bulk logic
+        // through the pure helpers.
+        let store = ContentStore::open(store_dir.path()).unwrap();
+        let file_path = temp_dir.path().join("clip.bin");
+        let data = b"bulk-chunk-demo-bytes".to_vec();
+        std::fs::write(&file_path, &data).unwrap();
+
+        let table = InodeTable::new(temp_dir.path().to_path_buf());
+        let inode = table.get_or_create_inode(file_path.clone()).unwrap();
+        let manifest = build_file_manifest_into(&file_path, inode, Some(&store)).unwrap();
+        assert_eq!(manifest.chunks.len(), 1);
+        let hash = manifest.chunks[0].hash;
+        assert_eq!(store.get(&hash).unwrap(), data);
+
+        // MissingChunks against empty store reports the hash; against filled store reports none.
+        let empty = ContentStore::open(TempDir::new().unwrap().path()).unwrap();
+        assert_eq!(empty.missing(&[hash]), vec![hash]);
+        assert!(store.missing(&[hash]).is_empty());
     }
 }

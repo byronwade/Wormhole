@@ -200,6 +200,50 @@ impl Governor {
     pub fn clear(&mut self) {
         self.file_state.clear();
     }
+
+    /// Playhead-first prefetch: jump the governor to a byte offset and return
+    /// chunks around it (ahead + optional behind) for immediate fetch.
+    ///
+    /// This is the editor/NLE path — scrubbing is random to a sequential engine,
+    /// so we treat the hint as a hard seek and prefetch the playhead window
+    /// without waiting for a sequential streak.
+    pub fn hint_playhead(
+        &mut self,
+        inode: Inode,
+        byte_offset: u64,
+        ahead: u64,
+        behind: u64,
+    ) -> Vec<ChunkId> {
+        let index = byte_offset / teleport_core::CHUNK_SIZE as u64;
+        let state = self
+            .file_state
+            .get_or_insert_mut(inode, FileAccessState::default);
+        // Treat as forward streaming from the playhead unless we are near EOF
+        // and only asked for behind-window (still mark Forward for continuity).
+        state.last_chunk = index;
+        state.direction = AccessDirection::Forward;
+        state.sequential_streak = self.sequential_threshold;
+
+        let mut targets = Vec::with_capacity((ahead + behind + 1) as usize);
+        // Include the playhead chunk itself first (highest priority for scrub).
+        targets.push(ChunkId::new(inode, index));
+        for i in 1..=ahead {
+            targets.push(ChunkId::new(inode, index + i));
+        }
+        for i in 1..=behind {
+            if index >= i {
+                targets.push(ChunkId::new(inode, index - i));
+            }
+        }
+        targets
+    }
+
+    /// Convenience: playhead hint using the configured prefetch window ahead
+    /// and a small behind window for reverse scrub / keyframe lookback.
+    pub fn hint_playhead_default(&mut self, inode: Inode, byte_offset: u64) -> Vec<ChunkId> {
+        let behind = (self.prefetch_window / 2).max(1);
+        self.hint_playhead(inode, byte_offset, self.prefetch_window, behind)
+    }
 }
 
 impl Default for Governor {
@@ -387,6 +431,42 @@ mod tests {
         assert_eq!(gov.get_streak(2), 1);
         assert_eq!(gov.get_streak(3), 1);
         assert_eq!(gov.get_streak(4), 0);
+    }
+
+    #[test]
+    fn test_hint_playhead_returns_window() {
+        let mut gov = Governor::with_config(4, 3);
+        let targets = gov.hint_playhead(7, teleport_core::CHUNK_SIZE as u64 * 10, 4, 2);
+        assert_eq!(targets[0], ChunkId::new(7, 10)); // playhead first
+        assert!(targets.contains(&ChunkId::new(7, 11)));
+        assert!(targets.contains(&ChunkId::new(7, 14)));
+        assert!(targets.contains(&ChunkId::new(7, 9)));
+        assert!(targets.contains(&ChunkId::new(7, 8)));
+        assert_eq!(gov.get_direction(7), AccessDirection::Forward);
+        assert!(gov.get_streak(7) >= 3);
+    }
+
+    #[test]
+    fn test_hint_playhead_at_start_no_behind() {
+        let mut gov = Governor::new();
+        let targets = gov.hint_playhead(1, 0, 3, 5);
+        assert_eq!(targets[0], ChunkId::new(1, 0));
+        assert!(!targets.iter().any(|c| c.index > 3));
+        // No negative indices
+        assert_eq!(targets.iter().filter(|c| c.index == 0).count(), 1);
+    }
+
+    #[test]
+    fn test_hint_playhead_resets_random_seek() {
+        let mut gov = Governor::new();
+        // Build forward streak elsewhere
+        for i in 0..5 {
+            gov.record_access(&ChunkId::new(1, i));
+        }
+        // Jump playhead far ahead
+        let targets = gov.hint_playhead_default(1, teleport_core::CHUNK_SIZE as u64 * 100);
+        assert_eq!(targets[0], ChunkId::new(1, 100));
+        assert!(!targets.is_empty());
     }
 
     #[test]

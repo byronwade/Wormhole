@@ -49,6 +49,7 @@ pub mod multi_fuse;
 pub mod winfsp;
 
 // Platform-independent modules
+pub mod aperture;
 pub mod bulk_transfer;
 pub mod cache;
 pub mod client;
@@ -60,6 +61,7 @@ pub mod gc;
 pub mod global;
 pub mod governor;
 pub mod host;
+pub mod magnet;
 #[cfg(feature = "iroh")]
 pub mod iroh_host;
 pub mod lock_manager;
