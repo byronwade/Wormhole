@@ -65,7 +65,7 @@ Wormhole is a **peer-to-peer distributed filesystem** that lets you mount remote
 
 ### Developer Experience
 - **Rich CLI** - 20+ commands with shell completions
-- **Desktop App** - Tauri-based GUI (coming soon)
+- **Desktop App** - Tauri GUI with installers for macOS, Windows, and Linux
 - **Cross-Platform** - macOS, Linux, Windows (via FUSE)
 
 See [FEATURES.md](FEATURES.md) for the complete feature list.
@@ -74,16 +74,35 @@ See [FEATURES.md](FEATURES.md) for the complete feature list.
 
 ## Installation
 
+### Download (recommended)
+
+Latest release: **[v0.2.0](https://github.com/byronwade/Wormhole/releases/tag/v0.2.0)**
+
+| Platform | Installer |
+|----------|-----------|
+| **macOS** (Apple Silicon) | [DMG](https://github.com/byronwade/Wormhole/releases/download/v0.2.0/Wormhole_0.2.0_aarch64.dmg) |
+| **Windows** | [setup.exe](https://github.com/byronwade/Wormhole/releases/download/v0.2.0/Wormhole_0.2.0_x64-setup.exe) |
+| **Linux** | [AppImage](https://github.com/byronwade/Wormhole/releases/download/v0.2.0/Wormhole_0.2.0_amd64.AppImage) · [.deb](https://github.com/byronwade/Wormhole/releases/download/v0.2.0/Wormhole_0.2.0_amd64.deb) |
+
+CLI one-liner (Linux/macOS):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/byronwade/Wormhole/main/scripts/install.sh | bash
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/byronwade/Wormhole/main/scripts/install.ps1 | iex
+```
+
 ### Prerequisites
 
-#### macOS
-```bash
-# Install macFUSE (required for filesystem mounting)
-brew install --cask macfuse
-
-# Note: You may need to allow the kernel extension in System Preferences
-# System Preferences → Security & Privacy → Allow "Benjamin Fleischer"
-```
+| Platform | Required for mounts |
+|----------|---------------------|
+| **macOS** | [macFUSE](https://osxfuse.github.io/) — `brew install --cask macfuse` |
+| **Windows** | [WinFSP](https://winfsp.dev/rel/) |
+| **Linux** | FUSE 3 — `sudo apt install fuse3` |
 
 <details>
 <summary><strong>macOS Gatekeeper Warning ("unidentified developer")</strong></summary>
@@ -109,43 +128,23 @@ xattr -cr /Applications/Wormhole.app
 
 </details>
 
-#### Linux
-```bash
-# Debian/Ubuntu
-sudo apt install libfuse3-dev pkg-config build-essential
-
-# Fedora/RHEL
-sudo dnf install fuse3-devel pkgconfig
-
-# Arch
-sudo pacman -S fuse3 pkgconf
-```
-
-#### Windows
-Download and install [WinFsp](https://winfsp.dev/) (Windows support coming soon).
-
 ### Build from Source
 
 ```bash
-# Clone the repository
-git clone https://github.com/wormhole-team/wormhole.git
-cd wormhole
+git clone https://github.com/byronwade/Wormhole.git
+cd Wormhole
 
-# Build release binaries
 cargo build --release
+# Binaries in ./target/release/: wormhole, wormhole-mount, wormhole-signal
 
-# Binaries are in ./target/release/
-# - wormhole        (main CLI)
-# - wormhole-mount  (FUSE mount helper)
-# - wormhole-signal (signaling server)
-
-# Optional: Install to PATH
 cargo install --path crates/teleport-daemon
 ```
 
 ### Verify Installation
 
 ```bash
+wormhole --help
+# or from a source build:
 ./target/release/wormhole version --detailed
 ```
 

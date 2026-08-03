@@ -19,58 +19,53 @@ export type GitHubRelease = {
 
 /** Hardcoded fallback so download buttons still work if the GitHub API is rate-limited. */
 export const FALLBACK_RELEASE: GitHubRelease = {
-  tag_name: "v0.1.0",
-  html_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tag/v0.1.0`,
+  tag_name: "v0.2.0",
+  html_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tag/v0.2.0`,
   assets: [
     {
-      name: "Wormhole_0.1.0_aarch64.dmg",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole_0.1.0_aarch64.dmg`,
-      size: 4834283,
+      name: "Wormhole_0.2.0_aarch64.dmg",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole_0.2.0_aarch64.dmg`,
+      size: 5819764,
     },
     {
-      name: "Wormhole_0.1.0_x64-setup.exe",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole_0.1.0_x64-setup.exe`,
-      size: 4100915,
+      name: "Wormhole_0.2.0_x64-setup.exe",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole_0.2.0_x64-setup.exe`,
+      size: 4984970,
     },
     {
-      name: "Wormhole_0.1.0_x64_en-US.msi",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole_0.1.0_x64_en-US.msi`,
-      size: 5902336,
+      name: "Wormhole_0.2.0_x64_en-US.msi",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole_0.2.0_x64_en-US.msi`,
+      size: 7086080,
     },
     {
-      name: "Wormhole_0.1.0_amd64.AppImage",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole_0.1.0_amd64.AppImage`,
-      size: 83864056,
+      name: "Wormhole_0.2.0_amd64.AppImage",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole_0.2.0_amd64.AppImage`,
+      size: 86841848,
     },
     {
-      name: "Wormhole_0.1.0_amd64.deb",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole_0.1.0_amd64.deb`,
-      size: 6424798,
+      name: "Wormhole_0.2.0_amd64.deb",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole_0.2.0_amd64.deb`,
+      size: 7580762,
     },
     {
-      name: "Wormhole-0.1.0-linux-x64.tar.gz",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole-0.1.0-linux-x64.tar.gz`,
-      size: 7408386,
+      name: "Wormhole-0.2.0-linux-x64.tar.gz",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole-0.2.0-linux-x64.tar.gz`,
+      size: 11882756,
     },
     {
-      name: "Wormhole-0.1.0-linux-arm64.tar.gz",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole-0.1.0-linux-arm64.tar.gz`,
-      size: 1910060,
+      name: "Wormhole-0.2.0-macos-arm64.tar.gz",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole-0.2.0-macos-arm64.tar.gz`,
+      size: 1779296,
     },
     {
-      name: "Wormhole-0.1.0-macos-arm64.tar.gz",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole-0.1.0-macos-arm64.tar.gz`,
-      size: 1761605,
+      name: "Wormhole-0.2.0-macos-x64.tar.gz",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole-0.2.0-macos-x64.tar.gz`,
+      size: 1925323,
     },
     {
-      name: "Wormhole-0.1.0-macos-x64.tar.gz",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole-0.1.0-macos-x64.tar.gz`,
-      size: 1907580,
-    },
-    {
-      name: "Wormhole-0.1.0-windows-x64.zip",
-      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.1.0/Wormhole-0.1.0-windows-x64.zip`,
-      size: 7031496,
+      name: "Wormhole-0.2.0-windows-x64.zip",
+      browser_download_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/v0.2.0/Wormhole-0.2.0-windows-x64.zip`,
+      size: 10994954,
     },
   ],
 };
@@ -120,7 +115,6 @@ function rankDesktop(platform: DownloadPlatform, name: string): number {
     if (n.endsWith(".rpm")) return 2;
     return 3;
   }
-  // macOS: prefer aarch64/universal, then any dmg
   if (n.includes("universal")) return 0;
   if (n.includes("aarch64") || n.includes("arm64")) return 1;
   return 2;
