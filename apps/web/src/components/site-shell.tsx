@@ -54,6 +54,7 @@ export function SiteShell({
           </div>
           <p className="site-footer__tag">Mount any folder. Any computer. No setup.</p>
           <div className="site-footer__links">
+            <Link href="/download">Download</Link>
             <Link href="/docs">Docs</Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/changelog">Changelog</Link>

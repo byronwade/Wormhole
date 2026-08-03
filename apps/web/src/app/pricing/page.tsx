@@ -1,10 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
 
-export const metadata = {
-  title: "Pricing — Wormhole",
+export const metadata: Metadata = {
+  title: "Pricing",
   description:
     "Wormhole pricing. Free core forever. Pro and Team for power users after launch.",
+  alternates: { canonical: "/pricing" },
 };
 
 const plans = [
@@ -64,66 +66,41 @@ export default function PricingPage() {
           <p>Free core forever. Paid tiers only when you need more horsepower.</p>
         </div>
 
-        <div className="site-diff" style={{ marginBottom: "2rem" }}>
+        <div className="site-pricing">
           {plans.map((plan) => (
-            <div key={plan.name}>
-              <dt>{plan.name}</dt>
-              <dd>
-                <span className="site-diff__good">
-                  {plan.price}
-                  <span
-                    style={{
-                      fontSize: "0.95rem",
-                      fontWeight: 500,
-                      color: "var(--ink-soft)",
-                      marginLeft: "0.35rem",
-                    }}
-                  >
-                    {plan.period}
-                  </span>
-                </span>
-                <span className="site-diff__vs">{plan.blurb}</span>
-                <ul
-                  style={{
-                    margin: "1rem 0",
-                    padding: "0 0 0 1.1rem",
-                    color: "var(--ink-soft)",
-                    display: "grid",
-                    gap: "0.35rem",
-                  }}
+            <article key={plan.name} className="site-pricing__plan">
+              <h3>{plan.name}</h3>
+              <p className="site-pricing__price">
+                <span>{plan.price}</span>
+                <span className="site-pricing__period">{plan.period}</span>
+              </p>
+              <p className="site-pricing__blurb">{plan.blurb}</p>
+              <ul>
+                {plan.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+              {plan.primary ? (
+                <Link href={plan.href} className="site-btn site-btn--small">
+                  {plan.cta}
+                </Link>
+              ) : (
+                <a
+                  href={plan.href}
+                  className="site-btn site-btn--small site-btn--ghost"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  {plan.features.map((f) => (
-                    <li key={f}>{f}</li>
-                  ))}
-                </ul>
-                {plan.primary ? (
-                  <Link href={plan.href} className="site-btn site-btn--small">
-                    {plan.cta}
-                  </Link>
-                ) : (
-                  <a
-                    href={plan.href}
-                    className="site-btn site-btn--small site-btn--ghost"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {plan.cta}
-                  </a>
-                )}
-              </dd>
-            </div>
+                  {plan.cta}
+                </a>
+              )}
+            </article>
           ))}
         </div>
 
-        <p style={{ color: "var(--ink-soft)", margin: 0 }}>
+        <p className="docs-muted" style={{ marginTop: "2rem", marginBottom: 0 }}>
           Need SSO, audit logs, or a self-hosted control plane?{" "}
-          <a
-            href="https://github.com/byronwade/Wormhole/discussions"
-            style={{ color: "var(--ink)" }}
-          >
-            Talk to us
-          </a>
-          .
+          <a href="https://github.com/byronwade/Wormhole/discussions">Talk to us</a>.
         </p>
       </section>
     </SiteShell>

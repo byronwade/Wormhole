@@ -299,7 +299,8 @@
 
 /* Skeleton loading - AGENTS.md: Skeletons mirror final content */
 .skeleton {
-  @apply animate-pulse bg-zinc-800 rounded;
+  @apply animate-pulse rounded;
+  background: color-mix(in oklab, var(--ink, #121418) 10%, transparent);
 }
 
 /* Safe area insets - AGENTS.md: Respect safe areas */
@@ -1681,6 +1682,75 @@
   font-size: 0.95rem;
   color: var(--ink-soft);
   line-height: 1.55;
+}
+
+.site-pricing {
+  display: grid;
+  gap: 1rem;
+  max-width: 56rem;
+}
+
+@media (min-width: 840px) {
+  .site-pricing {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.15rem;
+  }
+}
+
+.site-pricing__plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1.25rem 1.3rem 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: #fff;
+}
+
+.site-pricing__plan h3 {
+  margin: 0;
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.site-pricing__price {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: 1.85rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.site-pricing__period {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.site-pricing__blurb {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+.site-pricing__plan ul {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0 0 0 1.1rem;
+  color: var(--ink-soft);
+  display: grid;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.site-pricing__plan .site-btn {
+  align-self: flex-start;
 }
 
 .site-nav__links a[aria-current="page"] {

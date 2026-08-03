@@ -3,7 +3,7 @@ import Link from "next/link";
 export const metadata = {
   title: "Documentation — Wormhole",
   description:
-    "Host, mount, and configure Wormhole. Quick start, CLI, architecture, and security.",
+    "Host, mount, and configure Wormhole. Quick start, CLI, architecture, security, and ops.",
 };
 
 const links = [
@@ -19,12 +19,12 @@ const links = [
   },
   {
     title: "CLI Reference",
-    description: "host, mount, status, cache, and friends.",
+    description: "host, mount, status, mcp, doctor, and the rest.",
     href: "/docs/cli",
   },
   {
     title: "Architecture",
-    description: "FUSE, QUIC, caching, and the wire protocol.",
+    description: "FUSE, QUIC, caching, protocol, signal server.",
     href: "/docs/architecture",
   },
   {
@@ -33,9 +33,29 @@ const links = [
     href: "/docs/security",
   },
   {
+    title: "Performance",
+    description: "Cache, network, and tuning guidance.",
+    href: "/docs/performance",
+  },
+  {
+    title: "Configuration",
+    description: "Env vars, network, and cache settings.",
+    href: "/docs/configuration",
+  },
+  {
+    title: "Self-hosting",
+    description: "Run your own signal server.",
+    href: "/docs/self-hosting",
+  },
+  {
     title: "Troubleshooting",
     description: "FUSE, network, and performance snags.",
     href: "/docs/troubleshooting",
+  },
+  {
+    title: "API",
+    description: "Wire messages and building clients.",
+    href: "/docs/api",
   },
 ];
 

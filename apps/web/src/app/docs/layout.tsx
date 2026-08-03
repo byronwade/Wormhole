@@ -32,7 +32,17 @@ const navigation: NavItem[] = [
       { title: "host", href: "/docs/cli/host" },
       { title: "mount", href: "/docs/cli/mount" },
       { title: "status", href: "/docs/cli/status" },
+      { title: "peers", href: "/docs/cli/peers" },
       { title: "cache", href: "/docs/cli/cache" },
+      { title: "config", href: "/docs/cli/config" },
+      { title: "doctor", href: "/docs/cli/doctor" },
+      { title: "logs", href: "/docs/cli/logs" },
+      { title: "mcp", href: "/docs/cli/mcp" },
+      { title: "ctl", href: "/docs/cli/ctl" },
+      { title: "signal", href: "/docs/cli/signal" },
+      { title: "sync", href: "/docs/cli/sync" },
+      { title: "update", href: "/docs/cli/update" },
+      { title: "completion", href: "/docs/cli/completion" },
       { title: "All commands", href: "/docs/cli/all-commands" },
     ],
   },
@@ -45,6 +55,7 @@ const navigation: NavItem[] = [
       { title: "QUIC", href: "/docs/architecture/quic" },
       { title: "Protocol", href: "/docs/architecture/protocol" },
       { title: "Caching", href: "/docs/architecture/caching" },
+      { title: "Signal server", href: "/docs/architecture/signal-server" },
     ],
   },
   {
@@ -54,7 +65,9 @@ const navigation: NavItem[] = [
       { title: "Overview", href: "/docs/security" },
       { title: "Encryption", href: "/docs/security/encryption" },
       { title: "PAKE", href: "/docs/security/pake" },
+      { title: "Access control", href: "/docs/security/access-control" },
       { title: "Threat model", href: "/docs/security/threat-model" },
+      { title: "Audit", href: "/docs/security/audit" },
     ],
   },
   {
@@ -73,9 +86,13 @@ const navigation: NavItem[] = [
 function NavSection({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const pathname = usePathname();
   const inSection =
-    pathname === item.href ||
-    item.items?.some((sub) => pathname === sub.href) ||
-    false;
+    item.items?.some(
+      (sub) =>
+        pathname === sub.href ||
+        (sub.href !== "/docs" && pathname.startsWith(`${sub.href}/`)),
+    ) ||
+    (item.href !== "/docs" && pathname.startsWith(`${item.href}/`)) ||
+    pathname === item.href;
   const [open, setOpen] = useState(inSection);
 
   return (

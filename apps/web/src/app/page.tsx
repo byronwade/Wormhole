@@ -48,7 +48,7 @@ function downloadHref(platform: Platform): string {
     case "linux":
       return "/download/linux";
     default:
-      return "#download";
+      return "/download";
   }
 }
 
@@ -338,8 +338,10 @@ export default function Home() {
             Mount any folder. Any computer. No setup.
           </p>
           <div className="site-footer__links">
+            <Link href="/download">Download</Link>
             <Link href="/docs">Docs</Link>
             <Link href="/pricing">Pricing</Link>
+            <Link href="/changelog">Changelog</Link>
             <Link href="/about">About</Link>
             <a
               href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}

@@ -1,29 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
+import { DownloadHub } from "@/components/download-hub";
 
 export const metadata: Metadata = {
-  title: "Download Wormhole",
+  title: "Download",
   description: "Get Wormhole for macOS, Windows, or Linux.",
+  alternates: { canonical: "/download" },
 };
-
-const platforms = [
-  {
-    href: "/download/macos",
-    title: "macOS",
-    blurb: "DMG for Apple Silicon and Intel. Requires macFUSE for mounts.",
-  },
-  {
-    href: "/download/windows",
-    title: "Windows",
-    blurb: "Installer build. Requires WinFSP for mounts.",
-  },
-  {
-    href: "/download/linux",
-    title: "Linux",
-    blurb: "AppImage, .deb, or .rpm. Needs FUSE 3.",
-  },
-];
 
 export default function DownloadIndexPage() {
   return (
@@ -36,14 +20,7 @@ export default function DownloadIndexPage() {
           </p>
         </div>
 
-        <div className="docs-home__grid" style={{ maxWidth: "40rem" }}>
-          {platforms.map((p) => (
-            <Link key={p.href} href={p.href} className="docs-home__card">
-              <h2>{p.title}</h2>
-              <p>{p.blurb}</p>
-            </Link>
-          ))}
-        </div>
+        <DownloadHub />
 
         <p className="docs-muted" style={{ maxWidth: "40rem", marginTop: "2rem" }}>
           Prefer the terminal? See{" "}

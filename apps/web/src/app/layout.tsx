@@ -21,8 +21,14 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
+const SITE_URL = "https://wormhole.byronwade.com";
+
 export const metadata: Metadata = {
-  title: "Wormhole — Mount Any Folder. Any Computer. No Setup.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Wormhole — Mount Any Folder. Any Computer. No Setup.",
+    template: "%s · Wormhole",
+  },
   description:
     "Peer-to-peer folder mounts. Share a code, connect, work—no cloud uploads, no accounts, no monthly rent on your own files.",
   keywords: [
@@ -34,10 +40,21 @@ export const metadata: Metadata = {
     "file transfer",
   ],
   authors: [{ name: "Wormhole Team" }],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Wormhole — Mount Any Folder. Any Computer. No Setup.",
     description: "Share a code. Connect peer-to-peer. No cloud upload.",
+    url: SITE_URL,
+    siteName: "Wormhole",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Wormhole — Mount Any Folder. Any Computer. No Setup.",
+    description: "Share a code. Connect peer-to-peer. No cloud upload.",
   },
 };
 
