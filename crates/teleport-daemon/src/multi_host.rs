@@ -22,9 +22,9 @@ use teleport_core::{
     crypto::checksum, path::safe_real_path, DirEntry, ErrorCode, ErrorMessage, FileAttr, FileType,
     GetAttrRequest, GetAttrResponse, HelloAckMessage, Inode, ListDirRequest, ListDirResponse,
     ListSharesResponse, LockRequest, LockResponse, LockType, LookupRequest, LookupResponse,
-    NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest, ReleaseResponse, ShareId,
-    ShareInfo, WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE, FIRST_USER_INODE,
-    PROTOCOL_VERSION, ROOT_INODE,
+    ManifestRequestMsg, ManifestResponseMsg, NetMessage, ReadChunkRequest, ReadChunkResponse,
+    ReleaseRequest, ReleaseResponse, ShareId, ShareInfo, WriteChunkRequest, WriteChunkResponse,
+    CHUNK_SIZE, FIRST_USER_INODE, PROTOCOL_VERSION, ROOT_INODE,
 };
 
 use crate::lock_manager::LockManager;
@@ -633,6 +633,29 @@ async fn handle_request(
                 .as_millis() as u64,
             payload: p.payload,
         }),
+        NetMessage::ManifestRequest(req) => {
+            if let Some(share) = default_share {
+                if let Some(table) = share_tables.get(&share.id) {
+                    handle_manifest_request_share(req, table, &share.path)
+                } else {
+                    NetMessage::Error(ErrorMessage {
+                        code: ErrorCode::FileNotFound,
+                        message: "share not found".into(),
+                        related_inode: None,
+                    })
+                }
+            } else {
+                NetMessage::Error(ErrorMessage {
+                    code: ErrorCode::FileNotFound,
+                    message: "no shares available".into(),
+                    related_inode: None,
+                })
+            }
+        }
+        NetMessage::MissingChunksRequest(req) => {
+            crate::host::handle_missing_chunks_request(req)
+        }
+        NetMessage::BulkChunkRequest(req) => crate::host::handle_bulk_chunk_request(req),
         _ => NetMessage::Error(ErrorMessage {
             code: ErrorCode::NotImplemented,
             message: "request type not implemented".into(),
@@ -641,6 +664,45 @@ async fn handle_request(
     };
 
     send_message_with(send, &response, codec).await
+}
+
+fn handle_manifest_request_share(
+    req: ManifestRequestMsg,
+    table: &ShareInodeTable,
+    shared_path: &Path,
+) -> NetMessage {
+    let path = match table.get_path(req.inode) {
+        Some(p) => p,
+        None => {
+            return NetMessage::ManifestResponse(ManifestResponseMsg {
+                manifest: teleport_core::FileManifest::new(req.inode),
+                error: Some(format!("inode {} not found", req.inode)),
+            });
+        }
+    };
+
+    if let Err(e) = safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on manifest: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: teleport_core::FileManifest::new(req.inode),
+            error: Some("path escapes share".into()),
+        });
+    }
+
+    match crate::host::build_file_manifest(&path, req.inode) {
+        Ok(manifest) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest,
+            error: None,
+        }),
+        Err(e) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: teleport_core::FileManifest::new(req.inode),
+            error: Some(e),
+        }),
+    }
 }
 
 fn handle_lookup(req: LookupRequest, table: &ShareInodeTable, shared_path: &Path) -> NetMessage {
@@ -883,6 +945,13 @@ fn handle_read_chunk(req: ReadChunkRequest, table: &ShareInodeTable) -> NetMessa
 
     buffer.truncate(bytes_read);
     let hash = checksum(&buffer);
+
+    // Seed content store so magnets work after any read.
+    if let Ok(store) = crate::content_store::ContentStore::open_default() {
+        if let Err(e) = store.put(&buffer) {
+            warn!(error = %e, "failed to seed content store from multi_host read_chunk");
+        }
+    }
 
     // Check if this is the final chunk
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);

@@ -95,7 +95,7 @@ const faqs = [
   },
   {
     q: "What is a byte magnet?",
-    a: "A blake3:… or wormhole:magnet:blake3:… address for a chunk. Hosts build manifests and serve BulkChunk by hash; local caches become sources for the same content.",
+    a: "A blake3:… or wormhole:magnet:blake3:… address for a chunk. Hosts seed a content store on read, serve BulkChunk by hash, and wormhole fetch --from / peers pulls the same bytes from any mesh node that already has them.",
   },
   {
     q: "Is it encrypted?",

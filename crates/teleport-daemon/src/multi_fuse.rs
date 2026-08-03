@@ -36,6 +36,7 @@ use teleport_core::{ChunkId, DirEntry, FileAttr, FileType, GlobalInode, Inode, S
 use crate::cache::HybridCacheManager;
 use crate::connection_manager::ConnectionManager;
 use crate::governor::{Governor, MAX_PREFETCH_CONCURRENT};
+use crate::playhead_ipc::{self, PlayheadHintMsg};
 use crate::sync_engine::SyncEngine;
 
 /// TTL for FUSE kernel cache
@@ -75,9 +76,27 @@ pub struct MultiShareFS {
     name_to_index: DashMap<String, u16>,
     /// In-flight prefetch threads (DoS cap)
     prefetch_inflight: Arc<AtomicUsize>,
+    /// Optional playhead hint listener (NLE IPC)
+    playhead_sock: Option<std::os::unix::net::UnixDatagram>,
 }
 
 impl MultiShareFS {
+    fn try_bind_playhead() -> Option<std::os::unix::net::UnixDatagram> {
+        match playhead_ipc::bind_listener() {
+            Ok(sock) => {
+                info!(
+                    "playhead IPC listening on {}",
+                    playhead_ipc::socket_path().display()
+                );
+                Some(sock)
+            }
+            Err(e) => {
+                warn!(error = %e, "playhead IPC bind failed (hints disabled)");
+                None
+            }
+        }
+    }
+
     /// Create a new multi-share filesystem
     pub fn new(connection_manager: Arc<ConnectionManager>) -> Self {
         info!("Initializing MultiShareFS with virtual root");
@@ -93,6 +112,7 @@ impl MultiShareFS {
             shares: RwLock::new(Vec::new()),
             name_to_index: DashMap::new(),
             prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -111,6 +131,7 @@ impl MultiShareFS {
             shares: RwLock::new(Vec::new()),
             name_to_index: DashMap::new(),
             prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -267,6 +288,36 @@ impl MultiShareFS {
     /// Get sync engine
     pub fn sync_engine(&self) -> Arc<SyncEngine> {
         self.sync_engine.clone()
+    }
+
+    /// Drain external playhead hints; treat hint.inode as local inode on share 0
+    /// (or unpack if it looks like a packed global inode).
+    fn drain_playhead_hints(&self) {
+        let mut hints: Vec<PlayheadHintMsg> = Vec::new();
+        if let Some(ref sock) = self.playhead_sock {
+            while let Some(hint) = playhead_ipc::try_recv(sock) {
+                hints.push(hint);
+            }
+        }
+        while let Some(hint) = playhead_ipc::try_recv_file(&playhead_ipc::hint_file_path()) {
+            hints.push(hint);
+        }
+        for hint in hints {
+            let ahead = hint.ahead.unwrap_or(4);
+            let behind = hint.behind.unwrap_or(2);
+            let (share_index, local_ino) = if hint.inode > 0xFFFF {
+                self.unpack_inode(hint.inode)
+            } else {
+                (0u16, hint.inode)
+            };
+            let targets = {
+                let mut gov = self.governor.lock();
+                gov.hint_playhead(local_ino, hint.offset, ahead, behind)
+            };
+            if !targets.is_empty() {
+                self.prefetch_chunks(share_index, targets);
+            }
+        }
     }
 
     /// Check if writes are enabled
@@ -517,6 +568,8 @@ impl Filesystem for MultiShareFS {
 
         let (share_index, local_ino) = self.unpack_inode(ino);
 
+        self.drain_playhead_hints();
+
         // Record access for governor (sequential + playhead-first seeks)
         let chunk_id = ChunkId::from_offset(local_ino, offset);
         let prefetch_targets = {
@@ -526,6 +579,8 @@ impl Filesystem for MultiShareFS {
         if !prefetch_targets.is_empty() {
             self.prefetch_chunks(share_index, prefetch_targets);
         }
+
+        self.drain_playhead_hints();
 
         match self.read_stitched(share_index, local_ino, offset, size) {
             Ok(data) => {

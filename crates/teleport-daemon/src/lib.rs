@@ -68,6 +68,9 @@ pub mod lock_manager;
 pub mod mount_token_gate;
 pub mod multi_host;
 pub mod net;
+pub mod peers;
+pub mod playhead_ipc;
+pub mod mesh_fetch;
 pub mod rate_limiter;
 pub mod rendezvous;
 pub mod stream_pool;
@@ -76,6 +79,7 @@ pub mod throughput;
 pub mod updater;
 
 pub use content_store::ContentStore;
+pub use peers::{PeerEntry, PeerRegistry};
 
 // Bridge re-export (platform-agnostic)
 pub use bridge::{BridgeHandler, FuseAsyncBridge, FuseError, FuseRequest};

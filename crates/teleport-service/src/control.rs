@@ -32,6 +32,13 @@ pub enum ControlRequest {
     CacheClear,
     DefaultMountPath { label: String },
     FeatureSurface,
+    /// Forward a playhead scrub hint to the local mount via playhead IPC.
+    PlayheadHint {
+        inode: u64,
+        offset: u64,
+        ahead: Option<u64>,
+        behind: Option<u64>,
+    },
     Ping,
     Shutdown,
 }
@@ -124,6 +131,23 @@ pub async fn handle_request(mgr: &SessionManager, req: ControlRequest) -> Contro
             }
         }
         ControlRequest::FeatureSurface => ControlResponse::success(FEATURE_SURFACE),
+        ControlRequest::PlayheadHint {
+            inode,
+            offset,
+            ahead,
+            behind,
+        } => {
+            let msg = teleport_daemon::playhead_ipc::PlayheadHintMsg {
+                inode,
+                offset,
+                ahead,
+                behind,
+            };
+            match teleport_daemon::playhead_ipc::send_hint(&msg) {
+                Ok(()) => ControlResponse::success("hint sent"),
+                Err(e) => ControlResponse::failure(e),
+            }
+        }
         ControlRequest::Shutdown => {
             mgr.stop_all().await;
             ControlResponse::success("shutdown")

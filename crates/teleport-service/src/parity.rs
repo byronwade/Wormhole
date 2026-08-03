@@ -118,6 +118,13 @@ pub const FEATURE_SURFACE: &[FeatureSurface] = &[
         mcp: true,
         description: "Suggested mount path",
     },
+    FeatureSurface {
+        id: "playhead_hint",
+        desktop: false,
+        cli: true,
+        mcp: true,
+        description: "Send playhead scrub hint to local mount",
+    },
 ];
 
 #[cfg(test)]

@@ -127,7 +127,7 @@ impl Governor {
             }
         }
 
-        let was_seek = !matches!(diff, -1 | 0 | 1);
+        let was_seek = !matches!(diff, -1..=1);
         state.last_chunk = chunk_id.index;
 
         // Copy values before calling generate_prefetch_targets to avoid borrow issue

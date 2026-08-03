@@ -78,6 +78,16 @@ struct MountPathParams {
     label: String,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct PlayheadHintParams {
+    inode: u64,
+    offset: u64,
+    #[serde(default)]
+    ahead: Option<u64>,
+    #[serde(default)]
+    behind: Option<u64>,
+}
+
 #[tool_router]
 impl WormholeMcp {
     fn new() -> Self {
@@ -212,6 +222,21 @@ impl WormholeMcp {
     ) -> Result<String, String> {
         let path = SessionManager::default_mount_path(&p.label).map_err(|e| e.to_string())?;
         Ok(path.to_string_lossy().into_owned())
+    }
+
+    #[tool(description = "Send a playhead scrub hint to the local Wormhole mount (NLE IPC)")]
+    fn playhead_hint(
+        &self,
+        Parameters(p): Parameters<PlayheadHintParams>,
+    ) -> Result<String, String> {
+        let msg = teleport_daemon::playhead_ipc::PlayheadHintMsg {
+            inode: p.inode,
+            offset: p.offset,
+            ahead: p.ahead,
+            behind: p.behind,
+        };
+        teleport_daemon::playhead_ipc::send_hint(&msg)?;
+        Ok("hint sent".into())
     }
 
     #[tool(description = "List the canonical feature parity matrix (desktop/CLI/MCP)")]

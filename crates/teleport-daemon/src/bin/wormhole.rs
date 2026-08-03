@@ -1147,11 +1147,11 @@ struct FetchArgs {
     /// Magnet URI (`wormhole:magnet:blake3:…`, `blake3:…`, or raw hex)
     magnet: String,
 
-    /// Optional remote host for future fetch (ignored for now)
+    /// Fetch from a remote peer (`host:port`, default port 4433)
     #[arg(long)]
     from: Option<String>,
 
-    /// Only check whether the chunk is present locally
+    /// Only check whether the chunk is present (local, or remote if `--from`)
     #[arg(long)]
     check: bool,
 }
@@ -1173,6 +1173,10 @@ struct PlayheadArgs {
     /// Chunks to keep behind (default 2)
     #[arg(long, default_value = "2")]
     behind: u64,
+
+    /// Send hint to the local mount via playhead IPC
+    #[arg(long)]
+    apply: bool,
 }
 
 #[derive(Args)]
@@ -1443,7 +1447,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Bench(args) => run_bench(args, &cli).await,
         Commands::Init(args) => run_init(args, &cli),
         Commands::Open(args) => run_open(args, &cli),
-        Commands::Fetch(args) => run_fetch(args, &cli),
+        Commands::Fetch(args) => run_fetch(args, &cli).await,
         Commands::Playhead(args) => run_playhead(args, &cli),
         Commands::Unmount(args) => run_unmount(args, &cli).await,
         Commands::List(args) => run_list(args, &cli).await,
@@ -2056,7 +2060,7 @@ async fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
         Some(PathBuf::from("wormhole-mcp")),
     ];
     for path in candidates.into_iter().flatten() {
-        if path == PathBuf::from("wormhole-mcp") || path.exists() {
+        if path == *"wormhole-mcp" || path.exists() {
             let status = std::process::Command::new(&path).status()?;
             if status.success() {
                 return Ok(());
@@ -2221,12 +2225,61 @@ async fn run_config(args: &ConfigArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
 }
 
 async fn run_peers(args: &PeersArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    use teleport_daemon::PeerRegistry;
+
     match &args.command {
-        PeersCommands::List(_) => {
-            println!("No known peers.");
-            println!();
-            println!("Peers are added automatically when you connect to shares.");
-            println!("Or add manually with: wormhole peers add <peer>");
+        PeersCommands::List(list_args) => {
+            let reg = PeerRegistry::load().unwrap_or_default();
+            let peers: Vec<_> = reg
+                .list()
+                .iter()
+                .filter(|p| list_args.all || !p.blocked)
+                .collect();
+            if peers.is_empty() {
+                println!("No known peers.");
+                println!();
+                println!("Add one with: wormhole peers add <host[:port]>");
+                return Ok(());
+            }
+            println!("{:<22} {:<16} {:<8} CAS", "ADDR", "NAME", "BLOCKED");
+            for p in peers {
+                println!(
+                    "{:<22} {:<16} {:<8} {}",
+                    p.addr,
+                    p.name.as_deref().unwrap_or("-"),
+                    if p.blocked { "yes" } else { "no" },
+                    if p.content_addressed { "yes" } else { "no" }
+                );
+            }
+        }
+        PeersCommands::Add(add_args) => {
+            let mut reg = PeerRegistry::load().unwrap_or_default();
+            reg.add(&add_args.peer, add_args.name.clone())?;
+            reg.save()?;
+            println!("Added peer {}", add_args.peer);
+        }
+        PeersCommands::Remove(rem_args) => {
+            let mut reg = PeerRegistry::load().unwrap_or_default();
+            if reg.remove(&rem_args.peer)? {
+                reg.save()?;
+                println!("Removed peer {}", rem_args.peer);
+            } else {
+                println!("Peer not found: {}", rem_args.peer);
+            }
+        }
+        PeersCommands::Show(show_args) => {
+            let reg = PeerRegistry::load().unwrap_or_default();
+            match reg.find(&show_args.peer) {
+                Some(p) => {
+                    println!("addr: {}", p.addr);
+                    println!("name: {}", p.name.as_deref().unwrap_or("-"));
+                    println!("content_addressed: {}", p.content_addressed);
+                    println!("blocked: {}", p.blocked);
+                }
+                None => {
+                    println!("Peer not found: {}", show_args.peer);
+                }
+            }
         }
         _ => {
             println!("Command not yet implemented");
@@ -2582,17 +2635,13 @@ fn run_open(args: &OpenArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-fn run_fetch(args: &FetchArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_fetch(args: &FetchArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     let hash = teleport_daemon::magnet::parse_magnet(&args.magnet).ok_or_else(|| {
         format!(
             "invalid magnet (expected wormhole:magnet:blake3:<hex>, blake3:<hex>, or 64-hex): {}",
             args.magnet
         )
     })?;
-
-    if args.from.is_some() {
-        eprintln!("note: --from is reserved for remote fetch; checking local store only");
-    }
 
     let store = teleport_daemon::ContentStore::open_default()
         .map_err(|e| format!("content store unavailable: {e}"))?;
@@ -2603,14 +2652,39 @@ fn run_fetch(args: &FetchArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Err
         println!("ok");
         println!("  hex: {hex}");
         println!("  magnet: {uri}");
+        println!("  source: local");
         if let Ok(data) = store.get(&hash) {
             println!("  size: {} bytes", data.len());
         }
-        Ok(())
-    } else {
+        return Ok(());
+    }
+
+    // --check without --from: local-only
+    if args.check && args.from.is_none() {
         println!("chunk is not local: {}", hash.to_hex());
-        // Always non-zero when missing so automation can detect absence.
-        Err("chunk not found in local content store".into())
+        return Err("chunk not found in local content store".into());
+    }
+
+    let explicit = match &args.from {
+        Some(s) => Some(teleport_daemon::peers::parse_peer_socket_addr(s)?),
+        None => None,
+    };
+    // Mesh peers when no explicit --from; with --from only that peer.
+    let also_peers = explicit.is_none();
+
+    match teleport_daemon::mesh_fetch::fetch_hash_mesh(hash, explicit, also_peers).await {
+        Ok((data, source)) => {
+            let uri = teleport_daemon::magnet::magnet_uri(&hash);
+            println!("ok");
+            println!("  size: {} bytes", data.len());
+            println!("  source: {source}");
+            println!("  magnet: {uri}");
+            Ok(())
+        }
+        Err(e) => {
+            println!("chunk is not local: {}", hash.to_hex());
+            Err(e.into())
+        }
     }
 }
 
@@ -2626,6 +2700,20 @@ fn run_playhead(args: &PlayheadArgs, _cli: &Cli) -> Result<(), Box<dyn std::erro
     for chunk in &targets {
         println!("  inode={} index={}", chunk.inode, chunk.index);
     }
+
+    if args.apply {
+        let msg = teleport_daemon::playhead_ipc::PlayheadHintMsg {
+            inode: args.inode,
+            offset: args.offset,
+            ahead: Some(args.ahead),
+            behind: Some(args.behind),
+        };
+        match teleport_daemon::playhead_ipc::send_hint(&msg) {
+            Ok(()) => println!("hint sent to mount"),
+            Err(e) => eprintln!("warning: could not send hint to mount: {e}"),
+        }
+    }
+
     Ok(())
 }
 

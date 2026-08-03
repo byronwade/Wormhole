@@ -10,7 +10,7 @@ import {
 
 export const metadata: Metadata = {
   title: "wormhole playhead",
-  description: "Inspect playhead-first prefetch chunk windows.",
+  description: "Inspect and apply playhead-first prefetch chunk windows.",
 };
 
 export default function PlayheadCliPage() {
@@ -19,13 +19,18 @@ export default function PlayheadCliPage() {
       <DocsHeader
         crumb={{ label: "CLI", href: "/docs/cli" }}
         title="wormhole playhead"
-        description="Dev helper: print the chunk window for a scrub offset."
+        description="Dev helper: print the chunk window for a scrub offset, optionally apply it to the mount."
       />
       <DocsCode>{`wormhole playhead --inode 1 --offset 1310720
-wormhole playhead --inode 1 --offset 0 --ahead 5 --behind 2`}</DocsCode>
+wormhole playhead --inode 1 --offset 0 --ahead 5 --behind 2
+
+# Send hint to the local mount (NLE / external apps)
+wormhole playhead --inode 1 --offset 1310720 --apply`}</DocsCode>
       <DocsNote>
-        Mounts apply this automatically on large seeks. You do not need the CLI
-        for normal editing—use it to verify governor behavior.
+        Mounts apply scrub seeks automatically. Use <code>--apply</code> to push
+        a hint over the playhead IPC socket (or file drop) so an external editor
+        can arm prefetch without waiting for the next FUSE read. Without a mount
+        listening, the CLI still prints chunk indices and may warn.
       </DocsNote>
       <DocsLinkGrid
         items={[

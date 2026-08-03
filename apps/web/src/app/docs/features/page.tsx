@@ -11,7 +11,7 @@ import {
 export const metadata: Metadata = {
   title: "Revolutionary features",
   description:
-    "Playhead-first prefetch, project apertures, and content-addressed magnets in Wormhole.",
+    "Playhead-first prefetch, project apertures, peer mesh magnets, and content-addressed chunks in Wormhole.",
 };
 
 export default function FeaturesPage() {
@@ -32,10 +32,14 @@ export default function FeaturesPage() {
           before the whole file is local.
         </p>
         <DocsCode>{`# Inspect the prefetch window for a scrub (dev)
-wormhole playhead --inode 1 --offset 1310720`}</DocsCode>
+wormhole playhead --inode 1 --offset 1310720
+
+# Push a hint to the local mount (NLE IPC)
+wormhole playhead --inode 1 --offset 1310720 --apply`}</DocsCode>
         <DocsNote title="Automatic on mounts">
-          FUSE and multi-share mounts call this path on large seeks. Sequential
-          reads still use classic ahead-of-head prefetch once streaming resumes.
+          FUSE and multi-share mounts call this path on large seeks, and also
+          drain external playhead IPC hints on read. Sequential reads still use
+          classic ahead-of-head prefetch once streaming resumes.
         </DocsNote>
       </section>
 
@@ -54,16 +58,21 @@ wormhole open .
       </section>
 
       <section>
-        <h2>Byte magnet (content-addressed)</h2>
+        <h2>Byte magnet + peer mesh</h2>
         <p>
-          Chunks are BLAKE3-addressed. Hosts build manifests, seed a local
-          content store, and serve <code>BulkChunk</code> by hash. Magnets look
-          like:
+          Chunks are BLAKE3-addressed. Hosts seed a local content store on read
+          (and via manifests), then serve <code>BulkChunk</code> by hash. Magnets
+          look like:
         </p>
         <DocsCode>{`wormhole:magnet:blake3:<64-hex>
 
-# Check local store
-wormhole fetch --check blake3:<64-hex>`}</DocsCode>
+# Local check
+wormhole fetch --check blake3:<64-hex>
+
+# Pull from a peer or the registered mesh
+wormhole peers add 192.168.1.10:4433 --name studio
+wormhole fetch --from 192.168.1.10 blake3:<64-hex>
+wormhole fetch blake3:<64-hex>`}</DocsCode>
         <p>
           Same hash means the same bytes—any peer that has already cached a
           chunk can become a source. That’s the mesh.
@@ -80,7 +89,7 @@ wormhole fetch --check blake3:<64-hex>`}</DocsCode>
           {
             href: "/docs/cli",
             title: "CLI",
-            description: "host, mount, open, fetch, playhead",
+            description: "host, mount, open, fetch, playhead, peers",
           },
           {
             href: "/docs/quickstart",

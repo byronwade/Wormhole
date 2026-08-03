@@ -583,7 +583,7 @@ pub(crate) fn build_file_manifest_into(
     Ok(manifest)
 }
 
-fn handle_manifest_request(
+pub(crate) fn handle_manifest_request(
     req: ManifestRequestMsg,
     inodes: &InodeTable,
     shared_path: &Path,
@@ -622,7 +622,7 @@ fn handle_manifest_request(
     }
 }
 
-fn handle_missing_chunks_request(req: MissingChunksRequestMsg) -> NetMessage {
+pub(crate) fn handle_missing_chunks_request(req: MissingChunksRequestMsg) -> NetMessage {
     use std::collections::HashMap;
 
     let hashes = req.manifest.unique_hashes();
@@ -652,7 +652,7 @@ fn handle_missing_chunks_request(req: MissingChunksRequestMsg) -> NetMessage {
     })
 }
 
-fn handle_bulk_chunk_request(req: BulkChunkRequestMsg) -> NetMessage {
+pub(crate) fn handle_bulk_chunk_request(req: BulkChunkRequestMsg) -> NetMessage {
     match ContentStore::open_default() {
         Ok(store) => match store.get(&req.hash) {
             Ok(data) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
@@ -921,6 +921,13 @@ fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable, shared_path: &P
 
     buffer.truncate(bytes_read);
     let hash = checksum(&buffer);
+
+    // Seed content store so magnets work after any read (no explicit ManifestRequest).
+    if let Ok(store) = ContentStore::open_default() {
+        if let Err(e) = store.put(&buffer) {
+            warn!(error = %e, "failed to seed content store from read_chunk");
+        }
+    }
 
     // Check if this is the final chunk
     // Use saturating_add to prevent overflow with very large offsets

@@ -35,6 +35,7 @@ use teleport_core::{ChunkId, FileAttr, FileType, Inode};
 use crate::bridge::{FuseAsyncBridge, FuseError};
 use crate::cache::HybridCacheManager;
 use crate::governor::{Governor, MAX_PREFETCH_CONCURRENT};
+use crate::playhead_ipc::{self, PlayheadHintMsg};
 use crate::sync_engine::SyncEngine;
 
 /// TTL for FUSE kernel cache
@@ -51,9 +52,24 @@ pub struct WormholeFS {
     writable: bool,
     /// SECURITY: Counter for in-flight prefetch threads to prevent DoS
     prefetch_inflight: Arc<AtomicUsize>,
+    /// Optional playhead hint listener (NLE IPC)
+    playhead_sock: Option<std::os::unix::net::UnixDatagram>,
 }
 
 impl WormholeFS {
+    fn try_bind_playhead() -> Option<std::os::unix::net::UnixDatagram> {
+        match playhead_ipc::bind_listener() {
+            Ok(sock) => {
+                info!("playhead IPC listening on {}", playhead_ipc::socket_path().display());
+                Some(sock)
+            }
+            Err(e) => {
+                warn!(error = %e, "playhead IPC bind failed (hints disabled)");
+                None
+            }
+        }
+    }
+
     pub fn new(bridge: FuseAsyncBridge) -> Self {
         info!("Initializing WormholeFS with HybridCacheManager (RAM + Disk)");
         Self {
@@ -66,6 +82,7 @@ impl WormholeFS {
             sync_engine: Arc::new(SyncEngine::default()),
             writable: false, // Read-only by default
             prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -82,6 +99,7 @@ impl WormholeFS {
             sync_engine: Arc::new(SyncEngine::default()),
             writable: true,
             prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -94,6 +112,7 @@ impl WormholeFS {
             sync_engine: Arc::new(SyncEngine::default()),
             writable: false,
             prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -106,6 +125,7 @@ impl WormholeFS {
             sync_engine: Arc::new(SyncEngine::default()),
             writable: true,
             prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -117,6 +137,37 @@ impl WormholeFS {
     /// Check if write operations are enabled
     pub fn is_writable(&self) -> bool {
         self.writable
+    }
+
+    /// Drain external playhead hints and arm governor prefetch.
+    fn drain_playhead_hints(&self) {
+        let mut hints: Vec<PlayheadHintMsg> = Vec::new();
+        if let Some(ref sock) = self.playhead_sock {
+            while let Some(hint) = playhead_ipc::try_recv(sock) {
+                hints.push(hint);
+            }
+        }
+        // Also poll file-drop fallback (ctl/MCP when socket absent at send time).
+        while let Some(hint) = playhead_ipc::try_recv_file(&playhead_ipc::hint_file_path()) {
+            hints.push(hint);
+        }
+        for hint in hints {
+            let ahead = hint.ahead.unwrap_or(4);
+            let behind = hint.behind.unwrap_or(2);
+            let targets = {
+                let mut gov = self.governor.lock();
+                gov.hint_playhead(hint.inode, hint.offset, ahead, behind)
+            };
+            if !targets.is_empty() {
+                trace!(
+                    inode = hint.inode,
+                    offset = hint.offset,
+                    chunks = targets.len(),
+                    "playhead hint applied"
+                );
+                self.prefetch_chunks(targets);
+            }
+        }
     }
 
     /// Get disk cache for GC
@@ -366,6 +417,9 @@ impl Filesystem for WormholeFS {
         let offset = offset as u64;
         trace!("read: ino={}, offset={}, size={}", ino, offset, size);
 
+        // Apply any external playhead hints before recording this access.
+        self.drain_playhead_hints();
+
         // Record access for governor and get prefetch targets
         let chunk_id = ChunkId::from_offset(ino, offset);
         let prefetch_targets = {
@@ -381,6 +435,9 @@ impl Filesystem for WormholeFS {
             );
             self.prefetch_chunks(prefetch_targets);
         }
+
+        // Drain again after record_access in case a hint arrived mid-read.
+        self.drain_playhead_hints();
 
         // Use read_stitched to handle both single and multi-chunk reads
         match self.read_stitched(ino, offset, size) {

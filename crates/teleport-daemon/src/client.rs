@@ -7,10 +7,12 @@ use std::time::Duration;
 use tracing::info;
 
 use teleport_core::{
-    ChunkId, CreateDirRequest, CreateDirResponse, CreateFileRequest, CreateFileResponse,
-    DeleteDirRequest, DeleteDirResponse, DeleteFileRequest, DeleteFileResponse, DirEntry, FileAttr,
-    GetAttrRequest, GetAttrResponse, HelloMessage, Inode, ListDirRequest, ListDirResponse,
-    LockRequest, LockResponse, LockType, LookupRequest, LookupResponse, NetMessage,
+    BulkChunkRequestMsg, BulkChunkResponseMsg, ChunkId, ContentHash, CreateDirRequest,
+    CreateDirResponse, CreateFileRequest, CreateFileResponse, DeleteDirRequest, DeleteDirResponse,
+    DeleteFileRequest, DeleteFileResponse, DirEntry, FileAttr, FileManifest, GetAttrRequest,
+    GetAttrResponse, HelloMessage, Inode, ListDirRequest, ListDirResponse, LockRequest,
+    LockResponse, LockType, LookupRequest, LookupResponse, ManifestRequestMsg,
+    ManifestResponseMsg, MissingChunksRequestMsg, MissingChunksResponseMsg, NetMessage,
     ReadChunkRequest, ReadChunkResponse, ReleaseRequest, ReleaseResponse, RenameRequest,
     RenameResponse, SetAttrRequest, SetAttrResponse, WriteChunkRequest, WriteChunkResponse,
     PROTOCOL_VERSION, ROOT_INODE,
@@ -517,6 +519,119 @@ impl WormholeClient {
 
                 Ok(data[chunk_offset..chunk_offset + to_read].to_vec())
             }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
+            _ => Err(FuseError::Internal("unexpected response".into())),
+        }
+    }
+
+    /// Fetch a content-addressed chunk by BLAKE3 hash (bulk / magnet path).
+    pub async fn fetch_bulk_chunk(
+        &self,
+        hash: ContentHash,
+        priority: u8,
+        transfer_id: u64,
+    ) -> Result<Vec<u8>, FuseError> {
+        let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
+
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let request = NetMessage::BulkChunkRequest(BulkChunkRequestMsg {
+            hash,
+            priority,
+            transfer_id,
+        });
+
+        send_message_with(&mut send, &request, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let response = recv_message_with(&mut recv, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        match response {
+            NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+                hash: resp_hash,
+                data,
+                error,
+                ..
+            }) => {
+                if let Some(err) = error {
+                    return Err(FuseError::IoError(err));
+                }
+                if ContentHash::compute(&data) != resp_hash || resp_hash != hash {
+                    return Err(FuseError::IoError("content hash mismatch".into()));
+                }
+                Ok(data)
+            }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
+            _ => Err(FuseError::Internal("unexpected response".into())),
+        }
+    }
+
+    /// Request a content-addressed file manifest from the host.
+    pub async fn request_manifest(
+        &self,
+        inode: Inode,
+        file_size: u64,
+    ) -> Result<FileManifest, FuseError> {
+        let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
+
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let request = NetMessage::ManifestRequest(ManifestRequestMsg { inode, file_size });
+
+        send_message_with(&mut send, &request, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let response = recv_message_with(&mut recv, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        match response {
+            NetMessage::ManifestResponse(ManifestResponseMsg { manifest, error }) => {
+                if let Some(err) = error {
+                    return Err(FuseError::IoError(err));
+                }
+                Ok(manifest)
+            }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
+            _ => Err(FuseError::Internal("unexpected response".into())),
+        }
+    }
+
+    /// Ask the host which hashes from `manifest` are missing locally on the host
+    /// (used for reverse-dedup / mesh negotiation).
+    pub async fn request_missing_chunks(
+        &self,
+        manifest: FileManifest,
+    ) -> Result<MissingChunksResponseMsg, FuseError> {
+        let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
+
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let request = NetMessage::MissingChunksRequest(MissingChunksRequestMsg { manifest });
+
+        send_message_with(&mut send, &request, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let response = recv_message_with(&mut recv, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        match response {
+            NetMessage::MissingChunksResponse(msg) => Ok(msg),
             NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
             _ => Err(FuseError::Internal("unexpected response".into())),
         }

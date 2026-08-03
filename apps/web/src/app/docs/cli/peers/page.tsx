@@ -10,7 +10,7 @@ import {
 
 export const metadata: Metadata = {
   title: "wormhole peers",
-  description: "List connected peers for the active Wormhole session.",
+  description: "Manage the mesh peer registry for content-addressed fetch.",
 };
 
 export default function PeersPage() {
@@ -23,30 +23,35 @@ export default function PeersPage() {
           { label: "peers" },
         ]}
         title="wormhole peers"
-        lead="Show who is connected to the current share or mount."
+        lead="Register LAN / studio hosts that can serve BLAKE3 magnets."
       />
 
-      <DocsCode>{`wormhole peers
-wormhole peers --json`}</DocsCode>
+      <DocsCode>{`wormhole peers list
+wormhole peers add 192.168.1.10:4433 --name studio
+wormhole peers show 192.168.1.10:4433
+wormhole peers remove 192.168.1.10:4433`}</DocsCode>
 
       <section className="docs-section">
         <h2>What you get</h2>
         <ul>
-          <li>Peer id and display name when available</li>
-          <li>Connection state</li>
-          <li>Optional throughput / cache hints when the session exposes them</li>
+          <li>Persistent peer list under the Wormhole data directory</li>
+          <li>Default port 4433 when omitted</li>
+          <li>
+            Used by <code>wormhole fetch</code> when <code>--from</code> is not
+            set
+          </li>
         </ul>
       </section>
 
       <DocsNote>
-        Prefer <code>wormhole status</code> for a one-line summary; use{" "}
-        <code>peers</code> when you need the full list.
+        Blocked peers are skipped during mesh fetch. Prefer{" "}
+        <code>wormhole fetch --from host:port</code> for a one-shot pull.
       </DocsNote>
 
       <DocsLinkGrid
         items={[
-          { href: "/docs/cli/status", title: "status", desc: "Session overview" },
-          { href: "/docs/cli/doctor", title: "doctor", desc: "Diagnose issues" },
+          { href: "/docs/cli/fetch", title: "fetch", desc: "Magnet + mesh pull" },
+          { href: "/docs/features", title: "Features", desc: "Byte magnet mesh" },
           { href: "/docs/troubleshooting", title: "Troubleshooting", desc: "Common fixes" },
         ]}
       />

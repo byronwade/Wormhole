@@ -52,6 +52,17 @@ enum Commands {
     Features,
     Ping,
     Shutdown,
+    /// Send a playhead scrub hint to the local mount
+    Playhead {
+        #[arg(long)]
+        inode: u64,
+        #[arg(long)]
+        offset: u64,
+        #[arg(long)]
+        ahead: Option<u64>,
+        #[arg(long)]
+        behind: Option<u64>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -251,6 +262,36 @@ async fn main() -> anyhow::Result<()> {
         Commands::Probe { target } => rpc(&sock, ControlRequest::ProbeRemote { target }).await?,
         Commands::Ping => rpc(&sock, ControlRequest::Ping).await?,
         Commands::Shutdown => rpc(&sock, ControlRequest::Shutdown).await?,
+        Commands::Playhead {
+            inode,
+            offset,
+            ahead,
+            behind,
+        } => {
+            // Prefer control plane when running; otherwise send IPC directly.
+            if sock.exists() {
+                rpc(
+                    &sock,
+                    ControlRequest::PlayheadHint {
+                        inode,
+                        offset,
+                        ahead,
+                        behind,
+                    },
+                )
+                .await?;
+            } else {
+                let msg = teleport_daemon::playhead_ipc::PlayheadHintMsg {
+                    inode,
+                    offset,
+                    ahead,
+                    behind,
+                };
+                teleport_daemon::playhead_ipc::send_hint(&msg)
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                println!("\"hint sent\"");
+            }
+        }
     }
     Ok(())
 }

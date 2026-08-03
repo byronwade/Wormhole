@@ -10,7 +10,7 @@ import {
 
 export const metadata: Metadata = {
   title: "wormhole fetch",
-  description: "Resolve a content magnet against the local BLAKE3 store.",
+  description: "Resolve a content magnet locally or from the peer mesh.",
 };
 
 export default function FetchCliPage() {
@@ -19,14 +19,23 @@ export default function FetchCliPage() {
       <DocsHeader
         crumb={{ label: "CLI", href: "/docs/cli" }}
         title="wormhole fetch"
-        description="Look up a blake3 / wormhole:magnet chunk in the local content store."
+        description="Look up a blake3 / wormhole:magnet chunk in the local store, or pull it from a peer."
       />
       <DocsCode>{`wormhole fetch blake3:<64-hex>
 wormhole fetch wormhole:magnet:blake3:<64-hex>
-wormhole fetch --check blake3:<64-hex>`}</DocsCode>
+wormhole fetch --check blake3:<64-hex>
+
+# Remote / mesh
+wormhole fetch --from 192.168.1.10:4433 blake3:<64-hex>
+wormhole fetch --from studio-render   # default port 4433
+wormhole peers add 192.168.1.10:4433 --name studio
+wormhole fetch blake3:<64-hex>        # tries registered peers`}</DocsCode>
       <DocsNote>
-        Missing chunks exit non-zero so scripts can detect absence. Remote{" "}
-        <code>--from</code> fetch is reserved for the mesh path.
+        Missing chunks exit non-zero. With <code>--from</code>, Wormhole opens a
+        QUIC stream and requests <code>BulkChunk</code> by hash. Without{" "}
+        <code>--from</code>, registered mesh peers (see{" "}
+        <Link href="/docs/cli/peers">peers</Link>) are tried after the local
+        store. Successful remote fetches are verified and stored locally.
       </DocsNote>
       <DocsLinkGrid
         items={[
@@ -34,6 +43,11 @@ wormhole fetch --check blake3:<64-hex>`}</DocsCode>
             href: "/docs/features",
             title: "Byte magnets",
             description: "How CAS serving works",
+          },
+          {
+            href: "/docs/cli/peers",
+            title: "peers",
+            description: "Mesh peer registry",
           },
           {
             href: "/docs/architecture/caching",
