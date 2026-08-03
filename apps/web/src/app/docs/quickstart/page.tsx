@@ -1,439 +1,78 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import {
-  Terminal,
-  Download,
-  ArrowRight,
-  CheckCircle2,
-  Copy,
-  Info,
-  AlertTriangle,
-  Apple,
-  Monitor,
-  Cpu,
-} from "lucide-react";
 
 export const metadata = {
-  title: "Quick Start - Wormhole Documentation",
-  description: "Get Wormhole running in 5 minutes. Learn how to host and mount remote folders with simple commands.",
+  title: "Quick Start — Wormhole Docs",
+  description:
+    "Host a folder and mount it on another machine in a few minutes.",
 };
 
 export default function QuickStartPage() {
   return (
-    <div className="space-y-12">
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
-          Getting Started
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Quick Start Guide
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          Get Wormhole running in 5 minutes. Share folders and mount remote directories like a local drive.
+    <article className="docs-article">
+      <header className="docs-home__intro">
+        <h1>Quick Start</h1>
+        <p>
+          Share a folder with a code, mount it on another computer, and work with
+          it like a local drive.
         </p>
-      </div>
+      </header>
 
-      {/* Prerequisites */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Prerequisites</h2>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <Card className="bg-card/50 border-border">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Apple className="w-8 h-8 text-muted-foreground" />
-              <div>
-                <div className="font-medium text-foreground">macOS</div>
-                <div className="text-xs text-muted-foreground">10.13+ with macFUSE</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/50 border-border">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Cpu className="w-8 h-8 text-muted-foreground" />
-              <div>
-                <div className="font-medium text-foreground">Linux</div>
-                <div className="text-xs text-muted-foreground">Kernel 4.18+ with FUSE3</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/50 border-border opacity-60">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Monitor className="w-8 h-8 text-muted-foreground" />
-              <div>
-                <div className="font-medium text-foreground">Windows</div>
-                <div className="text-xs text-muted-foreground">Coming soon</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* Step 1: Install */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-foreground font-bold">
-            1
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">Install Wormhole</h2>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">macOS</h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-0">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-                <span className="text-xs text-muted-foreground font-mono">Terminal</span>
-              </div>
-              <pre className="p-4 text-sm overflow-x-auto">
-                <code className="text-muted-foreground">
-{`# Install macFUSE first (required for mounting)
-brew install macfuse
-
-# Install Wormhole
-brew install byronwade/tap/wormhole
-
-# Or download from releases
-curl -L https://github.com/byronwade/wormhole/releases/latest/download/wormhole-macos.tar.gz | tar xz
-sudo mv wormhole /usr/local/bin/`}
-                </code>
-              </pre>
-            </CardContent>
-          </Card>
-
-          <h3 className="text-lg font-semibold text-foreground">Linux</h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-0">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-                <span className="text-xs text-muted-foreground font-mono">Terminal</span>
-              </div>
-              <pre className="p-4 text-sm overflow-x-auto">
-                <code className="text-muted-foreground">
-{`# Install FUSE3 (Ubuntu/Debian)
-sudo apt install libfuse3-dev fuse3
-
-# Install FUSE3 (Fedora/RHEL)
-sudo dnf install fuse3 fuse3-devel
-
-# Download and install Wormhole
-curl -L https://github.com/byronwade/wormhole/releases/latest/download/wormhole-linux.tar.gz | tar xz
-sudo mv wormhole /usr/local/bin/
-sudo chmod +x /usr/local/bin/wormhole`}
-                </code>
-              </pre>
-            </CardContent>
-          </Card>
-
-          <h3 className="text-lg font-semibold text-foreground">Build from Source</h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-0">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-                <span className="text-xs text-muted-foreground font-mono">Terminal</span>
-              </div>
-              <pre className="p-4 text-sm overflow-x-auto">
-                <code className="text-muted-foreground">
-{`# Clone the repository
-git clone https://github.com/byronwade/wormhole.git
-cd wormhole
-
-# Build with Cargo (requires Rust 1.75+)
-cargo build --release
-
-# Install
-sudo cp target/release/wormhole /usr/local/bin/`}
-                </code>
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Alert className="bg-card/50 border-border">
-          <Info className="h-4 w-4 text-blue-400" />
-          <AlertTitle className="text-foreground">Verify Installation</AlertTitle>
-          <AlertDescription className="text-muted-foreground">
-            Run <code className="bg-muted px-1 rounded">wormhole version</code> to verify the installation was successful.
-          </AlertDescription>
-        </Alert>
-      </section>
-
-      {/* Step 2: Host a Folder */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-foreground font-bold">
-            2
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">Host a Folder</h2>
-        </div>
-
-        <p className="text-muted-foreground">
-          On the machine with the files you want to share, run the <code className="bg-muted px-1.5 py-0.5 rounded text-wormhole-hunter-light">host</code> command:
+      <section>
+        <h2>1. Install</h2>
+        <p>
+          Grab a build for your OS from the{" "}
+          <Link href="/#download">download page</Link>, or see{" "}
+          <Link href="/docs/installation">installation</Link> for package details.
         </p>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-              <span className="text-xs text-muted-foreground font-mono">Host Machine</span>
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-muted-foreground">
-{`$ wormhole host ~/Projects/video-project
-
-Scanning folder... 47.3 GB in 1,247 files
-Starting QUIC server on 0.0.0.0:4433...
-
-╔════════════════════════════════════════════╗
-║  Join Code: WORM-7X9K-BETA                 ║
-║                                            ║
-║  Share this code with anyone who needs     ║
-║  to access this folder.                    ║
-╚════════════════════════════════════════════╝
-
-Waiting for connections...`}
-              </code>
-            </pre>
-          </CardContent>
-        </Card>
-
-        <div className="grid sm:grid-cols-2 gap-4 mt-4">
-          <Card className="bg-card/50 border-border">
-            <CardContent className="p-4">
-              <h4 className="font-medium text-foreground mb-2">Common Options</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li><code className="text-wormhole-hunter-light">--port 5000</code> - Use a different port</li>
-                <li><code className="text-wormhole-hunter-light">--allow-write</code> - Enable write access</li>
-                <li><code className="text-wormhole-hunter-light">--daemon</code> - Run in background</li>
-                <li><code className="text-wormhole-hunter-light">--copy-code</code> - Copy code to clipboard</li>
-              </ul>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/50 border-border">
-            <CardContent className="p-4">
-              <h4 className="font-medium text-foreground mb-2">Security Options</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li><code className="text-wormhole-hunter-light">--password</code> - Require password</li>
-                <li><code className="text-wormhole-hunter-light">--allow-ips</code> - IP whitelist</li>
-                <li><code className="text-wormhole-hunter-light">--expire-after 2h</code> - Auto-expire</li>
-                <li><code className="text-wormhole-hunter-light">--max-connections 5</code> - Limit peers</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+        <ul>
+          <li>macOS needs macFUSE</li>
+          <li>Linux needs FUSE 3</li>
+          <li>Windows needs WinFSP</li>
+        </ul>
       </section>
 
-      {/* Step 3: Mount on Another Machine */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-foreground font-bold">
-            3
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">Mount on Another Machine</h2>
-        </div>
-
-        <p className="text-muted-foreground">
-          On the machine that needs to access the files, use the join code:
-        </p>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-              <span className="text-xs text-muted-foreground font-mono">Client Machine</span>
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-muted-foreground">
-{`$ wormhole mount WORM-7X9K-BETA ~/mnt/project
-
-Connecting to signal server...
-Found peer at 192.168.1.42:4433
-Establishing QUIC connection...
-Authenticating with PAKE...
-
-✓ Mounted at /Users/you/mnt/project
-
-Files are now accessible. Open Finder or use the terminal:
-$ ls ~/mnt/project
-$ open ~/mnt/project`}
-              </code>
-            </pre>
-          </CardContent>
-        </Card>
-
-        <div className="grid sm:grid-cols-2 gap-4 mt-4">
-          <Card className="bg-card/50 border-border">
-            <CardContent className="p-4">
-              <h4 className="font-medium text-foreground mb-2">Mount Options</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li><code className="text-wormhole-hunter-light">--read-only</code> - Read-only mount</li>
-                <li><code className="text-wormhole-hunter-light">--cache-mode hybrid</code> - Caching strategy</li>
-                <li><code className="text-wormhole-hunter-light">--ram-cache-mb 1024</code> - RAM cache size</li>
-                <li><code className="text-wormhole-hunter-light">--prefetch</code> - Enable prefetching</li>
-              </ul>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/50 border-border">
-            <CardContent className="p-4">
-              <h4 className="font-medium text-foreground mb-2">Connection Options</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li><code className="text-wormhole-hunter-light">--signal ws://...</code> - Custom signal server</li>
-                <li><code className="text-wormhole-hunter-light">--auto-reconnect</code> - Auto-reconnect</li>
-                <li><code className="text-wormhole-hunter-light">--offline-mode</code> - Serve from cache</li>
-                <li><code className="text-wormhole-hunter-light">--timeout 60</code> - Connection timeout</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+      <section>
+        <h2>2. Host a folder</h2>
+        <p>On the machine that has the files:</p>
+        <pre className="docs-code" tabIndex={0}>
+          <code>{`$ wormhole host ~/renders
+Join code: 7KJM-XBCD-QRST`}</code>
+        </pre>
       </section>
 
-      {/* Step 4: Work with Files */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-foreground font-bold">
-            4
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">Work with Files</h2>
-        </div>
-
-        <p className="text-muted-foreground">
-          The mounted folder behaves like any local directory. Use your normal tools:
-        </p>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-              <span className="text-xs text-muted-foreground font-mono">Terminal</span>
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-muted-foreground">
-{`# List files
-$ ls -la ~/mnt/project
-total 47384832
-drwxr-xr-x  12 user  staff      384 Dec  9 10:00 .
-drwxr-xr-x   3 user  staff       96 Dec  9 10:00 ..
--rw-r--r--   1 user  staff  5242880 Dec  9 09:30 render_v1.mp4
--rw-r--r--   1 user  staff  8388608 Dec  9 09:45 render_v2.mp4
-
-# Open in default application
-$ open ~/mnt/project/render_v2.mp4
-
-# Copy a file locally
-$ cp ~/mnt/project/render_v2.mp4 ~/Desktop/
-
-# Stream directly with ffplay
-$ ffplay ~/mnt/project/render_v2.mp4`}
-              </code>
-            </pre>
-          </CardContent>
-        </Card>
+      <section>
+        <h2>3. Mount with the code</h2>
+        <p>On the machine that needs access:</p>
+        <pre className="docs-code" tabIndex={0}>
+          <code>{`$ wormhole mount 7KJM-XBCD-QRST
+Mounted at /Volumes/wormhole/renders`}</code>
+        </pre>
+        <p>Open the mount in Finder, Explorer, or any app. No full download first.</p>
       </section>
 
-      {/* Step 5: Unmount */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-wormhole-hunter flex items-center justify-center text-foreground font-bold">
-            5
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">Unmount When Done</h2>
-        </div>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-              <span className="text-xs text-muted-foreground font-mono">Terminal</span>
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-muted-foreground">
-{`# Unmount gracefully
-$ wormhole unmount ~/mnt/project
-
-# Or force unmount if busy
-$ wormhole unmount --force ~/mnt/project
-
-# Unmount all mounts
-$ wormhole unmount --all`}
-              </code>
-            </pre>
-          </CardContent>
-        </Card>
+      <section>
+        <h2>4. When you’re done</h2>
+        <pre className="docs-code" tabIndex={0}>
+          <code>{`$ wormhole unmount
+# or stop the host:
+$ wormhole stop`}</code>
+        </pre>
       </section>
 
-      {/* LAN Mode */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Direct LAN Connection</h2>
-        <p className="text-muted-foreground">
-          For maximum speed on the same network, you can skip the signal server and connect directly via IP:
-        </p>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-              <span className="text-xs text-muted-foreground font-mono">Direct Connection</span>
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-muted-foreground">
-{`# Host (note: --no-signal skips signal server)
-$ wormhole host ~/Projects --no-signal
-Listening on 0.0.0.0:4433
-Your IP: 192.168.1.42
-
-# Mount directly via IP
-$ wormhole mount 192.168.1.42:4433 ~/mnt/project`}
-              </code>
-            </pre>
-          </CardContent>
-        </Card>
-
-        <Alert className="bg-amber-500/10 border-amber-500/30">
-          <AlertTriangle className="h-4 w-4 text-amber-400" />
-          <AlertTitle className="text-amber-400">LAN Mode Security</AlertTitle>
-          <AlertDescription className="text-muted-foreground">
-            Direct IP connections are still encrypted via TLS, but don&apos;t benefit from PAKE join code authentication. Use on trusted networks only, or add <code className="bg-muted px-1 rounded">--password</code>.
-          </AlertDescription>
-        </Alert>
+      <section>
+        <h2>Next</h2>
+        <ul>
+          <li>
+            <Link href="/docs/cli">CLI reference</Link>
+          </li>
+          <li>
+            <Link href="/docs/security">Security overview</Link>
+          </li>
+          <li>
+            <Link href="/docs/troubleshooting">Troubleshooting</Link>
+          </li>
+        </ul>
       </section>
-
-      {/* What's Next */}
-      <section className="space-y-4 pt-8 border-t border-border">
-        <h2 className="text-2xl font-bold text-foreground">What&apos;s Next?</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Link href="/docs/cli">
-            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
-              <CardContent className="p-6">
-                <Terminal className="w-6 h-6 text-wormhole-hunter-light mb-3" />
-                <h3 className="font-semibold text-foreground mb-1">CLI Reference</h3>
-                <p className="text-sm text-muted-foreground">Complete command-line documentation</p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/docs/performance">
-            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
-              <CardContent className="p-6">
-                <CheckCircle2 className="w-6 h-6 text-wormhole-hunter-light mb-3" />
-                <h3 className="font-semibold text-foreground mb-1">Performance Tuning</h3>
-                <p className="text-sm text-muted-foreground">Optimize for your use case</p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/docs/security">
-            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
-              <CardContent className="p-6">
-                <CheckCircle2 className="w-6 h-6 text-wormhole-hunter-light mb-3" />
-                <h3 className="font-semibold text-foreground mb-1">Security Guide</h3>
-                <p className="text-sm text-muted-foreground">Encryption, authentication, and more</p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/docs/self-hosting">
-            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
-              <CardContent className="p-6">
-                <CheckCircle2 className="w-6 h-6 text-wormhole-hunter-light mb-3" />
-                <h3 className="font-semibold text-foreground mb-1">Self-Hosting</h3>
-                <p className="text-sm text-muted-foreground">Run your own signal server</p>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-      </section>
-    </div>
+    </article>
   );
 }

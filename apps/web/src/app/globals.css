@@ -367,10 +367,32 @@
   --paper: #eef1f4;
   --paper-deep: #e3e7ed;
   --ink: #14171c;
-  --ink-soft: #5a616c;
-  --line: color-mix(in oklab, #14171c 12%, transparent);
+  --ink-soft: #3f4652;
+  --line: color-mix(in oklab, #14171c 14%, transparent);
   --accent: #1c2430;
-  --good: #0f6b5c;
+  --good: #0b5f52;
+  /* Remap shadcn/Tailwind tokens so leftover dark-theme utilities stay readable */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: #f7f8fa;
+  --secondary: #e4e8ee;
+  --secondary-foreground: var(--ink);
+  --muted: #e4e8ee;
+  --muted-foreground: var(--ink-soft);
+  --accent-foreground: var(--ink);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--ink);
+  --wormhole-hunter: #4c35c4;
+  --wormhole-hunter-light: #3a2a96;
+  --wormhole-hunter-dark: #2f2278;
+  --wormhole-off-white: var(--ink);
+  --wormhole-off-black: var(--paper);
   color: var(--ink);
   background: var(--paper);
   min-height: 100vh;
@@ -554,7 +576,7 @@
 
 .site-hero {
   position: relative;
-  min-height: min(100svh, 52rem);
+  min-height: min(92svh, 46rem);
   display: flex;
   align-items: flex-end;
   overflow: hidden;
@@ -565,31 +587,43 @@
   position: absolute;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
 }
 
 .site-hero-visual__field {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 80% at 70% 20%, #d7dde6 0%, transparent 55%),
-    radial-gradient(90% 70% at 15% 85%, #c9d4cf 0%, transparent 50%),
-    linear-gradient(160deg, #eef1f4 0%, #dfe5ec 48%, #cfd8e2 100%);
+    radial-gradient(90% 70% at 85% 18%, #d5dce6 0%, transparent 58%),
+    radial-gradient(70% 55% at 12% 88%, #d0dbd6 0%, transparent 52%),
+    linear-gradient(165deg, #f3f5f7 0%, #e7ebf1 55%, #d8e0e8 100%);
 }
 
 .site-hero-visual__aperture {
   position: absolute;
-  left: 50%;
-  top: 38%;
-  width: min(72vw, 38rem);
+  right: -8%;
+  top: -12%;
+  width: min(58vw, 28rem);
   aspect-ratio: 1;
-  transform: translate(-50%, -50%);
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 45%, #f7f8fa 0%, #e7ebf1 28%, #b8c2cf 58%, #6f7a88 100%);
+    radial-gradient(circle at 42% 40%, #f8f9fb 0%, #dfe5ee 34%, #9aa7b8 72%, #667487 100%);
   box-shadow:
-    0 0 0 1px color-mix(in oklab, #14171c 8%, transparent),
-    0 40px 80px color-mix(in oklab, #14171c 12%, transparent);
-  opacity: 0.9;
+    0 0 0 1px color-mix(in oklab, #14171c 10%, transparent),
+    0 28px 60px color-mix(in oklab, #14171c 10%, transparent);
+  opacity: 0.72;
+}
+
+.site-hero-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 35%,
+    color-mix(in oklab, var(--paper) 72%, transparent) 68%,
+    var(--paper) 100%
+  );
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -606,10 +640,10 @@
 
 @keyframes site-aperture {
   from {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   to {
-    transform: translate(-52%, -48%) scale(1.04);
+    transform: translate3d(-2%, 3%, 0) scale(1.03);
   }
 }
 
@@ -639,7 +673,7 @@
   width: 100%;
   max-width: 72rem;
   margin: 0 auto;
-  padding: 6.5rem 1.25rem 4.5rem;
+  padding: 7rem 1.25rem 3.5rem;
 }
 
 .site-hero__brand {
@@ -649,7 +683,8 @@
   letter-spacing: -0.055em;
   line-height: 0.95;
   margin: 0 0 1rem;
-  color: var(--ink);
+  color: #0d1014;
+  text-shadow: 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
 }
 
 .site-hero__title {
@@ -660,7 +695,7 @@
   line-height: 1.1;
   margin: 0 0 1rem;
   max-width: 18ch;
-  color: var(--ink);
+  color: #0d1014;
 }
 
 .site-hero__lede {
@@ -668,7 +703,7 @@
   max-width: 34rem;
   font-size: 1.125rem;
   line-height: 1.55;
-  color: var(--ink-soft);
+  color: #2f3540;
 }
 
 .site-hero__cta {
@@ -685,11 +720,16 @@
 
 .site-section--band {
   max-width: none;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 5.5rem 0;
   background: var(--paper-deep);
   border-block: 1px solid var(--line);
 }
 
-.site-section--band > * {
+.site-section--band .site-section__intro,
+.site-section--band .site-diff {
   max-width: 72rem;
   margin-left: auto;
   margin-right: auto;
@@ -697,9 +737,10 @@
   padding-right: 1.25rem;
 }
 
-.site-section--band {
+.site-section--band .site-diff {
   padding-left: 0;
   padding-right: 0;
+  width: calc(100% - 2.5rem);
 }
 
 .site-section__intro {
@@ -1043,7 +1084,9 @@
   margin: 0 auto;
   padding: 1.5rem 1.25rem 4rem;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2rem;
+  width: 100%;
 }
 
 .docs-aside {
@@ -1110,14 +1153,16 @@
 
 .docs-content {
   min-width: 0;
+  width: 100%;
   color: var(--ink);
 }
 
-.docs-content :is(h1, h2, h3) {
+.docs-content :is(h1, h2, h3, h4) {
   font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
   letter-spacing: -0.03em;
   line-height: 1.15;
   scroll-margin-top: 5rem;
+  color: var(--ink) !important;
 }
 
 .docs-content h1 {
@@ -1133,6 +1178,15 @@
 }
 
 .docs-content p,
+.docs-content li,
+.docs-content td,
+.docs-content th,
+.docs-content span,
+.docs-content div {
+  color: inherit;
+}
+
+.docs-content p,
 .docs-content li {
   color: var(--ink-soft);
   line-height: 1.65;
@@ -1145,10 +1199,16 @@
 .docs-content code {
   font-family: var(--font-mono), "IBM Plex Mono", monospace;
   font-size: 0.9em;
-  background: color-mix(in oklab, #fff 50%, var(--paper));
+  color: var(--ink) !important;
+  background: #fff !important;
   border: 1px solid var(--line);
   border-radius: 0.3rem;
   padding: 0.1rem 0.35rem;
+}
+
+.docs-content pre,
+.docs-content [class*="font-mono"] {
+  color: var(--ink) !important;
 }
 
 .docs-content pre {
@@ -1156,13 +1216,71 @@
   padding: 1rem 1.1rem;
   border: 1px solid var(--line);
   border-radius: 0.55rem;
-  background: color-mix(in oklab, #fff 45%, var(--paper));
+  background: #fff !important;
 }
 
 .docs-content pre code {
   border: 0;
-  background: transparent;
+  background: transparent !important;
   padding: 0;
+}
+
+/* Neutralize leftover dark-theme utility colors inside docs pages */
+.docs-content [class*="text-muted"],
+.docs-content [class*="text-foreground"] {
+  color: var(--ink-soft) !important;
+}
+
+.docs-content :is(h1, h2, h3, h4)[class*="text-foreground"] {
+  color: var(--ink) !important;
+}
+
+.docs-content [class*="text-wormhole"],
+.docs-content [class*="text-green-"],
+.docs-content [class*="text-blue-"],
+.docs-content [class*="text-amber-"],
+.docs-content [class*="text-pink-"],
+.docs-content [class*="text-red-"],
+.docs-content [class*="text-teal-"],
+.docs-content [class*="text-cyan-"],
+.docs-content [class*="text-orange-"] {
+  color: var(--ink) !important;
+}
+
+.docs-content [class*="text-green-"] {
+  color: var(--good) !important;
+}
+
+.docs-content [class*="bg-card"],
+.docs-content [class*="bg-background"],
+.docs-content [class*="bg-muted"] {
+  background: #fff !important;
+  color: var(--ink) !important;
+}
+
+.docs-content [class*="bg-wormhole"],
+.docs-content [class*="bg-green-"],
+.docs-content [class*="bg-blue-"],
+.docs-content [class*="bg-amber-"],
+.docs-content [class*="bg-red-"],
+.docs-content [class*="bg-pink-"] {
+  background: color-mix(in oklab, var(--ink) 6%, #fff) !important;
+  color: var(--ink) !important;
+}
+
+.docs-content [class*="border-border"],
+.docs-content [class*="border-wormhole"] {
+  border-color: var(--line) !important;
+}
+
+.docs-content [class*="opacity-60"] {
+  opacity: 1;
+}
+
+.docs-content .rounded-full[class*="bg-wormhole"],
+.docs-content .rounded-full[class*="bg-"] {
+  background: var(--accent) !important;
+  color: #fff !important;
 }
 
 .docs-home__intro {
@@ -1190,6 +1308,61 @@
   font-size: 0.875rem;
   line-height: 1.55;
   color: var(--ink);
+}
+
+.docs-article section + section {
+  margin-top: 2rem;
+}
+
+.docs-cmd-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.docs-cmd {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+}
+
+@media (min-width: 720px) {
+  .docs-cmd {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+.docs-cmd:hover,
+.docs-cmd:focus-visible {
+  border-color: color-mix(in oklab, var(--ink) 28%, transparent);
+}
+
+.docs-cmd strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.docs-cmd p {
+  margin: 0.15rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.925rem;
+}
+
+.docs-cmd code {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  color: var(--ink) !important;
+  background: var(--paper) !important;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  white-space: nowrap;
 }
 
 .docs-home__grid {

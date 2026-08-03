@@ -1,441 +1,65 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import {
-  Terminal,
-  ArrowRight,
-  Server,
-  HardDrive,
-  Settings,
-  Users,
-  Database,
-  RefreshCw,
-  Activity,
-  Wrench,
-} from "lucide-react";
 
 export const metadata = {
-  title: "CLI Reference - Wormhole Documentation",
-  description: "Complete command-line reference for Wormhole. All commands, options, and examples.",
+  title: "CLI Reference — Wormhole Docs",
+  description: "Wormhole command-line reference: host, mount, status, cache, and more.",
 };
 
-const commandGroups = [
+const groups = [
   {
-    title: "Core Commands",
-    description: "Primary commands for hosting and mounting",
-    icon: Terminal,
+    title: "Core",
     commands: [
-      {
-        name: "host",
-        description: "Share a local folder with others",
-        href: "/docs/cli/host",
-        example: "wormhole host ~/Projects",
-      },
-      {
-        name: "mount",
-        description: "Mount a remote folder locally",
-        href: "/docs/cli/mount",
-        example: "wormhole mount CODE ~/mnt",
-      },
-      {
-        name: "unmount",
-        description: "Unmount a mounted share",
-        href: "/docs/cli/all-commands",
-        example: "wormhole unmount ~/mnt",
-      },
+      { name: "host", href: "/docs/cli/host", example: "wormhole host ~/Projects", blurb: "Share a local folder" },
+      { name: "mount", href: "/docs/cli/mount", example: "wormhole mount CODE", blurb: "Mount a remote folder" },
+      { name: "status", href: "/docs/cli/status", example: "wormhole status", blurb: "Show hosts and mounts" },
     ],
   },
   {
-    title: "Status & Monitoring",
-    description: "Monitor connections and performance",
-    icon: Activity,
+    title: "Cache",
     commands: [
-      {
-        name: "status",
-        description: "Show connection status and stats",
-        href: "/docs/cli/status",
-        example: "wormhole status",
-      },
-      {
-        name: "list",
-        description: "List active hosts and mounts",
-        href: "/docs/cli/all-commands",
-        example: "wormhole list",
-      },
-      {
-        name: "ping",
-        description: "Ping a remote host",
-        href: "/docs/cli/all-commands",
-        example: "wormhole ping CODE",
-      },
-      {
-        name: "bench",
-        description: "Run network benchmarks",
-        href: "/docs/cli/all-commands",
-        example: "wormhole bench CODE",
-      },
+      { name: "cache", href: "/docs/cli/cache", example: "wormhole cache stats", blurb: "Inspect or clear cache" },
     ],
   },
   {
-    title: "Cache Management",
-    description: "Manage local file cache",
-    icon: Database,
+    title: "More",
     commands: [
-      {
-        name: "cache stats",
-        description: "Show cache statistics",
-        href: "/docs/cli/cache",
-        example: "wormhole cache stats",
-      },
-      {
-        name: "cache clear",
-        description: "Clear cached data",
-        href: "/docs/cli/cache",
-        example: "wormhole cache clear",
-      },
-      {
-        name: "cache warm",
-        description: "Pre-fetch files for offline use",
-        href: "/docs/cli/cache",
-        example: "wormhole cache warm SHARE",
-      },
-    ],
-  },
-  {
-    title: "Configuration",
-    description: "Manage settings and preferences",
-    icon: Settings,
-    commands: [
-      {
-        name: "config show",
-        description: "Display current configuration",
-        href: "/docs/cli/config",
-        example: "wormhole config show",
-      },
-      {
-        name: "config set",
-        description: "Set a configuration value",
-        href: "/docs/cli/config",
-        example: "wormhole config set cache.max_gb 20",
-      },
-      {
-        name: "config edit",
-        description: "Edit config in your editor",
-        href: "/docs/cli/config",
-        example: "wormhole config edit",
-      },
-    ],
-  },
-  {
-    title: "Peer Management",
-    description: "Manage known peers and trust",
-    icon: Users,
-    commands: [
-      {
-        name: "peers list",
-        description: "List known peers",
-        href: "/docs/cli/peers",
-        example: "wormhole peers list",
-      },
-      {
-        name: "peers trust",
-        description: "Trust a peer's certificate",
-        href: "/docs/cli/peers",
-        example: "wormhole peers trust PEER",
-      },
-      {
-        name: "peers block",
-        description: "Block a peer",
-        href: "/docs/cli/peers",
-        example: "wormhole peers block PEER",
-      },
-    ],
-  },
-  {
-    title: "Synchronization",
-    description: "Bidirectional file sync (Phase 7)",
-    icon: RefreshCw,
-    badge: "Phase 7",
-    commands: [
-      {
-        name: "sync status",
-        description: "Show sync status",
-        href: "/docs/cli/sync",
-        example: "wormhole sync status",
-      },
-      {
-        name: "sync now",
-        description: "Force synchronization",
-        href: "/docs/cli/sync",
-        example: "wormhole sync now",
-      },
-      {
-        name: "sync conflicts",
-        description: "List and resolve conflicts",
-        href: "/docs/cli/sync",
-        example: "wormhole sync conflicts",
-      },
-    ],
-  },
-  {
-    title: "Signal Server",
-    description: "Run and manage signal server",
-    icon: Server,
-    commands: [
-      {
-        name: "signal",
-        description: "Run the signal server",
-        href: "/docs/cli/signal",
-        example: "wormhole signal --port 8080",
-      },
-    ],
-  },
-  {
-    title: "Utilities",
-    description: "Helper commands and diagnostics",
-    icon: Wrench,
-    commands: [
-      {
-        name: "doctor",
-        description: "Diagnose system issues",
-        href: "/docs/cli/all-commands",
-        example: "wormhole doctor",
-      },
-      {
-        name: "version",
-        description: "Show version info",
-        href: "/docs/cli/all-commands",
-        example: "wormhole version --detailed",
-      },
-      {
-        name: "completions",
-        description: "Generate shell completions",
-        href: "/docs/cli/all-commands",
-        example: "wormhole completions bash",
-      },
+      { name: "config", href: "/docs/cli/config", example: "wormhole config", blurb: "Config file helpers" },
+      { name: "peers", href: "/docs/cli/peers", example: "wormhole peers", blurb: "List known peers" },
+      { name: "All commands", href: "/docs/cli/all-commands", example: "wormhole --help", blurb: "Full command list" },
     ],
   },
 ];
 
-export default function CLIPage() {
+export default function CliPage() {
   return (
-    <div className="space-y-12">
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
-          CLI Reference
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Command Line Interface
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          Complete reference for all Wormhole CLI commands, options, and usage examples.
-        </p>
-      </div>
+    <article className="docs-article">
+      <header className="docs-home__intro">
+        <h1>CLI Reference</h1>
+        <p>Everything useful from a terminal. Start with host and mount.</p>
+      </header>
 
-      {/* Quick Reference */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Quick Reference</h2>
-        <Card className="bg-card border-border">
-          <CardContent className="p-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50">
-              <span className="text-xs text-muted-foreground font-mono">Common Commands</span>
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto">
-              <code className="text-muted-foreground">
-{`# Share a folder
-wormhole host ~/folder [options]
+      <pre className="docs-code" tabIndex={0}>
+        <code>{`$ wormhole host ~/renders
+$ wormhole mount 7KJM-XBCD-QRST
+$ wormhole status`}</code>
+      </pre>
 
-# Mount a remote folder
-wormhole mount <CODE|IP:PORT> [mountpoint] [options]
-
-# Check status
-wormhole status [--detailed]
-
-# Unmount
-wormhole unmount <mountpoint>
-
-# Get help
-wormhole --help
-wormhole <command> --help`}
-              </code>
-            </pre>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Global Options */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Global Options</h2>
-        <Card className="bg-card/50 border-border">
-          <CardContent className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 text-muted-foreground font-medium">Option</th>
-                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="text-muted-foreground">
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">-v, --verbose</td>
-                    <td className="py-2">Increase output verbosity (-v, -vv, -vvv)</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">-q, --quiet</td>
-                    <td className="py-2">Suppress all output except errors</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">--format &lt;FORMAT&gt;</td>
-                    <td className="py-2">Output format: text, json, yaml (default: text)</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">--config &lt;PATH&gt;</td>
-                    <td className="py-2">Path to config file</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">--no-color</td>
-                    <td className="py-2">Disable colored output</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 font-mono text-wormhole-hunter-light">-h, --help</td>
-                    <td className="py-2">Print help information</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Command Groups */}
-      <section className="space-y-8">
-        <h2 className="text-2xl font-bold text-foreground">Commands by Category</h2>
-
-        {commandGroups.map((group) => {
-          const Icon = group.icon;
-          return (
-            <div key={group.title} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-wormhole-hunter/20 flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-wormhole-hunter-light" />
-                </div>
+      {groups.map((group) => (
+        <section key={group.title}>
+          <h2>{group.title}</h2>
+          <div className="docs-cmd-list">
+            {group.commands.map((cmd) => (
+              <Link key={cmd.name} href={cmd.href} className="docs-cmd">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    {group.title}
-                    {group.badge && (
-                      <Badge variant="outline" className="border-wormhole-hunter/50 text-wormhole-hunter-light text-xs">
-                        {group.badge}
-                      </Badge>
-                    )}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{group.description}</p>
+                  <strong>{cmd.name}</strong>
+                  <p>{cmd.blurb}</p>
                 </div>
-              </div>
-
-              <div className="grid gap-3 ml-13">
-                {group.commands.map((cmd) => (
-                  <Link key={cmd.name} href={cmd.href}>
-                    <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <code className="text-wormhole-hunter-light font-mono font-semibold">{cmd.name}</code>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{cmd.description}</p>
-                          </div>
-                          <div className="flex-shrink-0">
-                            <code className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
-                              {cmd.example}
-                            </code>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      {/* Environment Variables */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Environment Variables</h2>
-        <Card className="bg-card/50 border-border">
-          <CardContent className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 text-muted-foreground font-medium">Variable</th>
-                    <th className="text-left py-2 text-muted-foreground font-medium">Description</th>
-                    <th className="text-left py-2 text-muted-foreground font-medium">Default</th>
-                  </tr>
-                </thead>
-                <tbody className="text-muted-foreground">
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CONFIG</td>
-                    <td className="py-2">Path to config file</td>
-                    <td className="py-2 text-muted-foreground">~/.config/wormhole/config.toml</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_CACHE_DIR</td>
-                    <td className="py-2">Cache directory path</td>
-                    <td className="py-2 text-muted-foreground">~/.cache/wormhole</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_LOG_LEVEL</td>
-                    <td className="py-2">Log level (trace, debug, info, warn, error)</td>
-                    <td className="py-2 text-muted-foreground">info</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">WORMHOLE_SIGNAL_SERVER</td>
-                    <td className="py-2">Default signal server URL</td>
-                    <td className="py-2 text-muted-foreground">ws://signal.wormhole.app</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="py-2 font-mono text-wormhole-hunter-light">RUST_LOG</td>
-                    <td className="py-2">Rust logging filter (for debugging)</td>
-                    <td className="py-2 text-muted-foreground">(none)</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 font-mono text-wormhole-hunter-light">NO_COLOR</td>
-                    <td className="py-2">Disable colored output</td>
-                    <td className="py-2 text-muted-foreground">(none)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* See Also */}
-      <section className="space-y-4 pt-8 border-t border-border">
-        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Link href="/docs/cli/all-commands">
-            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
-              <CardContent className="p-6">
-                <h3 className="font-semibold text-foreground mb-1">All Commands Reference</h3>
-                <p className="text-sm text-muted-foreground">Complete list of every command and option</p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link href="/docs/configuration">
-            <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
-              <CardContent className="p-6">
-                <h3 className="font-semibold text-foreground mb-1">Configuration</h3>
-                <p className="text-sm text-muted-foreground">Config file reference and examples</p>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-      </section>
-    </div>
+                <code>{cmd.example}</code>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </article>
   );
 }
