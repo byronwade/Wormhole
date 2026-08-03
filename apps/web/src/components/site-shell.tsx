@@ -1,33 +1,13 @@
 import Link from "next/link";
 import { Github } from "lucide-react";
-
-function LogoMark({ className = "size-7" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1.5" opacity="0.55" />
-      <path
-        d="M9 16h8.5m0 0-3.2-3.2M17.5 16l-3.2 3.2"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+import { LogoMark } from "@/components/logo-mark";
 
 export function SiteShell({
   children,
   active,
 }: {
   children: React.ReactNode;
-  active?: "docs" | "pricing" | "about";
+  active?: "docs" | "pricing" | "about" | "changelog";
 }) {
   return (
     <div className="site">
@@ -76,6 +56,7 @@ export function SiteShell({
           <div className="site-footer__links">
             <Link href="/docs">Docs</Link>
             <Link href="/pricing">Pricing</Link>
+            <Link href="/changelog">Changelog</Link>
             <Link href="/about">About</Link>
             <a
               href="https://github.com/byronwade/Wormhole"

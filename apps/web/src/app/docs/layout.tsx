@@ -2,333 +2,186 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Share2,
-  Download,
-  Terminal,
-  Server,
-  Shield,
-  Gauge,
-  Settings,
-  BookOpen,
-  Code2,
-  Network,
-  Wrench,
-  ChevronRight,
-  Menu,
-  Github,
-  Heart,
-  Search,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { useState } from "react";
+import { ChevronRight, Github, Menu, X } from "lucide-react";
+import { LogoMark } from "@/components/logo-mark";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   title: string;
   href: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  items?: NavItem[];
-  badge?: string;
+  items?: { title: string; href: string; badge?: string }[];
 }
 
 const navigation: NavItem[] = [
   {
     title: "Getting Started",
     href: "/docs",
-    icon: BookOpen,
     items: [
       { title: "Introduction", href: "/docs" },
       { title: "Quick Start", href: "/docs/quickstart" },
       { title: "Installation", href: "/docs/installation" },
-      { title: "System Requirements", href: "/docs/requirements" },
+      { title: "Requirements", href: "/docs/requirements" },
     ],
   },
   {
-    title: "CLI Reference",
+    title: "CLI",
     href: "/docs/cli",
-    icon: Terminal,
     items: [
       { title: "Overview", href: "/docs/cli" },
       { title: "host", href: "/docs/cli/host" },
       { title: "mount", href: "/docs/cli/mount" },
       { title: "status", href: "/docs/cli/status" },
       { title: "cache", href: "/docs/cli/cache" },
-      { title: "config", href: "/docs/cli/config" },
-      { title: "peers", href: "/docs/cli/peers" },
-      { title: "sync", href: "/docs/cli/sync", badge: "Phase 7" },
-      { title: "signal", href: "/docs/cli/signal" },
-      { title: "All Commands", href: "/docs/cli/all-commands" },
+      { title: "All commands", href: "/docs/cli/all-commands" },
     ],
   },
   {
     title: "Architecture",
     href: "/docs/architecture",
-    icon: Network,
     items: [
       { title: "Overview", href: "/docs/architecture" },
-      { title: "FUSE Filesystem", href: "/docs/architecture/fuse" },
-      { title: "QUIC Protocol", href: "/docs/architecture/quic" },
-      { title: "Wire Protocol", href: "/docs/architecture/protocol" },
-      { title: "Caching System", href: "/docs/architecture/caching" },
-      { title: "Signal Server", href: "/docs/architecture/signal-server" },
+      { title: "FUSE", href: "/docs/architecture/fuse" },
+      { title: "QUIC", href: "/docs/architecture/quic" },
+      { title: "Protocol", href: "/docs/architecture/protocol" },
+      { title: "Caching", href: "/docs/architecture/caching" },
     ],
   },
   {
     title: "Security",
     href: "/docs/security",
-    icon: Shield,
     items: [
       { title: "Overview", href: "/docs/security" },
       { title: "Encryption", href: "/docs/security/encryption" },
-      { title: "Authentication (PAKE)", href: "/docs/security/pake" },
-      { title: "Access Control", href: "/docs/security/access-control" },
-      { title: "Threat Model", href: "/docs/security/threat-model" },
-      { title: "Audit & Verify", href: "/docs/security/audit" },
+      { title: "PAKE", href: "/docs/security/pake" },
+      { title: "Threat model", href: "/docs/security/threat-model" },
     ],
   },
   {
-    title: "Performance",
+    title: "More",
     href: "/docs/performance",
-    icon: Gauge,
     items: [
-      { title: "Benchmarks", href: "/docs/performance" },
-      { title: "Tuning Guide", href: "/docs/performance/tuning" },
-      { title: "Cache Optimization", href: "/docs/performance/cache" },
-      { title: "Network Optimization", href: "/docs/performance/network" },
-      { title: "Run Benchmarks", href: "/docs/performance/run-benchmarks" },
-    ],
-  },
-  {
-    title: "Configuration",
-    href: "/docs/configuration",
-    icon: Settings,
-    items: [
-      { title: "Config File", href: "/docs/configuration" },
-      { title: "Environment Variables", href: "/docs/configuration/env" },
-      { title: "Cache Settings", href: "/docs/configuration/cache" },
-      { title: "Network Settings", href: "/docs/configuration/network" },
-      { title: "Example Configs", href: "/docs/configuration/examples" },
-    ],
-  },
-  {
-    title: "Self-Hosting",
-    href: "/docs/self-hosting",
-    icon: Server,
-    items: [
-      { title: "Signal Server", href: "/docs/self-hosting" },
-      { title: "Docker Deployment", href: "/docs/self-hosting/docker" },
-      { title: "Production Setup", href: "/docs/self-hosting/production" },
-      { title: "Monitoring", href: "/docs/self-hosting/monitoring" },
-    ],
-  },
-  {
-    title: "API Reference",
-    href: "/docs/api",
-    icon: Code2,
-    items: [
-      { title: "Wire Protocol", href: "/docs/api" },
-      { title: "Message Types", href: "/docs/api/messages" },
-      { title: "Error Codes", href: "/docs/api/errors" },
-      { title: "Building Clients", href: "/docs/api/building-clients" },
-    ],
-  },
-  {
-    title: "Troubleshooting",
-    href: "/docs/troubleshooting",
-    icon: Wrench,
-    items: [
-      { title: "Common Issues", href: "/docs/troubleshooting" },
-      { title: "FUSE Issues", href: "/docs/troubleshooting/fuse" },
-      { title: "Network Issues", href: "/docs/troubleshooting/network" },
-      { title: "Performance Issues", href: "/docs/troubleshooting/performance" },
-      { title: "Getting Help", href: "/docs/troubleshooting/help" },
+      { title: "Performance", href: "/docs/performance" },
+      { title: "Configuration", href: "/docs/configuration" },
+      { title: "Self-hosting", href: "/docs/self-hosting" },
+      { title: "Troubleshooting", href: "/docs/troubleshooting" },
+      { title: "API", href: "/docs/api" },
     ],
   },
 ];
 
-function NavSection({ item }: { item: NavItem }) {
+function NavSection({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const isInSection = item.items?.some((subItem) => pathname === subItem.href);
-  const [isOpen, setIsOpen] = useState<boolean>(isInSection ?? true);
+  const inSection =
+    pathname === item.href ||
+    item.items?.some((sub) => pathname === sub.href) ||
+    false;
+  const [open, setOpen] = useState(inSection);
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-1">
-      <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-semibold text-foreground hover:text-foreground transition-colors">
-        {item.title}
+    <div className="docs-nav__section">
+      <button
+        type="button"
+        className="docs-nav__heading"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span>{item.title}</span>
         <ChevronRight
-          className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-200",
-            isOpen && "rotate-90"
-          )}
+          className={cn("size-3.5 transition-transform", open && "rotate-90")}
+          aria-hidden="true"
         />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-0.5 pl-2">
-        {item.items?.map((subItem) => {
-          const isActive = pathname === subItem.href;
-          return (
-            <Link
-              key={subItem.href}
-              href={subItem.href}
-              className={cn(
-                "block rounded-md px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-wormhole-hunter/10 text-wormhole-hunter-light font-medium"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}
-            >
-              {subItem.title}
-              {subItem.badge && (
-                <Badge
-                  variant="outline"
-                  className="ml-2 text-[10px] px-1.5 py-0 border-wormhole-hunter/50 text-wormhole-hunter-light"
+      </button>
+      {open && (
+        <ul className="docs-nav__list">
+          {item.items?.map((sub) => {
+            const active = pathname === sub.href;
+            return (
+              <li key={sub.href}>
+                <Link
+                  href={sub.href}
+                  className={cn("docs-nav__link", active && "is-active")}
+                  aria-current={active ? "page" : undefined}
+                  onClick={onNavigate}
                 >
-                  {subItem.badge}
-                </Badge>
-              )}
-            </Link>
-          );
-        })}
-      </CollapsibleContent>
-    </Collapsible>
+                  {sub.title}
+                  {sub.badge ? <span className="docs-nav__badge">{sub.badge}</span> : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
-function Sidebar({ className, onLinkClick }: { className?: string; onLinkClick?: () => void }) {
+function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <aside className={cn("w-64 shrink-0", className)}>
-      <div className="sticky top-20">
-        <ScrollArea className="h-[calc(100vh-5rem)] py-6 pr-6">
-          <div className="space-y-4">
-            {navigation.map((item) => (
-              <NavSection key={item.href} item={item} />
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
-    </aside>
-  );
-}
-
-function MobileNav() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden text-muted-foreground hover:text-foreground" />}>
-        <Menu className="w-5 h-5" />
-        <span className="sr-only">Toggle menu</span>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-80 p-0 bg-[#0a0a0a] border-border/50">
-        <div className="p-6 border-b border-border/50">
-          <Link href="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-wormhole-hunter-light to-wormhole-hunter flex items-center justify-center">
-              <Share2 className="w-4 h-4 text-foreground" />
-            </div>
-            <div>
-              <span className="font-bold text-foreground">Wormhole</span>
-              <span className="text-muted-foreground ml-2">Docs</span>
-            </div>
-          </Link>
-        </div>
-        <ScrollArea className="h-[calc(100vh-5rem)] p-6">
-          <div className="space-y-4">
-            {navigation.map((item) => (
-              <NavSection key={item.href} item={item} />
-            ))}
-          </div>
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
+    <nav className="docs-nav" aria-label="Documentation">
+      {navigation.map((item) => (
+        <NavSection key={item.href} item={item} onNavigate={onNavigate} />
+      ))}
+    </nav>
   );
 }
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Top Navigation - Clean, minimal */}
-      <nav className="sticky top-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-border/50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
-          <div className="flex items-center gap-6">
-            <MobileNav />
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative">
-                <div className="absolute inset-0 bg-wormhole-hunter/30 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-wormhole-hunter-light to-wormhole-hunter flex items-center justify-center">
-                  <Share2 className="w-4 h-4 text-foreground" />
-                </div>
-              </div>
-              <span className="font-bold text-lg text-foreground">Wormhole</span>
-            </Link>
-            <div className="hidden sm:flex items-center gap-1 text-sm">
-              <span className="text-muted-foreground">/</span>
-              <Link href="/docs" className="text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted/50">
-                Docs
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Search placeholder */}
-            <button className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-card/50 hover:bg-muted/50 rounded-lg border border-border/50 transition-colors">
-              <Search className="w-4 h-4" />
-              <span>Search...</span>
-              <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
-                <span className="text-xs">⌘</span>K
-              </kbd>
+    <div className="site docs-shell">
+      <header className="site-nav">
+        <div className="site-nav__inner">
+          <div className="docs-top">
+            <button
+              type="button"
+              className="docs-menu-btn"
+              aria-expanded={mobileOpen}
+              aria-controls="docs-mobile-nav"
+              aria-label={mobileOpen ? "Close docs menu" : "Open docs menu"}
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              {mobileOpen ? <X className="size-4" /> : <Menu className="size-4" />}
             </button>
-
+            <Link href="/" className="site-brand" aria-label="Wormhole home">
+              <LogoMark className="size-7 text-ink" />
+              <span className="site-brand__name">Wormhole</span>
+            </Link>
+            <span className="docs-crumb" aria-hidden="true">
+              /
+            </span>
+            <Link href="/docs" className="docs-crumb-link">
+              Docs
+            </Link>
+          </div>
+          <div className="site-nav__actions">
             <a
-              href="https://github.com/sponsors/byronwade"
+              href="https://github.com/byronwade/Wormhole"
+              className="site-link-quiet"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex w-9 h-9 items-center justify-center rounded-lg text-pink-400 hover:text-pink-300 hover:bg-pink-500/10 transition-colors"
-              aria-label="Sponsor"
             >
-              <Heart className="w-4 h-4" />
+              <Github className="size-4" aria-hidden="true" />
+              <span className="sr-only">GitHub</span>
             </a>
-            <a
-              href="https://github.com/byronwade/wormhole"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              aria-label="GitHub"
-            >
-              <Github className="w-4 h-4" />
-            </a>
-            <ThemeToggle />
-            <Button
-              size="sm"
-              className="h-9 px-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark text-foreground shadow-lg shadow-wormhole-hunter/20"
-              render={<Link href="/#download" />}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Download</span>
-            </Button>
+            <Link href="/#download" className="site-btn site-btn--small">
+              Download
+            </Link>
           </div>
         </div>
-      </nav>
-
-      {/* Main container */}
-      <div className="max-w-7xl mx-auto flex gap-10 py-8 px-6">
-        {/* Desktop Sidebar */}
-        <Sidebar className="hidden lg:block" />
-
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          <div className="prose prose-invert max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-10 prose-h2:border-b prose-h2:border-border/50 prose-h2:pb-2 prose-h3:text-lg prose-p:text-muted-foreground prose-p:leading-relaxed prose-a:text-wormhole-hunter-light prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-code:text-wormhole-hunter-light prose-code:bg-muted/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-pre:bg-card prose-pre:border prose-pre:border-border/50">
-            {children}
+        {mobileOpen && (
+          <div id="docs-mobile-nav" className="docs-mobile">
+            <DocsSidebar onNavigate={() => setMobileOpen(false)} />
           </div>
-        </main>
+        )}
+      </header>
+
+      <div className="docs-layout">
+        <aside className="docs-aside">
+          <DocsSidebar />
+        </aside>
+        <div className="docs-content">{children}</div>
       </div>
     </div>
   );

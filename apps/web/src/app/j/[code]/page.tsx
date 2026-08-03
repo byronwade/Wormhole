@@ -3,378 +3,170 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Share2,
-  Apple,
-  Monitor,
-  Terminal,
-  ExternalLink,
-  Copy,
-  Check,
-  Loader2,
-  ArrowRight,
-  Download,
-} from "lucide-react";
+import { Apple, Check, Copy, Monitor, Terminal } from "lucide-react";
+import { SiteShell } from "@/components/site-shell";
 
 type Platform = "mac" | "windows" | "linux" | "unknown";
 
-interface GitHubRelease {
-  tag_name: string;
-  assets: {
-    name: string;
-    browser_download_url: string;
-  }[];
-}
-
-const GITHUB_OWNER = "byronwade";
-const GITHUB_REPO = "wormhole";
-
-// Base URL for wormhole links
-const WORMHOLE_BASE_URL = "https://wormhole.byronwade.com";
-
 function detectPlatform(): Platform {
   if (typeof window === "undefined") return "unknown";
-  const userAgent = navigator.userAgent.toLowerCase();
-  if (userAgent.includes("mac")) return "mac";
-  if (userAgent.includes("win")) return "windows";
-  if (userAgent.includes("linux")) return "linux";
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("mac")) return "mac";
+  if (ua.includes("win")) return "windows";
+  if (ua.includes("linux")) return "linux";
   return "unknown";
 }
 
-function getAssetForPlatform(assets: GitHubRelease["assets"], platform: Platform): GitHubRelease["assets"][0] | null {
-  const patterns: Record<Platform, string[][]> = {
-    mac: [[".dmg"], ["macos", "darwin", "aarch64", "arm64"]],
-    windows: [["-setup.exe", ".msi"], [".exe"]],
-    linux: [[".appimage"], [".deb"], [".rpm"]],
-    unknown: [],
-  };
-
-  const platformPatternGroups = patterns[platform];
-  for (const patternGroup of platformPatternGroups) {
-    for (const asset of assets) {
-      const name = asset.name.toLowerCase();
-      if (patternGroup.some(p => name.includes(p.toLowerCase()))) {
-        return asset;
-      }
-    }
-  }
-  return null;
-}
-
 function normalizeJoinCode(code: string): string {
-  // Remove any URL prefix if present
   let normalized = code.toUpperCase().trim();
-
-  // Handle various formats
   normalized = normalized
     .replace(/^HTTPS?:\/\/[^/]+\/J\//i, "")
     .replace(/[^A-Z0-9]/g, "");
-
-  // Insert dash if needed (format: XXX-XXX or similar)
   if (normalized.length === 6 && !normalized.includes("-")) {
     normalized = `${normalized.slice(0, 3)}-${normalized.slice(3)}`;
   }
-
   return normalized;
 }
 
 function isValidJoinCode(code: string): boolean {
-  // Valid formats: ABC-123, ABCDEF, ABC123
   const normalized = code.replace(/-/g, "");
   return /^[A-Z0-9]{6,12}$/i.test(normalized);
+}
+
+function downloadPath(platform: Platform): string {
+  switch (platform) {
+    case "mac":
+      return "/download/macos";
+    case "windows":
+      return "/download/windows";
+    case "linux":
+      return "/download/linux";
+    default:
+      return "/#download";
+  }
 }
 
 export default function JoinPage() {
   const params = useParams();
   const rawCode = params.code as string;
   const joinCode = normalizeJoinCode(decodeURIComponent(rawCode));
-
   const [platform, setPlatform] = useState<Platform>("unknown");
-  const [mounted, setMounted] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [attemptedDeepLink, setAttemptedDeepLink] = useState(false);
-  const [deepLinkFailed, setDeepLinkFailed] = useState(false);
-  const [release, setRelease] = useState<GitHubRelease | null>(null);
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [status, setStatus] = useState<"opening" | "ready">("opening");
 
   useEffect(() => {
-    setMounted(true);
     setPlatform(detectPlatform());
-
-    // Fetch latest release for download links
-    fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => setRelease(data))
-      .catch(() => {});
   }, []);
 
-  // Attempt to open the app via deep link
   useEffect(() => {
-    if (!mounted || attemptedDeepLink) return;
-
+    if (!isValidJoinCode(joinCode)) return;
     const deepLinkUrl = `wormhole://join/${joinCode}`;
-
-    // Try to open the deep link
-    const tryDeepLink = () => {
-      setAttemptedDeepLink(true);
-
-      // Create a hidden iframe to try the deep link
-      const iframe = document.createElement("iframe");
-      iframe.style.display = "none";
-      iframe.src = deepLinkUrl;
-      document.body.appendChild(iframe);
-
-      // Also try window.location as fallback
-      const startTime = Date.now();
-
-      // Check if we're still on the page after a delay
-      // If we are, the deep link probably didn't work
-      setTimeout(() => {
-        if (document.hasFocus() && Date.now() - startTime < 2000) {
-          setDeepLinkFailed(true);
-        }
-        // Clean up iframe
-        document.body.removeChild(iframe);
-      }, 1500);
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = deepLinkUrl;
+    document.body.appendChild(iframe);
+    const timer = window.setTimeout(() => {
+      setStatus("ready");
+      iframe.remove();
+    }, 1400);
+    return () => {
+      window.clearTimeout(timer);
+      iframe.remove();
     };
+  }, [joinCode]);
 
-    // Small delay to let the page render first
-    const timeout = setTimeout(tryDeepLink, 500);
-    return () => clearTimeout(timeout);
-  }, [mounted, attemptedDeepLink, joinCode]);
-
-  const handleOpenApp = () => {
-    window.location.href = `wormhole://join/${joinCode}`;
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(joinCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${WORMHOLE_BASE_URL}/j/${joinCode}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const getDownloadUrl = (targetPlatform: Platform): string => {
-    if (release?.assets) {
-      const asset = getAssetForPlatform(release.assets, targetPlatform);
-      if (asset) return asset.browser_download_url;
+  const copy = async (kind: "code" | "link") => {
+    const value =
+      kind === "code"
+        ? joinCode
+        : `${window.location.origin}/j/${joinCode}`;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(kind);
+      window.setTimeout(() => setCopied(null), 1600);
+    } catch {
+      /* ignore */
     }
-    return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
   };
 
-  const isValid = isValidJoinCode(joinCode);
-
-  if (!isValid) {
+  if (!isValidJoinCode(joinCode)) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
-        <Card className="max-w-md w-full bg-card border-border">
-          <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-6">
-              <Share2 className="w-8 h-8 text-red-400" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Invalid Join Code</h1>
-            <p className="text-muted-foreground mb-6">
-              The join code &quot;{rawCode}&quot; doesn&apos;t appear to be valid.
+      <SiteShell>
+        <section className="site-section join-page">
+          <div className="site-section__intro">
+            <h2>Invalid join code</h2>
+            <p>
+              “{rawCode}” doesn’t look like a Wormhole code. Ask the host to send it
+              again.
             </p>
-            <Button className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/" />}>Go to Homepage</Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <Link href="/" className="site-btn">
+            Back home
+          </Link>
+        </section>
+      </SiteShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Navigation */}
-      <nav className="border-b border-border/10 bg-[#0a0a0a]/80 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3" aria-label="Wormhole Home">
-            <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center" aria-hidden="true">
-              <Share2 className="w-4 h-4 text-foreground" />
-            </div>
-            <span className="font-bold text-lg text-foreground">Wormhole</span>
-            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs font-medium">
-              ALPHA
-            </Badge>
-          </Link>
+    <SiteShell>
+      <section className="site-section join-page">
+        <div className="site-section__intro">
+          <h2>Join a shared folder</h2>
+          <p>Someone shared files with you. Open Wormhole or install it, then mount this code.</p>
         </div>
-      </nav>
 
-      {/* Main Content */}
-      <main className="flex items-center justify-center min-h-[calc(100vh-64px)] p-6">
-        <div className="max-w-lg w-full">
-          {/* Join Code Card */}
-          <Card className="bg-card border-border mb-6">
-            <CardContent className="p-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-full bg-wormhole-hunter/20 flex items-center justify-center mx-auto mb-6" aria-hidden="true">
-                  <Share2 className="w-8 h-8 text-wormhole-hunter-light" />
-                </div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
-                  Join Shared Folder
-                </h1>
-                <p className="text-muted-foreground">
-                  Someone is sharing files with you via Wormhole
-                </p>
-              </div>
-
-              {/* Join Code Display */}
-              <div className="bg-wormhole-hunter/10 border border-wormhole-hunter/30 rounded-xl p-6 mb-6">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Join Code</p>
-                  <div className="flex items-center justify-center gap-3">
-                    <span className="text-4xl font-mono font-bold tracking-wider text-foreground tabular-nums">
-                      {joinCode}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleCopyCode}
-                      className="bg-muted hover:bg-muted"
-                      aria-label={copied ? "Copied!" : "Copy join code"}
-                    >
-                      {copied ? (
-                        <Check className="w-5 h-5 text-green-400" aria-hidden="true" />
-                      ) : (
-                        <Copy className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Message - AGENTS.md: Use polite aria-live for status */}
-              {!deepLinkFailed && mounted && (
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-6" role="status" aria-live="polite">
-                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                  <span>Opening Wormhole app…</span>
-                </div>
+        <div className="join-code" aria-live="polite">
+          <p>Join code</p>
+          <div className="join-code__row">
+            <span className="join-code__value">{joinCode}</span>
+            <button
+              type="button"
+              className="site-link-quiet"
+              aria-label={copied === "code" ? "Copied" : "Copy join code"}
+              onClick={() => copy("code")}
+            >
+              {copied === "code" ? (
+                <Check className="size-4" />
+              ) : (
+                <Copy className="size-4" />
               )}
-
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                <Button
-                  onClick={handleOpenApp}
-                  className="w-full bg-wormhole-hunter hover:bg-wormhole-hunter-dark h-12"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Open in Wormhole App
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={handleCopyLink}
-                  className="w-full border-border text-muted-foreground hover:bg-muted h-12"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Share Link
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Download Section */}
-          <Card className="bg-card/50 border-border">
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4 text-center">
-                Don&apos;t have Wormhole installed?
-              </h2>
-
-              {/* Primary download for detected platform */}
-              {platform !== "unknown" && (
-                <Button
-                  className="w-full mb-4 bg-wormhole-hunter hover:bg-wormhole-hunter-dark h-12"
-                  render={<a href={getDownloadUrl(platform)} />}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download for {platform === "mac" ? "macOS" : platform === "windows" ? "Windows" : "Linux"}
-                </Button>
-              )}
-
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <Button
-                  variant="outline"
-                  className={`h-auto py-4 flex-col gap-2 ${
-                    platform === "mac"
-                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                  render={<a href={getDownloadUrl("mac")} />}
-                >
-                  <Apple className="w-6 h-6" />
-                  <span className="text-xs">macOS</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className={`h-auto py-4 flex-col gap-2 ${
-                    platform === "windows"
-                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                  render={<a href={getDownloadUrl("windows")} />}
-                >
-                  <Monitor className="w-6 h-6" />
-                  <span className="text-xs">Windows</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className={`h-auto py-4 flex-col gap-2 ${
-                    platform === "linux"
-                      ? "border-wormhole-hunter bg-wormhole-hunter/10 text-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  }`}
-                  render={<a href={getDownloadUrl("linux")} />}
-                >
-                  <Terminal className="w-6 h-6" />
-                  <span className="text-xs">Linux</span>
-                </Button>
-              </div>
-
-              {/* CLI Alternative */}
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-2">Or use the CLI:</p>
-                <code className="text-xs bg-muted px-3 py-1.5 rounded text-muted-foreground font-mono">
-                  wormhole mount {joinCode}
-                </code>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* How it works */}
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground mb-4">How it works</p>
-            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-wormhole-hunter-light font-bold">
-                  1
-                </div>
-                <span>Install Wormhole</span>
-              </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-wormhole-hunter-light font-bold">
-                  2
-                </div>
-                <span>Click link</span>
-              </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-wormhole-hunter-light font-bold">
-                  3
-                </div>
-                <span>Access files</span>
-              </div>
-            </div>
+            </button>
           </div>
         </div>
-      </main>
-    </div>
+
+        <p className="docs-muted" role="status" aria-live="polite">
+          {status === "opening" ? "Opening the Wormhole app…" : "App didn’t open? Use the buttons below."}
+        </p>
+
+        <div className="site-hero__cta">
+          <a href={`wormhole://join/${joinCode}`} className="site-btn">
+            Open in Wormhole
+          </a>
+          <button type="button" className="site-btn site-btn--ghost" onClick={() => copy("link")}>
+            {copied === "link" ? "Link copied" : "Copy share link"}
+          </button>
+        </div>
+
+        <div className="join-download">
+          <p>Need the app?</p>
+          <div className="site-platforms">
+            <Link href={downloadPath(platform)}>
+              {platform === "windows" ? (
+                <Monitor className="size-3.5" aria-hidden="true" />
+              ) : platform === "linux" ? (
+                <Terminal className="size-3.5" aria-hidden="true" />
+              ) : (
+                <Apple className="size-3.5" aria-hidden="true" />
+              )}
+              Download for your device
+            </Link>
+            <Link href="/download/macos">macOS</Link>
+            <Link href="/download/windows">Windows</Link>
+            <Link href="/download/linux">Linux</Link>
+          </div>
+        </div>
+      </section>
+    </SiteShell>
   );
 }

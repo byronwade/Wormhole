@@ -1,260 +1,70 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import {
-  Terminal,
-  Download,
-  Zap,
-  Shield,
-  Server,
-  ArrowRight,
-  BookOpen,
-  Code2,
-  Settings,
-  Gauge,
-  Network,
-  Wrench,
-} from "lucide-react";
 
 export const metadata = {
-  title: "Documentation - Wormhole",
-  description: "Complete documentation for Wormhole - the peer-to-peer distributed filesystem. Learn how to host, mount, and configure shares.",
+  title: "Documentation — Wormhole",
+  description:
+    "Host, mount, and configure Wormhole. Quick start, CLI, architecture, and security.",
 };
 
-const quickLinks = [
+const links = [
   {
     title: "Quick Start",
-    description: "Get up and running in 5 minutes",
+    description: "Host a folder and mount it in a few minutes.",
     href: "/docs/quickstart",
-    icon: Zap,
   },
   {
     title: "Installation",
-    description: "Download and install Wormhole",
+    description: "macOS, Windows, and Linux install paths.",
     href: "/docs/installation",
-    icon: Download,
   },
   {
     title: "CLI Reference",
-    description: "Complete command-line reference",
+    description: "host, mount, status, cache, and friends.",
     href: "/docs/cli",
-    icon: Terminal,
   },
   {
     title: "Architecture",
-    description: "How Wormhole works under the hood",
+    description: "FUSE, QUIC, caching, and the wire protocol.",
     href: "/docs/architecture",
-    icon: Network,
   },
   {
     title: "Security",
-    description: "Encryption, authentication, and threat model",
+    description: "Encryption, PAKE join codes, threat model.",
     href: "/docs/security",
-    icon: Shield,
   },
   {
-    title: "Performance",
-    description: "Benchmarks and tuning guide",
-    href: "/docs/performance",
-    icon: Gauge,
+    title: "Troubleshooting",
+    description: "FUSE, network, and performance snags.",
+    href: "/docs/troubleshooting",
   },
 ];
 
 export default function DocsPage() {
   return (
-    <div className="space-y-12">
-      {/* Hero */}
-      <div className="space-y-4">
-        <Badge className="bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
-          Documentation
-        </Badge>
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
-          Wormhole Documentation
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl">
-          Everything you need to know about Wormhole - from basic setup to advanced configuration, security, and self-hosting.
+    <div className="docs-home">
+      <header className="docs-home__intro">
+        <h1>Documentation</h1>
+        <p>
+          Mount any folder from any computer. Start with the quick path, then dig into
+          CLI and architecture when you need it.
         </p>
-      </div>
+      </header>
 
-      {/* Quick Terminal Demo */}
-      <Card className="bg-card border-border">
-        <CardContent className="p-0">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/50">
-            <div className="w-3 h-3 rounded-full bg-red-500/50" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-            <div className="w-3 h-3 rounded-full bg-green-500/50" />
-            <span className="ml-3 text-xs text-muted-foreground font-mono">Terminal</span>
-          </div>
-          <div className="p-6 font-mono text-sm space-y-4">
-            <div>
-              <div className="flex items-start gap-2">
-                <span className="text-muted-foreground">$</span>
-                <span className="text-foreground">wormhole host ~/Projects/my-folder</span>
-              </div>
-              <div className="text-muted-foreground ml-4 mt-1">
-                <div>Scanning... <span className="text-green-400">12.4 GB</span> in 847 files</div>
-                <div>Join code: <span className="text-wormhole-hunter-light font-bold">WORM-7X9K-BETA</span></div>
-              </div>
-            </div>
-            <div className="border-t border-border pt-4">
-              <div className="flex items-start gap-2">
-                <span className="text-muted-foreground">$</span>
-                <span className="text-foreground">wormhole mount WORM-7X9K-BETA ~/mnt/remote</span>
-              </div>
-              <div className="text-green-400 ml-4 mt-1">
-                Mounted at /Users/you/mnt/remote
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <pre className="docs-code" tabIndex={0}>
+        <code>{`$ wormhole host ~/renders
+Join code: 7KJM-XBCD-QRST
 
-      {/* Quick Links Grid */}
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-6">Explore the Docs</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quickLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <Link key={link.href} href={link.href}>
-                <Card className="bg-card/50 border-border hover:border-wormhole-hunter/50 transition-colors h-full">
-                  <CardContent className="p-6">
-                    <Icon className="w-8 h-8 text-wormhole-hunter-light mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">{link.title}</h3>
-                    <p className="text-sm text-muted-foreground">{link.description}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+$ wormhole mount 7KJM-XBCD-QRST
+Mounted at /Volumes/wormhole/renders`}</code>
+      </pre>
 
-      {/* What is Wormhole */}
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">What is Wormhole?</h2>
-        <div className="prose prose-invert max-w-none">
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            <strong className="text-foreground">Wormhole</strong> is a peer-to-peer (P2P) distributed filesystem that mounts remote directories locally via QUIC transport. Think of it as &quot;AirDrop meets network drive&quot; - you share a folder with a simple code, and others can mount it as if it were a local drive.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-6 mt-8">
-            <Card className="bg-card/50 border-border">
-              <CardHeader>
-                <CardTitle className="text-lg text-foreground">Key Features</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <Zap className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <div>
-                    <span className="text-foreground font-medium">Instant Access</span>
-                    <p className="text-muted-foreground">Access 50GB folders in seconds, not hours</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Shield className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <div>
-                    <span className="text-foreground font-medium">E2E Encrypted</span>
-                    <p className="text-muted-foreground">TLS 1.3 + SPAKE2 authentication</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Server className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <div>
-                    <span className="text-foreground font-medium">No Cloud</span>
-                    <p className="text-muted-foreground">Files never touch third-party servers</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card/50 border-border">
-              <CardHeader>
-                <CardTitle className="text-lg text-foreground">Use Cases</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span className="text-muted-foreground">Video editors accessing render farm outputs</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span className="text-muted-foreground">Game dev teams sharing build artifacts</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span className="text-muted-foreground">VFX studios collaborating on projects</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 text-wormhole-hunter-light mt-0.5" />
-                  <span className="text-muted-foreground">ML engineers sharing model weights</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-
-      {/* How it Differs */}
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">How Wormhole Differs</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Feature</th>
-                <th className="text-left py-3 px-4 text-wormhole-hunter-light font-medium">Wormhole</th>
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cloud Storage</th>
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Syncthing</th>
-              </tr>
-            </thead>
-            <tbody className="text-muted-foreground">
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4">Share 50GB folder</td>
-                <td className="py-3 px-4 text-green-400">~10 seconds</td>
-                <td className="py-3 px-4">2-4 hours upload</td>
-                <td className="py-3 px-4">30-60 min sync</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4">Mounts as native drive</td>
-                <td className="py-3 px-4 text-green-400">Yes</td>
-                <td className="py-3 px-4">No</td>
-                <td className="py-3 px-4">No</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4">Files on third-party servers</td>
-                <td className="py-3 px-4 text-green-400">Never</td>
-                <td className="py-3 px-4">Always</td>
-                <td className="py-3 px-4">Never</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4">Simple join codes</td>
-                <td className="py-3 px-4 text-green-400">Yes</td>
-                <td className="py-3 px-4">No (links/accounts)</td>
-                <td className="py-3 px-4">No (device IDs)</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4">E2E encrypted</td>
-                <td className="py-3 px-4 text-green-400">Yes (TLS 1.3)</td>
-                <td className="py-3 px-4">Varies</td>
-                <td className="py-3 px-4">Yes</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Next Steps */}
-      <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-border">
-        <Button size="lg" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/docs/quickstart" />}>
-          Get Started
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-        <Button variant="outline" size="lg" className="border-border text-muted-foreground hover:bg-muted" render={<Link href="/docs/installation" />}>
-          <Download className="w-4 h-4 mr-2" />
-          Installation Guide
-        </Button>
+      <div className="docs-home__grid">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href} className="docs-home__card">
+            <h2>{link.title}</h2>
+            <p>{link.description}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );

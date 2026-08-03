@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Apple,
   ArrowRight,
@@ -10,6 +10,7 @@ import {
   Monitor,
   Terminal,
 } from "lucide-react";
+import { LogoMark } from "@/components/logo-mark";
 
 type Platform = "mac" | "windows" | "linux" | "unknown";
 
@@ -76,40 +77,6 @@ const faqs = [
     a: "Core sharing stays free. Pro and Team tiers are planned for power features after launch; alpha is free across the board.",
   },
 ];
-
-function LogoMark({ className = "size-8" }: { className?: string }) {
-  const id = useId();
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <circle
-        cx="16"
-        cy="16"
-        r="14"
-        stroke={`url(#${id}-ring)`}
-        strokeWidth="1.5"
-      />
-      <path
-        d="M9 16h8.5m0 0-3.2-3.2M17.5 16l-3.2 3.2"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <defs>
-        <linearGradient id={`${id}-ring`} x1="4" y1="4" x2="28" y2="28">
-          <stop stopColor="#1a1a1a" />
-          <stop offset="1" stopColor="#5c5c5c" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 function HeroVisual() {
   return (
