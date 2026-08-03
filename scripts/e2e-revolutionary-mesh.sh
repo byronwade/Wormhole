@@ -46,11 +46,10 @@ FETCH_RC=$?
 set -e
 test "$FETCH_RC" -ne 0
 
-echo "==> unit tests (aperture / magnet / governor / host CAS / peers / playhead_ipc)"
+echo "==> unit + QUIC e2e (aperture / magnet / mesh / playhead / fetch --from)"
 cargo test -q -p teleport-daemon --lib -- \
   aperture magnet governor build_file_manifest handle_manifest dispatch_manifest \
-  peers playhead_ipc mesh_prefers
+  peers playhead_ipc mesh_fetch \
+  e2e_host_serve_client_read_over_quic e2e_fetch_hash_from_addr_over_quic
 
 echo "E2E revolutionary mesh OK"
-# Optional remote fetch --from is skipped in CI (requires live host); use:
-#   wormhole host <dir> &; wormhole fetch --from 127.0.0.1:<port> blake3:…

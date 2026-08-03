@@ -1287,6 +1287,69 @@ mod tests {
             matches!(missing, Err(FuseError::NotFound)),
             "expected NotFound, got {missing:?}"
         );
+
+        // 9. CAS magnet path: reading seeds the host content store; BulkChunk
+        //    by BLAKE3 hash must round-trip (fetch --from data plane).
+        let chunk_hash = teleport_core::ContentHash::compute(small);
+        let magnet_bytes = client
+            .fetch_bulk_chunk(chunk_hash, 255, 1)
+            .await
+            .expect("bulk chunk by hash after seeded read");
+        assert_eq!(magnet_bytes, small);
+
+        let manifest = client
+            .request_manifest(small_attr.inode, small_attr.size)
+            .await
+            .expect("manifest for small.txt");
+        assert!(!manifest.chunks.is_empty());
+        assert_eq!(manifest.chunks[0].hash, chunk_hash);
+    }
+
+    /// Explicit mesh_fetch helper over a live host (same path as `wormhole fetch --from`).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn e2e_fetch_hash_from_addr_over_quic() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let payload = b"magnet-mesh-payload-v1";
+        std::fs::write(dir.path().join("blob.bin"), payload).unwrap();
+
+        let addr = free_loopback_addr();
+        let host = WormholeHost::new(HostConfig {
+            bind_addr: addr,
+            shared_path: dir.path().to_path_buf(),
+            max_connections: 4,
+            host_name: "magnet-host".into(),
+        });
+        tokio::spawn(async move {
+            let _ = host.serve().await;
+        });
+
+        let mut client = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+        });
+        for _ in 0..50 {
+            if client.connect().await.is_ok() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        let attr = client.lookup(ROOT_INODE, "blob.bin").await.expect("lookup");
+        let _ = client
+            .read(attr.inode, 0, payload.len() as u32)
+            .await
+            .expect("seed host store via read");
+
+        let hash = teleport_core::ContentHash::compute(payload);
+        let (data, source) = crate::mesh_fetch::fetch_hash_mesh(hash, Some(addr), false)
+            .await
+            .expect("mesh fetch from explicit addr");
+        assert_eq!(data, payload);
+        assert!(
+            source.contains(&addr.to_string()) || source == "local",
+            "unexpected source {source}"
+        );
     }
 
     /// Performance baseline: sequential read throughput of a large file through
