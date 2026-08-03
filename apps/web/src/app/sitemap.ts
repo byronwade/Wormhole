@@ -1,6 +1,5 @@
 import { MetadataRoute } from "next";
-
-const BASE_URL = "https://wormhole.byronwade.com";
+import { NICHES, SITE_URL } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -18,6 +17,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "/download/macos", priority: 0.9, changeFrequency: "weekly" },
     { url: "/download/windows", priority: 0.9, changeFrequency: "weekly" },
     { url: "/download/linux", priority: 0.9, changeFrequency: "weekly" },
+    // Niche SEO landing pages
+    { url: "/for", priority: 0.95, changeFrequency: "weekly" },
+    ...NICHES.map((n) => ({
+      url: `/for/${n.slug}`,
+      priority: 0.92,
+      changeFrequency: "weekly" as const,
+    })),
     // Docs hubs
     { url: "/docs", priority: 0.9, changeFrequency: "weekly" },
     { url: "/docs/features", priority: 0.95, changeFrequency: "weekly" },
@@ -89,7 +95,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   return pages.map((page) => ({
-    url: `${BASE_URL}${page.url}`,
+    url: `${SITE_URL}${page.url}`,
     lastModified: now,
     changeFrequency: page.changeFrequency,
     priority: page.priority,

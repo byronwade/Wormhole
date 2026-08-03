@@ -2,11 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
 import { DownloadHub } from "@/components/download-hub";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Download",
-  description: "Get Wormhole for macOS, Windows, or Linux.",
+  title: "Download — Mount folders on Mac, Windows, Linux",
+  description:
+    "Download Wormhole for macOS, Windows, or Linux. Free P2P folder mounting for video editors, game developers, and VFX teams.",
   alternates: { canonical: "/download" },
+  openGraph: {
+    title: "Download Wormhole",
+    description:
+      "Get the app. Share a code. Mount a remote project as a local drive—no cloud upload.",
+    url: `${SITE_URL}/download`,
+  },
 };
 
 export default function DownloadIndexPage() {
@@ -14,9 +22,10 @@ export default function DownloadIndexPage() {
     <SiteShell>
       <section className="site-section">
         <div className="site-section__intro" style={{ maxWidth: "40rem" }}>
-          <h2>Download</h2>
+          <h1 className="site-for-index__title">Download Wormhole</h1>
           <p>
-            Pick your platform. Same product: share a folder, mount it elsewhere.
+            Pick your platform. Same product: share a folder with a code, mount
+            it elsewhere, keep working.
           </p>
         </div>
 
@@ -26,6 +35,8 @@ export default function DownloadIndexPage() {
           Prefer the terminal? See{" "}
           <Link href="/docs/installation">installation</Link> for CLI and source
           builds, or jump to the <Link href="/docs/quickstart">quickstart</Link>.
+          Not sure if it’s for you?{" "}
+          <Link href="/for">See who Wormhole is built for</Link>.
         </p>
       </section>
     </SiteShell>

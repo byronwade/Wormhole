@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Pricing",
+  title: "Pricing — Free core for creatives & developers",
   description:
-    "Wormhole pricing. Free core forever. Pro and Team for power users after launch.",
+    "Wormhole pricing for editors, game teams, and studios. Free core forever. Pro $8 and Team $15 after launch—no cloud storage rent.",
   alternates: { canonical: "/pricing" },
+  openGraph: {
+    title: "Wormhole Pricing",
+    description:
+      "Free core forever. Paid tiers only when you need more horsepower—not for storing files you already own.",
+    url: `${SITE_URL}/pricing`,
+  },
 };
 
 const plans = [
@@ -14,14 +21,15 @@ const plans = [
     name: "Free",
     price: "$0",
     period: "forever",
-    blurb: "Individuals and small projects.",
+    blurb: "Editors, indies, and solo engineers.",
     features: [
       "Unlimited file sizes",
+      "Live folder mounts",
       "End-to-end encryption",
       "Join codes",
       "Community support",
     ],
-    cta: "Download",
+    cta: "Download free",
     href: "/download",
     primary: true,
   },
@@ -44,7 +52,7 @@ const plans = [
     name: "Team",
     price: "$15",
     period: "/user/mo",
-    blurb: "Studios and small teams.",
+    blurb: "Studios and small game teams.",
     features: [
       "Everything in Pro",
       "Team management",
@@ -62,14 +70,17 @@ export default function PricingPage() {
     <SiteShell active="pricing">
       <section className="site-section">
         <div className="site-section__intro">
-          <h2>Pricing</h2>
-          <p>Free core forever. Paid tiers only when you need more horsepower.</p>
+          <h1 className="site-for-index__title">Pricing that doesn’t rent your files</h1>
+          <p>
+            Cloud tools charge for copies. Wormhole’s free core mounts what you
+            already have. Paid tiers are horsepower—not storage tax.
+          </p>
         </div>
 
         <div className="site-pricing">
           {plans.map((plan) => (
             <article key={plan.name} className="site-pricing__plan">
-              <h3>{plan.name}</h3>
+              <h2>{plan.name}</h2>
               <p className="site-pricing__price">
                 <span>{plan.price}</span>
                 <span className="site-pricing__period">{plan.period}</span>
@@ -101,6 +112,8 @@ export default function PricingPage() {
         <p className="docs-muted" style={{ marginTop: "2rem", marginBottom: 0 }}>
           Need SSO, audit logs, or a self-hosted control plane?{" "}
           <a href="https://github.com/byronwade/Wormhole/discussions">Talk to us</a>.
+          Typical studio stack (Dropbox + Frame.io) runs $500–2,000/year—Wormhole
+          core is $0.
         </p>
       </section>
     </SiteShell>

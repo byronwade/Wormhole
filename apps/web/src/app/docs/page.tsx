@@ -1,14 +1,14 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Documentation — Wormhole",
+  title: "Docs — Host, mount, and ship large projects",
   description:
-    "Host, mount, and configure Wormhole. Quick start, CLI, architecture, security, and ops.",
+    "Wormhole docs for editors and developers: quick start, CLI, FUSE/QUIC architecture, security, and self-hosting.",
 };
 
 const links = [
   {
-    title: "Revolutionary features",
+    title: "Project mesh features",
     description: "Playhead-first, project aperture, byte magnets.",
     href: "/docs/features",
   },
