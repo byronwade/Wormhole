@@ -11,18 +11,18 @@ use teleport_core::{
     CreateDirResponse, CreateFileRequest, CreateFileResponse, DeleteDirRequest, DeleteDirResponse,
     DeleteFileRequest, DeleteFileResponse, DirEntry, FileAttr, FileManifest, GetAttrRequest,
     GetAttrResponse, HelloMessage, Inode, ListDirRequest, ListDirResponse, LockRequest,
-    LockResponse, LockType, LookupRequest, LookupResponse, ManifestRequestMsg,
-    ManifestResponseMsg, MissingChunksRequestMsg, MissingChunksResponseMsg, NetMessage,
-    ReadChunkRequest, ReadChunkResponse, ReleaseRequest, ReleaseResponse, RenameRequest,
-    RenameResponse, SetAttrRequest, SetAttrResponse, WriteChunkRequest, WriteChunkResponse,
-    PROTOCOL_VERSION, ROOT_INODE,
+    LockResponse, LockType, LookupRequest, LookupResponse, ManifestRequestMsg, ManifestResponseMsg,
+    MissingChunksRequestMsg, MissingChunksResponseMsg, NetMessage, ReadChunkRequest,
+    ReadChunkResponse, ReleaseRequest, ReleaseResponse, RenameRequest, RenameResponse,
+    SetAttrRequest, SetAttrResponse, WriteChunkRequest, WriteChunkResponse, PROTOCOL_VERSION,
+    ROOT_INODE,
 };
 
 use crate::bridge::{BridgeHandler, FuseError, FuseRequest};
 #[allow(deprecated)] // create_client_endpoint is deprecated but used for LAN/dev mode
 use crate::net::{
-    connect, create_client_endpoint, negotiate_session_codec, recv_message_with, send_message_with,
-    QuicConnection,
+    connect, create_client_endpoint, create_client_endpoint_with_pinned_cert,
+    negotiate_session_codec, recv_message_with, send_message_with, QuicConnection,
 };
 use crate::sync_engine::SyncEngine;
 #[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
@@ -35,6 +35,9 @@ pub struct ClientConfig {
     pub request_timeout: Duration,
     /// Join code presented as a `join:` Hello capability when the host requires auth.
     pub join_code: Option<String>,
+    /// Expected host TLS cert fingerprint (SPAKE2-authenticated via signal).
+    /// When set, the client pins the host certificate and rejects MITM.
+    pub cert_pin: Option<[u8; 32]>,
 }
 
 impl Default for ClientConfig {
@@ -44,6 +47,7 @@ impl Default for ClientConfig {
             mount_point: PathBuf::from("/tmp/wormhole"),
             request_timeout: Duration::from_secs(30),
             join_code: None,
+            cert_pin: None,
         }
     }
 }
@@ -168,10 +172,15 @@ impl WormholeClient {
     }
 
     /// Connect to the server and perform handshake
-    #[allow(deprecated)] // Using insecure endpoint for LAN/dev connections
+    #[allow(deprecated)] // Using insecure endpoint for LAN/dev connections without a pin
     pub async fn connect(&mut self) -> Result<(), ClientError> {
-        let endpoint =
-            create_client_endpoint().map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
+        let endpoint = match self.config.cert_pin {
+            Some(fp) => create_client_endpoint_with_pinned_cert(0, fp)
+                .map_err(|e| ClientError::Connection(format!("{:?}", e)))?,
+            None => {
+                create_client_endpoint().map_err(|e| ClientError::Connection(format!("{:?}", e)))?
+            }
+        };
 
         let conn = connect(&endpoint, self.config.server_addr, "localhost")
             .await
@@ -190,7 +199,9 @@ impl WormholeClient {
         let hello = NetMessage::Hello(HelloMessage {
             protocol_version: PROTOCOL_VERSION,
             client_id,
-            capabilities: crate::net::client_capabilities_with_join(self.config.join_code.as_deref()),
+            capabilities: crate::net::client_capabilities_with_join(
+                self.config.join_code.as_deref(),
+            ),
         });
 
         // Send Hello with timeout
@@ -1239,6 +1250,7 @@ mod tests {
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
             join_code: None,
+            cert_pin: None,
         });
         let mut connected = false;
         for _ in 0..50 {
@@ -1336,6 +1348,7 @@ mod tests {
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
             join_code: None,
+            cert_pin: None,
         });
         for _ in 0..50 {
             if client.connect().await.is_ok() {
@@ -1390,6 +1403,7 @@ mod tests {
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(30),
             join_code: None,
+            cert_pin: None,
         });
         for _ in 0..50 {
             if client.connect().await.is_ok() {
@@ -1482,6 +1496,7 @@ mod tests {
             mount_point: share.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
             join_code: None,
+            cert_pin: None,
         });
         let mut connected = false;
         for _ in 0..50 {
@@ -1539,6 +1554,7 @@ mod tests {
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
             join_code: None,
+            cert_pin: None,
         });
         let mut saw_fail = false;
         for _ in 0..50 {
@@ -1557,6 +1573,7 @@ mod tests {
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
             join_code: Some("ABC123".into()),
+            cert_pin: None,
         });
         let mut connected = false;
         for _ in 0..50 {

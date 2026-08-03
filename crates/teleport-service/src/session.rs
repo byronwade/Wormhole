@@ -281,6 +281,7 @@ impl SessionManager {
             mount_point: PathBuf::from("/tmp/wormhole-probe"),
             request_timeout: Duration::from_secs(8),
             join_code,
+            cert_pin: None,
         });
 
         let mut last_err = None;

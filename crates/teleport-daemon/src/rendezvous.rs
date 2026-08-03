@@ -16,7 +16,9 @@ use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, Web
 use tracing::{debug, info};
 use url::Url;
 
-use teleport_core::crypto::PakeHandshake;
+use teleport_core::crypto::{
+    decode_certpin_relay, decode_pake_relay, encode_certpin_relay, encode_pake_relay, PakeHandshake,
+};
 use teleport_signal::{PeerInfo, SignalMessage};
 
 /// Default signal server URL
@@ -42,6 +44,8 @@ pub struct RendezvousResult {
     pub is_local: bool,
     /// The join code used
     pub join_code: String,
+    /// Host TLS cert fingerprint authenticated via SPAKE2 (client-side pin).
+    pub cert_fingerprint: Option<[u8; 32]>,
 }
 
 /// Rendezvous errors
@@ -55,6 +59,8 @@ pub enum RendezvousError {
     ServerError(String),
     /// PAKE handshake failed
     PakeFailed,
+    /// Cert-pin MAC failed or was missing when required
+    CertPinFailed,
     /// No valid peer address found
     NoPeerAddress,
     /// WebSocket error
@@ -68,6 +74,9 @@ impl std::fmt::Display for RendezvousError {
             RendezvousError::Timeout => write!(f, "Timeout waiting for peer"),
             RendezvousError::ServerError(e) => write!(f, "Server error: {}", e),
             RendezvousError::PakeFailed => write!(f, "PAKE handshake failed"),
+            RendezvousError::CertPinFailed => {
+                write!(f, "Certificate pin verification failed")
+            }
             RendezvousError::NoPeerAddress => write!(f, "No valid peer address found"),
             RendezvousError::WebSocket(e) => write!(f, "WebSocket error: {}", e),
         }
@@ -97,8 +106,13 @@ impl RendezvousClient {
     /// Start hosting with a join code
     ///
     /// Connects to signal server, creates a room, waits for a peer,
-    /// performs PAKE handshake, and returns the peer's address.
-    pub async fn host(&self, join_code: &str) -> Result<RendezvousResult, RendezvousError> {
+    /// performs PAKE handshake, optionally binds the TLS cert fingerprint,
+    /// and returns the peer's address.
+    pub async fn host(
+        &self,
+        join_code: &str,
+        cert_fingerprint: Option<[u8; 32]>,
+    ) -> Result<RendezvousResult, RendezvousError> {
         info!("Starting host rendezvous with code: {}", join_code);
 
         // Connect to signal server
@@ -136,13 +150,13 @@ impl RendezvousClient {
 
         // Start PAKE handshake as host
         let pake = PakeHandshake::start_host(&actual_code);
-        let pake_msg = hex::encode(pake.outbound_message());
+        let pake_msg = encode_pake_relay(pake.outbound_message());
 
         // Wait for client to join
         info!("Waiting for peer to connect...");
         let peer_result = timeout(
             DISCOVERY_TIMEOUT,
-            self.wait_for_peer(&mut ws, pake, &pake_msg),
+            self.wait_for_peer(&mut ws, pake, &pake_msg, &actual_code, cert_fingerprint),
         )
         .await;
 
@@ -155,65 +169,81 @@ impl RendezvousClient {
 
     /// Connect to a host using a join code
     ///
-    /// Connects to signal server, joins the room, performs PAKE handshake,
-    /// and returns the host's address.
+    /// Connects to signal server, joins the room, performs real PAKE over Relay,
+    /// verifies the host's authenticated cert pin, and returns the host address.
     pub async fn connect(&self, join_code: &str) -> Result<RendezvousResult, RendezvousError> {
         info!("Starting client rendezvous with code: {}", join_code);
 
         // Connect to signal server
         let mut ws = self.connect_ws().await?;
 
-        // Join room
+        let my_info = PeerInfo {
+            peer_id: generate_peer_id(),
+            public_addr: None,
+            local_addrs: self.local_addrs.clone(),
+            quic_port: QUIC_PORT,
+            is_host: false,
+        };
+
+        // Join room (include local addrs for LAN selection on the host)
         let join_msg = SignalMessage::JoinRoom {
             join_code: join_code.to_string(),
+            peer_info: Some(my_info),
         };
         self.send_message(&mut ws, &join_msg).await?;
 
         // Wait for join confirmation
         let response = self.recv_message(&mut ws).await?;
-        let host_info = match response {
+        let (room_code, host_info) = match response {
             SignalMessage::JoinedRoom {
-                join_code: _,
+                join_code,
                 host_info,
-            } => host_info,
+            } => (join_code, host_info),
             SignalMessage::Error { message, .. } => {
                 return Err(RendezvousError::ServerError(message));
             }
             _ => return Err(RendezvousError::ServerError("Unexpected response".into())),
         };
 
-        info!("Joined room, host info: {:?}", host_info);
+        let host = host_info.ok_or(RendezvousError::NoPeerAddress)?;
+        let host_peer_id = host.peer_id.clone();
+        let (peer_addr, is_local) = select_best_address(&host, &self.local_addrs)?;
 
-        // If we have host info, we can connect directly without PAKE relay
-        // (PAKE relay requires full server implementation which is not yet complete)
-        if let Some(host) = host_info {
-            // Determine best address to connect to
-            let (peer_addr, is_local) = select_best_address(&host, &self.local_addrs)?;
+        info!(
+            "Joined room {}, host {} at {} (local: {}) — starting PAKE",
+            room_code, host_peer_id, peer_addr, is_local
+        );
 
-            // For now, use a simple shared key derived from join code
-            // TODO: Implement full PAKE exchange via relay when server supports it
-            let pake = PakeHandshake::start_client(join_code);
-            let host_pake = PakeHandshake::start_host(join_code);
+        // Real SPAKE2 as client; wait for host's PAKE then cert-pin over Relay.
+        let pake = PakeHandshake::start_client(&room_code);
+        let client_pake_wire = encode_pake_relay(pake.outbound_message());
 
-            // Simulate local key exchange (both sides derive from same join code)
-            let shared_key = pake
-                .finish(host_pake.outbound_message())
-                .map_err(|_| RendezvousError::PakeFailed)?;
+        let handshake = timeout(
+            DISCOVERY_TIMEOUT,
+            self.complete_client_handshake(&mut ws, pake, &client_pake_wire, &host_peer_id),
+        )
+        .await;
 
-            info!(
-                "Rendezvous complete, connecting to {} (local: {})",
-                peer_addr, is_local
-            );
+        let (shared_key, cert_fingerprint) = match handshake {
+            Ok(Ok(v)) => v,
+            Ok(Err(e)) => return Err(e),
+            Err(_) => return Err(RendezvousError::Timeout),
+        };
 
-            return Ok(RendezvousResult {
-                peer_addr,
-                shared_key,
-                is_local,
-                join_code: join_code.to_string(),
-            });
-        }
+        info!(
+            "Rendezvous complete, connecting to {} (local: {}, pinned: {})",
+            peer_addr,
+            is_local,
+            cert_fingerprint.is_some()
+        );
 
-        Err(RendezvousError::NoPeerAddress)
+        Ok(RendezvousResult {
+            peer_addr,
+            shared_key,
+            is_local,
+            join_code: room_code,
+            cert_fingerprint,
+        })
     }
 
     /// Connect to the WebSocket signal server
@@ -288,12 +318,14 @@ impl RendezvousClient {
         }
     }
 
-    /// Wait for a peer to connect and complete PAKE exchange
+    /// Wait for a peer to connect and complete PAKE + optional cert-pin exchange
     async fn wait_for_peer(
         &self,
         ws: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
         pake: PakeHandshake,
         pake_msg: &str,
+        join_code: &str,
+        cert_fingerprint: Option<[u8; 32]>,
     ) -> Result<RendezvousResult, RendezvousError> {
         loop {
             let msg = self.recv_message(ws).await?;
@@ -309,29 +341,52 @@ impl RendezvousClient {
                     };
                     self.send_message(ws, &relay).await?;
 
-                    // Wait for their PAKE message
-                    if let SignalMessage::Relayed {
-                        from_peer_id: _,
-                        payload,
-                    } = self.recv_message(ws).await?
-                    {
-                        // Complete PAKE handshake
-                        let peer_pake_msg =
-                            hex::decode(&payload).map_err(|_| RendezvousError::PakeFailed)?;
-                        let shared_key = pake
-                            .finish(&peer_pake_msg)
-                            .map_err(|_| RendezvousError::PakeFailed)?;
+                    // Wait for their PAKE response
+                    let shared_key = loop {
+                        match self.recv_message(ws).await? {
+                            SignalMessage::Relayed { payload, .. } => {
+                                let peer_pake = decode_pake_relay(&payload)
+                                    .or_else(|| hex::decode(&payload).ok())
+                                    .ok_or(RendezvousError::PakeFailed)?;
+                                break pake
+                                    .finish(&peer_pake)
+                                    .map_err(|_| RendezvousError::PakeFailed)?;
+                            }
+                            SignalMessage::Ping { timestamp } => {
+                                self.send_message(ws, &SignalMessage::Pong { timestamp })
+                                    .await?;
+                            }
+                            SignalMessage::Error { message, .. } => {
+                                return Err(RendezvousError::ServerError(message));
+                            }
+                            other => {
+                                debug!("Ignoring while awaiting PAKE reply: {:?}", other);
+                            }
+                        }
+                    };
 
-                        // Determine best address
-                        let (peer_addr, is_local) = select_best_address(&info, &self.local_addrs)?;
-
-                        return Ok(RendezvousResult {
-                            peer_addr,
-                            shared_key,
-                            is_local,
-                            join_code: String::new(), // Host already knows the code
-                        });
+                    // Bind TLS cert fingerprint to the SPAKE2 shared key.
+                    if let Some(fp) = cert_fingerprint {
+                        let pin_payload = encode_certpin_relay(&shared_key, &fp);
+                        self.send_message(
+                            ws,
+                            &SignalMessage::Relay {
+                                to_peer_id: peer_id.clone(),
+                                payload: pin_payload,
+                            },
+                        )
+                        .await?;
                     }
+
+                    let (peer_addr, is_local) = select_best_address(&info, &self.local_addrs)?;
+
+                    return Ok(RendezvousResult {
+                        peer_addr,
+                        shared_key,
+                        is_local,
+                        join_code: join_code.to_string(),
+                        cert_fingerprint,
+                    });
                 }
 
                 SignalMessage::Error { message, .. } => {
@@ -347,6 +402,88 @@ impl RendezvousClient {
                 _ => {
                     debug!("Ignoring message: {:?}", msg);
                 }
+            }
+        }
+    }
+
+    /// Client-side: finish SPAKE2 over Relay, then verify host cert pin.
+    async fn complete_client_handshake(
+        &self,
+        ws: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+        pake: PakeHandshake,
+        client_pake_wire: &str,
+        host_peer_id: &str,
+    ) -> Result<([u8; 32], Option<[u8; 32]>), RendezvousError> {
+        // Phase 1: SPAKE2
+        let shared_key = loop {
+            match self.recv_message(ws).await? {
+                SignalMessage::Relayed { payload, .. } => {
+                    let host_pake = decode_pake_relay(&payload)
+                        .or_else(|| hex::decode(&payload).ok())
+                        .ok_or(RendezvousError::PakeFailed)?;
+                    let key = pake
+                        .finish(&host_pake)
+                        .map_err(|_| RendezvousError::PakeFailed)?;
+
+                    self.send_message(
+                        ws,
+                        &SignalMessage::Relay {
+                            to_peer_id: host_peer_id.to_string(),
+                            payload: client_pake_wire.to_string(),
+                        },
+                    )
+                    .await?;
+                    break key;
+                }
+                SignalMessage::Ping { timestamp } => {
+                    self.send_message(ws, &SignalMessage::Pong { timestamp })
+                        .await?;
+                }
+                SignalMessage::Error { message, .. } => {
+                    return Err(RendezvousError::ServerError(message));
+                }
+                other => {
+                    debug!("Ignoring during client PAKE: {:?}", other);
+                }
+            }
+        };
+
+        // Phase 2: authenticated cert pin (brief wait; optional if host skipped)
+        const CERTPIN_WAIT: Duration = Duration::from_secs(5);
+        let pin_result = timeout(CERTPIN_WAIT, async {
+            loop {
+                match self.recv_message(ws).await? {
+                    SignalMessage::Relayed { payload, .. } => {
+                        if let Some(fp) = decode_certpin_relay(&shared_key, &payload) {
+                            return Ok::<_, RendezvousError>(Some(fp));
+                        }
+                        // Wrong MAC under our key → MITM attempt
+                        if payload.starts_with(teleport_core::crypto::RELAY_CERTPIN_PREFIX) {
+                            return Err(RendezvousError::CertPinFailed);
+                        }
+                        debug!("Ignoring post-PAKE relay payload");
+                    }
+                    SignalMessage::Ping { timestamp } => {
+                        self.send_message(ws, &SignalMessage::Pong { timestamp })
+                            .await?;
+                    }
+                    SignalMessage::Error { message, .. } => {
+                        return Err(RendezvousError::ServerError(message));
+                    }
+                    other => {
+                        debug!("Ignoring during cert-pin wait: {:?}", other);
+                    }
+                }
+            }
+        })
+        .await;
+
+        match pin_result {
+            Ok(Ok(fp)) => Ok((shared_key, fp)),
+            Ok(Err(e)) => Err(e),
+            Err(_) => {
+                // Host did not send a pin (legacy / no TLS identity on signal path)
+                Ok((shared_key, None))
             }
         }
     }
@@ -458,6 +595,7 @@ pub async fn attempt_hole_punch(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use teleport_core::crypto::{encode_certpin_relay, encode_pake_relay, PakeHandshake};
 
     #[test]
     fn test_local_address_detection() {
@@ -474,5 +612,27 @@ mod tests {
 
         assert_eq!(id1.len(), 16); // 8 bytes = 16 hex chars
         assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn pake_relay_roundtrip_matches_direct_handshake() {
+        let code = "TEST-CODE-1234";
+        let host = PakeHandshake::start_host(code);
+        let client = PakeHandshake::start_client(code);
+
+        let host_wire = encode_pake_relay(host.outbound_message());
+        let client_wire = encode_pake_relay(client.outbound_message());
+
+        let host_bytes = decode_pake_relay(&host_wire).expect("host pake wire");
+        let client_bytes = decode_pake_relay(&client_wire).expect("client pake wire");
+
+        let host_key = host.finish(&client_bytes).expect("host finish");
+        let client_key = client.finish(&host_bytes).expect("client finish");
+        assert_eq!(host_key, client_key);
+
+        let fp = [7u8; 32];
+        let pin = encode_certpin_relay(&host_key, &fp);
+        assert_eq!(decode_certpin_relay(&client_key, &pin), Some(fp));
+        assert!(decode_certpin_relay(&[0u8; 32], &pin).is_none());
     }
 }

@@ -27,13 +27,14 @@ use teleport_core::{
     CHUNK_SIZE, FIRST_USER_INODE, PROTOCOL_VERSION, ROOT_INODE,
 };
 
+use crate::content_store::ChunkGrantSet;
 use crate::lock_manager::LockManager;
-use teleport_core::WireCodec;
 use crate::net::{
     create_server_endpoint, host_capabilities, negotiate_session_codec, recv_message,
     recv_message_with, send_message, send_message_with, ConnectionError,
 };
 use crate::rate_limiter::RateLimiter;
+use teleport_core::WireCodec;
 
 /// SECURITY: Maximum session duration before forced re-authentication (24 hours)
 /// This prevents stale or compromised sessions from being used indefinitely.
@@ -448,6 +449,8 @@ async fn handle_connection(
 
     // SECURITY: Track session start time for expiration enforcement
     let session_started = Instant::now();
+    // Per-connection BulkChunk ACL — only hashes seeded on this connection.
+    let grants = Arc::new(ChunkGrantSet::new());
 
     // Handle requests
     loop {
@@ -473,6 +476,7 @@ async fn handle_connection(
                 let lock_manager = lock_manager.clone();
                 let holder_id = holder_id.clone();
                 let config = config.clone();
+                let grants = Arc::clone(&grants);
 
                 tokio::spawn(async move {
                     if let Err(e) = handle_request(
@@ -484,6 +488,7 @@ async fn handle_connection(
                         &holder_id,
                         &config,
                         session_codec,
+                        &grants,
                     )
                     .await
                     {
@@ -518,6 +523,7 @@ async fn handle_request(
     holder_id: &str,
     config: &MultiHostConfig,
     codec: WireCodec,
+    grants: &ChunkGrantSet,
 ) -> Result<(), ConnectionError> {
     let request = recv_message_with(recv, codec).await?;
 
@@ -597,7 +603,7 @@ async fn handle_request(
         NetMessage::ReadChunk(req) => {
             if let Some(share) = default_share {
                 if let Some(table) = share_tables.get(&share.id) {
-                    handle_read_chunk(req, table)
+                    handle_read_chunk(req, table, grants)
                 } else {
                     NetMessage::Error(ErrorMessage {
                         code: ErrorCode::FileNotFound,
@@ -651,7 +657,7 @@ async fn handle_request(
         NetMessage::ManifestRequest(req) => {
             if let Some(share) = default_share {
                 if let Some(table) = share_tables.get(&share.id) {
-                    handle_manifest_request_share(req, table, &share.path)
+                    handle_manifest_request_share(req, table, &share.path, grants)
                 } else {
                     NetMessage::Error(ErrorMessage {
                         code: ErrorCode::FileNotFound,
@@ -667,10 +673,8 @@ async fn handle_request(
                 })
             }
         }
-        NetMessage::MissingChunksRequest(req) => {
-            crate::host::handle_missing_chunks_request(req)
-        }
-        NetMessage::BulkChunkRequest(req) => crate::host::handle_bulk_chunk_request(req),
+        NetMessage::MissingChunksRequest(req) => crate::host::handle_missing_chunks_request(req),
+        NetMessage::BulkChunkRequest(req) => crate::host::handle_bulk_chunk_request(req, grants),
         _ => NetMessage::Error(ErrorMessage {
             code: ErrorCode::NotImplemented,
             message: "request type not implemented".into(),
@@ -685,6 +689,7 @@ fn handle_manifest_request_share(
     req: ManifestRequestMsg,
     table: &ShareInodeTable,
     shared_path: &Path,
+    grants: &ChunkGrantSet,
 ) -> NetMessage {
     let path = match table.get_path(req.inode) {
         Some(p) => p,
@@ -708,7 +713,7 @@ fn handle_manifest_request_share(
         });
     }
 
-    match crate::host::build_file_manifest(&path, req.inode) {
+    match crate::host::build_file_manifest(&path, req.inode, Some(grants)) {
         Ok(manifest) => NetMessage::ManifestResponse(ManifestResponseMsg {
             manifest,
             error: None,
@@ -928,7 +933,11 @@ fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable, shared_path: &Pa
     }
 }
 
-fn handle_read_chunk(req: ReadChunkRequest, table: &ShareInodeTable) -> NetMessage {
+fn handle_read_chunk(
+    req: ReadChunkRequest,
+    table: &ShareInodeTable,
+    grants: &ChunkGrantSet,
+) -> NetMessage {
     let path = match table.get_path(req.chunk_id.inode) {
         Some(p) => p,
         None => {
@@ -992,9 +1001,9 @@ fn handle_read_chunk(req: ReadChunkRequest, table: &ShareInodeTable) -> NetMessa
     buffer.truncate(bytes_read);
     let hash = checksum(&buffer);
 
-    // Seed content store so magnets work after any read.
+    // Seed content store and grant this session for BulkChunk.
     if let Ok(store) = crate::content_store::ContentStore::open_default() {
-        if let Err(e) = store.put(&buffer) {
+        if let Err(e) = store.put_granted(&buffer, grants) {
             warn!(error = %e, "failed to seed content store from multi_host read_chunk");
         }
     }

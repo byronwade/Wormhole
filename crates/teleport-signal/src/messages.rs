@@ -20,7 +20,12 @@ pub enum SignalMessage {
     RoomCreated { join_code: String },
 
     /// Client joins a room
-    JoinRoom { join_code: String },
+    JoinRoom {
+        join_code: String,
+        /// Optional peer info (local addresses for LAN selection)
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        peer_info: Option<PeerInfo>,
+    },
 
     /// Successfully joined room
     JoinedRoom {
@@ -178,5 +183,22 @@ mod tests {
 
         assert!(json.contains("error"));
         assert!(json.contains("room_not_found"));
+    }
+
+    #[test]
+    fn join_room_without_peer_info_deserializes() {
+        // Older clients omit peer_info; serde default keeps them compatible.
+        let json = r#"{"type":"join_room","join_code":"ABCD-EFGH"}"#;
+        let parsed = SignalMessage::from_json(json).unwrap();
+        match parsed {
+            SignalMessage::JoinRoom {
+                join_code,
+                peer_info,
+            } => {
+                assert_eq!(join_code, "ABCD-EFGH");
+                assert!(peer_info.is_none());
+            }
+            _ => panic!("expected JoinRoom"),
+        }
     }
 }

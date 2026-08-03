@@ -35,9 +35,9 @@ use teleport_daemon::global::{
     connect_global, start_host_global, GlobalEvent, GlobalHostConfig, GlobalMountConfig,
 };
 use teleport_daemon::host::{HostConfig, WormholeHost};
-use teleport_daemon::SessionMeter;
 #[cfg(windows)]
 use teleport_daemon::winfsp::WormholeWinFS;
+use teleport_daemon::SessionMeter;
 
 use crate::lan::{LanDiscovery, NearbyPeer};
 
@@ -207,16 +207,10 @@ pub fn start_throughput_poller(app: AppHandle, state: Arc<AppState>) {
             let tooltip = {
                 let mut parts = Vec::new();
                 if host_count > 0 {
-                    parts.push(format!(
-                        "{} sharing",
-                        host_count
-                    ));
+                    parts.push(format!("{} sharing", host_count));
                 }
                 if mount_count > 0 {
-                    parts.push(format!(
-                        "{} mounted",
-                        mount_count
-                    ));
+                    parts.push(format!("{} mounted", mount_count));
                 }
                 let speed = format_tray_speed(total_bps);
                 if parts.is_empty() {
@@ -236,7 +230,10 @@ pub fn start_throughput_poller(app: AppHandle, state: Arc<AppState>) {
 
             if snapshot.is_empty() {
                 if !idle_cleared {
-                    let _ = app.emit("transfer-completed", serde_json::json!({ "reason": "idle" }));
+                    let _ = app.emit(
+                        "transfer-completed",
+                        serde_json::json!({ "reason": "idle" }),
+                    );
                     idle_cleared = true;
                 }
                 continue;
@@ -395,7 +392,9 @@ fn auto_open_mount_path(path: &str) {
     }
     #[cfg(target_os = "linux")]
     {
-        let _ = std::process::Command::new("xdg-open").arg(&path_buf).spawn();
+        let _ = std::process::Command::new("xdg-open")
+            .arg(&path_buf)
+            .spawn();
     }
     info!("Auto-opened mount path: {}", path);
 }
@@ -460,6 +459,7 @@ pub async fn start_hosting_with_id(
         shared_path: share_path.clone(),
         max_connections: 10,
         host_name: host_name.clone(),
+        join_code: Some(join_code.clone()),
     };
 
     // Spawn the host task in the runtime
@@ -494,9 +494,7 @@ pub async fn start_hosting_with_id(
     });
 
     // Announce on LAN so nearby Portal UIs can show this device
-    let announce_handle = state
-        .lan
-        .start_announce(join_code.clone(), port);
+    let announce_handle = state.lan.start_announce(join_code.clone(), port);
 
     let host_info = HostInfo {
         id: id.clone(),
@@ -577,10 +575,7 @@ pub async fn start_hosting(
 
 /// Legacy: Stop hosting (single share, backwards compatible)
 #[tauri::command]
-pub async fn stop_hosting(
-    app: AppHandle,
-    state: State<'_, Arc<AppState>>,
-) -> Result<(), String> {
+pub async fn stop_hosting(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     // Stop the default host
     stop_hosting_by_id(app, state, "default".to_string()).await
 }
@@ -630,6 +625,8 @@ pub async fn connect_to_peer(
             server_addr,
             mount_point: mount_point_clone.clone(),
             request_timeout: Duration::from_secs(30),
+            join_code: None,
+            cert_pin: None,
         };
 
         // Create a new runtime for this thread
@@ -765,10 +762,10 @@ pub async fn connect_to_peer(
     let app_clone = app.clone();
 
     // Spawn the mount in a separate thread (WinFSP is blocking)
-        let throughput = Arc::new(SessionMeter::new());
+    let throughput = Arc::new(SessionMeter::new());
     let meter_for_client = throughput.clone();
 
-let mount_thread = thread::spawn(move || {
+    let mount_thread = thread::spawn(move || {
         // Create the filesystem ↔ async bridge
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
@@ -777,6 +774,8 @@ let mount_thread = thread::spawn(move || {
             server_addr,
             mount_point: mount_point.clone(),
             request_timeout: Duration::from_secs(30),
+            join_code: None,
+            cert_pin: None,
         };
 
         // Create a new runtime for this thread
@@ -953,10 +952,7 @@ pub async fn disconnect_by_id(
 
 /// Legacy: Disconnect from peer and unmount (backwards compatible)
 #[tauri::command]
-pub async fn disconnect(
-    app: AppHandle,
-    state: State<'_, Arc<AppState>>,
-) -> Result<(), String> {
+pub async fn disconnect(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<(), String> {
     // Try to disconnect the default connection first
     if disconnect_by_id(app.clone(), state.clone(), "default".to_string())
         .await
@@ -1221,8 +1217,9 @@ pub async fn connect_with_code_and_id(
         request_timeout: Duration::from_secs(30),
     };
 
-    // Use a channel to signal when connection is established
-    let (connect_tx, connect_rx) = tokio::sync::oneshot::channel::<Result<SocketAddr, String>>();
+    // Use a channel to signal when connection is established (addr + SPAKE2 cert pin)
+    let (connect_tx, connect_rx) =
+        tokio::sync::oneshot::channel::<Result<(SocketAddr, Option<[u8; 32]>), String>>();
 
     // Spawn connection task
     let connect_task = state.runtime.spawn(async move {
@@ -1264,7 +1261,7 @@ pub async fn connect_with_code_and_id(
 
         match connect_global(config, event_callback).await {
             Ok(result) => {
-                let _ = connect_tx.send(Ok(result.peer_addr));
+                let _ = connect_tx.send(Ok((result.peer_addr, result.cert_fingerprint)));
             }
             Err(e) => {
                 error!("Global connect error: {:?}", e);
@@ -1274,8 +1271,8 @@ pub async fn connect_with_code_and_id(
     });
 
     // Wait for connection to be established
-    let server_addr = match connect_rx.await {
-        Ok(Ok(addr)) => addr,
+    let (server_addr, cert_pin) = match connect_rx.await {
+        Ok(Ok(v)) => v,
         Ok(Err(e)) => return Err(e),
         Err(_) => return Err("Connection task failed".to_string()),
     };
@@ -1288,12 +1285,12 @@ pub async fn connect_with_code_and_id(
     let mount_path_str = mount_path.clone();
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
+    let join_code_for_client = Some(join_code.clone());
 
     let throughput = Arc::new(SessionMeter::new());
     let meter_for_client = throughput.clone();
 
-    let (ready_tx, ready_rx) =
-        tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
 
     let mount_thread = thread::spawn(move || {
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
@@ -1302,6 +1299,8 @@ pub async fn connect_with_code_and_id(
             server_addr,
             mount_point: mount_point_for_client.clone(),
             request_timeout: Duration::from_secs(30),
+            join_code: join_code_for_client,
+            cert_pin,
         };
 
         let rt = match Runtime::new() {
@@ -1489,8 +1488,9 @@ pub async fn connect_with_code_and_id(
         request_timeout: Duration::from_secs(30),
     };
 
-    // Use a channel to signal when connection is established
-    let (connect_tx, connect_rx) = tokio::sync::oneshot::channel::<Result<SocketAddr, String>>();
+    // Use a channel to signal when connection is established (addr + SPAKE2 cert pin)
+    let (connect_tx, connect_rx) =
+        tokio::sync::oneshot::channel::<Result<(SocketAddr, Option<[u8; 32]>), String>>();
 
     // Spawn connection task
     let connect_task = state.runtime.spawn(async move {
@@ -1531,7 +1531,7 @@ pub async fn connect_with_code_and_id(
 
         match connect_global(config, event_callback).await {
             Ok(result) => {
-                let _ = connect_tx.send(Ok(result.peer_addr));
+                let _ = connect_tx.send(Ok((result.peer_addr, result.cert_fingerprint)));
             }
             Err(e) => {
                 error!("Global connect error: {:?}", e);
@@ -1541,8 +1541,8 @@ pub async fn connect_with_code_and_id(
     });
 
     // Wait for connection to be established
-    let server_addr = match connect_rx.await {
-        Ok(Ok(addr)) => addr,
+    let (server_addr, cert_pin) = match connect_rx.await {
+        Ok(Ok(v)) => v,
         Ok(Err(e)) => return Err(e),
         Err(_) => return Err("Connection task failed".to_string()),
     };
@@ -1553,12 +1553,12 @@ pub async fn connect_with_code_and_id(
     let mount_path_str = mount_path.clone();
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
+    let join_code_for_client = Some(join_code.clone());
 
     let throughput = Arc::new(SessionMeter::new());
     let meter_for_client = throughput.clone();
 
-    let (ready_tx, ready_rx) =
-        tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
 
     let mount_thread = thread::spawn(move || {
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
@@ -1567,6 +1567,8 @@ pub async fn connect_with_code_and_id(
             server_addr,
             mount_point: mount_point_for_client.clone(),
             request_timeout: Duration::from_secs(30),
+            join_code: join_code_for_client,
+            cert_pin,
         };
 
         let rt = match Runtime::new() {

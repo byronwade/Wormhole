@@ -1583,6 +1583,7 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
     }
 
     let host = WormholeHost::new(config);
+    let cert_fingerprint = host.cert_fingerprint();
 
     // Handle Ctrl+C
     let running = Arc::new(AtomicBool::new(true));
@@ -1609,7 +1610,10 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
                 info!("Registering with signal server: {}", signal_server);
                 let rendezvous = RendezvousClient::new(Some(signal_server.clone()));
 
-                match rendezvous.host(&join_code_clone).await {
+                match rendezvous
+                    .host(&join_code_clone, Some(cert_fingerprint))
+                    .await
+                {
                     Ok(result) => {
                         info!("Peer connected via signal server: {:?}", result.peer_addr);
                         // Continue loop to accept more peers
@@ -1995,6 +1999,10 @@ async fn run_mount_via_signal(
             }
             // Present the rendezvous join code on the QUIC Hello for host auth.
             cmd.arg("--join-code").arg(&code);
+            // SPAKE2-authenticated TLS pin from rendezvous (MITM-resistant).
+            if let Some(fp) = rendezvous_result.cert_fingerprint {
+                cmd.arg("--cert-pin").arg(hex::encode(fp));
+            }
 
             let status = cmd.status()?;
 

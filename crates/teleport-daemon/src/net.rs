@@ -406,18 +406,35 @@ pub fn create_client_endpoint_with_pinned_cert(
     Ok(endpoint)
 }
 
-/// Create a QUIC server endpoint
+/// Server TLS identity (self-signed cert + private key + BLAKE3 fingerprint).
 ///
-/// Returns the endpoint along with its certificate fingerprint, which should
-/// be shared with clients for certificate pinning (via signal server + PAKE).
-pub fn create_server_endpoint(
-    bind_addr: SocketAddr,
-) -> Result<(Endpoint, CertFingerprint), ConnectionError> {
-    let (certs, key, fingerprint) = generate_self_signed_cert_with_fingerprint();
+/// Generated once per host so the fingerprint can be PAKE-authenticated to peers
+/// before the QUIC handshake.
+pub struct ServerIdentity {
+    pub certs: Vec<CertificateDer<'static>>,
+    pub key: PrivateKeyDer<'static>,
+    pub fingerprint: CertFingerprint,
+}
 
+/// Generate a fresh self-signed server identity for QUIC.
+pub fn generate_server_identity() -> ServerIdentity {
+    let (certs, key, fingerprint) = generate_self_signed_cert_with_fingerprint();
+    ServerIdentity {
+        certs,
+        key,
+        fingerprint,
+    }
+}
+
+/// Create a QUIC server endpoint from a pre-generated identity.
+pub fn create_server_endpoint_with_identity(
+    bind_addr: SocketAddr,
+    identity: ServerIdentity,
+) -> Result<Endpoint, ConnectionError> {
+    let fingerprint = identity.fingerprint;
     let crypto = rustls::ServerConfig::builder()
         .with_no_client_auth()
-        .with_single_cert(certs, key)
+        .with_single_cert(identity.certs, identity.key)
         .map_err(|e| ConnectionError::Connect(e.to_string()))?;
 
     let mut config = ServerConfig::with_crypto(Arc::new(
@@ -434,6 +451,19 @@ pub fn create_server_endpoint(
         "Server endpoint created with cert fingerprint: {}",
         hex::encode(fingerprint)
     );
+    Ok(endpoint)
+}
+
+/// Create a QUIC server endpoint
+///
+/// Returns the endpoint along with its certificate fingerprint, which should
+/// be shared with clients for certificate pinning (via signal server + PAKE).
+pub fn create_server_endpoint(
+    bind_addr: SocketAddr,
+) -> Result<(Endpoint, CertFingerprint), ConnectionError> {
+    let identity = generate_server_identity();
+    let fingerprint = identity.fingerprint;
+    let endpoint = create_server_endpoint_with_identity(bind_addr, identity)?;
     Ok((endpoint, fingerprint))
 }
 
@@ -607,7 +637,10 @@ mod tests {
         let cap = join_capability("abc-def");
         assert_eq!(cap, "join:ABCDEF");
         let caps = client_capabilities_with_join(Some("abc-def"));
-        assert_eq!(join_code_from_capabilities(&caps).as_deref(), Some("ABCDEF"));
+        assert_eq!(
+            join_code_from_capabilities(&caps).as_deref(),
+            Some("ABCDEF")
+        );
         assert!(verify_join_code(Some("ABCDEF"), &caps));
         assert!(!verify_join_code(Some("ABCDEF"), &client_capabilities()));
         assert!(verify_join_code(None, &client_capabilities()));

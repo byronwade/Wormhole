@@ -119,8 +119,10 @@ where
 
     // Connect to signal server and wait for peer
     let rendezvous = RendezvousClient::new(config.signal_server);
+    // Cert pin is bound when the caller serves with a known TLS identity.
+    // This helper only performs rendezvous; pass None here (CLI host path pins).
     let result = rendezvous
-        .host(&join_code)
+        .host(&join_code, None)
         .await
         .map_err(GlobalHostError::Rendezvous)?;
 

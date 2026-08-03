@@ -206,6 +206,7 @@ async fn handle_connection(
                     peer_addr,
                     &rooms,
                     &peer_rooms,
+                    &peer_senders,
                     &mut current_room,
                 );
 
@@ -288,6 +289,7 @@ fn handle_message(
     peer_addr: SocketAddr,
     rooms: &DashMap<String, Room>,
     peer_rooms: &DashMap<String, String>,
+    peer_senders: &DashMap<String, PeerSender>,
     current_room: &mut Option<String>,
 ) -> Option<SignalMessage> {
     match msg {
@@ -355,7 +357,10 @@ fn handle_message(
             Some(SignalMessage::RoomCreated { join_code: code })
         }
 
-        SignalMessage::JoinRoom { join_code } => {
+        SignalMessage::JoinRoom {
+            join_code,
+            peer_info,
+        } => {
             if current_room.is_some() {
                 return Some(SignalMessage::error(
                     ErrorCode::AlreadyInRoom,
@@ -379,13 +384,21 @@ fn handle_message(
 
             let host_info = room.get_host().cloned();
 
-            let info = PeerInfo {
-                peer_id: peer_id.into(),
-                public_addr: Some(peer_addr),
-                local_addrs: vec![],
-                quic_port: 4433,
-                is_host: false,
+            let info = if let Some(mut provided) = peer_info {
+                provided.peer_id = peer_id.into();
+                provided.public_addr = Some(peer_addr);
+                provided.is_host = false;
+                provided
+            } else {
+                PeerInfo {
+                    peer_id: peer_id.into(),
+                    public_addr: Some(peer_addr),
+                    local_addrs: vec![],
+                    quic_port: 4433,
+                    is_host: false,
+                }
             };
+            let joiner_info = info.clone();
 
             // SECURITY: Use same generic error to avoid revealing room exists but is full
             if room.add_peer(info).is_err() {
@@ -397,6 +410,21 @@ fn handle_message(
 
             peer_rooms.insert(peer_id.into(), code.clone());
             *current_room = Some(code.clone());
+
+            // Notify the host so SPAKE2 / cert-pin can proceed over Relay.
+            if let Some(host) = &host_info {
+                if let Some(host_tx) = peer_senders.get(&host.peer_id) {
+                    if host_tx
+                        .send(SignalMessage::PeerConnected {
+                            peer_id: peer_id.to_string(),
+                            info: joiner_info,
+                        })
+                        .is_err()
+                    {
+                        warn!("Failed to notify host {} of peer join", host.peer_id);
+                    }
+                }
+            }
 
             info!("Peer {} joined room {}", peer_id, code);
             Some(SignalMessage::JoinedRoom {

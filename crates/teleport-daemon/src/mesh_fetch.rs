@@ -11,16 +11,14 @@ use crate::content_store::ContentStore;
 use crate::peers::PeerRegistry;
 
 /// Fetch a content hash from a single peer via QUIC `BulkChunkRequest`.
-pub async fn fetch_hash_from_addr(
-    addr: SocketAddr,
-    hash: ContentHash,
-) -> Result<Vec<u8>, String> {
+pub async fn fetch_hash_from_addr(addr: SocketAddr, hash: ContentHash) -> Result<Vec<u8>, String> {
     let mut client = WormholeClient::new(ClientConfig {
         server_addr: addr,
         mount_point: PathBuf::from("/tmp"),
         request_timeout: Duration::from_secs(30),
         join_code: None,
-        });
+        cert_pin: None,
+    });
     client
         .connect()
         .await

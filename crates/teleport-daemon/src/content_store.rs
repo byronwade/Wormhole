@@ -4,30 +4,42 @@
 //! for dedup and resume.
 
 use std::collections::HashSet;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use parking_lot::RwLock;
 use teleport_blobs::{BlobError, BlobStore};
 use teleport_core::ContentHash;
 use tracing::debug;
 
-/// Hashes explicitly published by a verified share-path seed (read/manifest).
+/// Per-connection set of content hashes a peer may fetch via BulkChunk.
 ///
-/// `BulkChunkRequest` must only serve hashes in this set so clients cannot
-/// fish arbitrary blobs out of the process-global content store.
-fn published_hashes() -> &'static RwLock<HashSet<[u8; 32]>> {
-    static PUBLISHED: OnceLock<RwLock<HashSet<[u8; 32]>>> = OnceLock::new();
-    PUBLISHED.get_or_init(|| RwLock::new(HashSet::new()))
+/// Hashes are granted only after a verified share-path seed (read / manifest)
+/// on that same connection, preventing cross-session CAS fishing.
+#[derive(Debug, Default)]
+pub struct ChunkGrantSet {
+    inner: RwLock<HashSet<[u8; 32]>>,
 }
 
-/// Mark a content hash as authorized for BulkChunk serving.
-pub fn grant_published_hash(hash: &ContentHash) {
-    published_hashes().write().insert(*hash.as_bytes());
-}
+impl ChunkGrantSet {
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-/// Returns true when `hash` was published via a verified seed path.
-pub fn is_published_hash(hash: &ContentHash) -> bool {
-    published_hashes().read().contains(hash.as_bytes())
+    pub fn grant(&self, hash: &ContentHash) {
+        self.inner.write().insert(*hash.as_bytes());
+    }
+
+    pub fn contains(&self, hash: &ContentHash) -> bool {
+        self.inner.read().contains(hash.as_bytes())
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.read().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.read().is_empty()
+    }
 }
 
 /// Shared content-addressed store for the daemon.
@@ -51,15 +63,23 @@ impl ContentStore {
 
     pub fn put(&self, data: &[u8]) -> Result<ContentHash, BlobError> {
         let hash = self.inner.put(data)?;
-        grant_published_hash(&hash);
         debug!(%hash, size = data.len(), "content store put");
         Ok(hash)
     }
 
+    /// Put bytes and grant them on a per-connection grant set.
+    pub fn put_granted(
+        &self,
+        data: &[u8],
+        grants: &ChunkGrantSet,
+    ) -> Result<ContentHash, BlobError> {
+        let hash = self.put(data)?;
+        grants.grant(&hash);
+        Ok(hash)
+    }
+
     pub fn put_verified(&self, hash: &ContentHash, data: &[u8]) -> Result<(), BlobError> {
-        self.inner.put_verified(hash, data)?;
-        grant_published_hash(hash);
-        Ok(())
+        self.inner.put_verified(hash, data)
     }
 
     pub fn get(&self, hash: &ContentHash) -> Result<Vec<u8>, BlobError> {
@@ -91,15 +111,16 @@ mod tests {
         let h = store.put(b"daemon-blob").unwrap();
         assert!(store.contains(&h));
         assert_eq!(store.get(&h).unwrap(), b"daemon-blob");
-        assert!(is_published_hash(&h));
     }
 
     #[test]
-    fn grant_published_hash_is_idempotent() {
-        let unique = ContentHash::compute(b"grant-api-smoke-test-blob");
-        grant_published_hash(&unique);
-        assert!(is_published_hash(&unique));
-        grant_published_hash(&unique);
-        assert!(is_published_hash(&unique));
+    fn session_grants_are_isolated() {
+        let dir = TempDir::new().unwrap();
+        let store = ContentStore::open(dir.path()).unwrap();
+        let a = ChunkGrantSet::new();
+        let b = ChunkGrantSet::new();
+        let h = store.put_granted(b"only-for-a", &a).unwrap();
+        assert!(a.contains(&h));
+        assert!(!b.contains(&h));
     }
 }
