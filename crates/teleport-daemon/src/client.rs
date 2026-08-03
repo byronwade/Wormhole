@@ -1556,17 +1556,13 @@ mod tests {
             join_code: None,
             cert_pin: None,
         });
-        let mut saw_fail = false;
-        for _ in 0..50 {
-            match denied.connect().await {
-                Ok(()) => panic!("connect without join code must fail"),
-                Err(_) => {
-                    saw_fail = true;
-                    break;
-                }
-            }
-        }
-        assert!(saw_fail, "expected auth failure without join code");
+        // Brief bind window, then a single denial check (retry loops that always
+        // break/panic trip clippy::never_loop under -D warnings).
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        assert!(
+            denied.connect().await.is_err(),
+            "connect without join code must fail"
+        );
 
         let mut allowed = WormholeClient::new(ClientConfig {
             server_addr: addr,
