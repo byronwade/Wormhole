@@ -1310,8 +1310,106 @@
   color: var(--ink);
 }
 
-.docs-article section + section {
+.docs-article section + section,
+.docs-article .docs-section + .docs-section {
   margin-top: 2rem;
+}
+
+.docs-crumbtrail {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.docs-crumbtrail a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.docs-crumbtrail a:hover,
+.docs-crumbtrail a:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.docs-note {
+  margin: 1.25rem 0 0;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
+  border-radius: 0.45rem;
+  background: color-mix(in oklab, #fff 55%, var(--paper));
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.docs-note--warn {
+  border-left-color: var(--accent, #c45c26);
+}
+
+.docs-note strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.docs-note p {
+  margin: 0;
+}
+
+.docs-table-wrap {
+  margin: 1rem 0 0;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+}
+
+.docs-table th,
+.docs-table td {
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.docs-table th {
+  color: var(--ink);
+  font-weight: 600;
+  background: color-mix(in oklab, var(--ink) 4%, #fff);
+}
+
+.docs-table td {
+  color: var(--ink-soft);
+}
+
+.docs-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.docs-footer-nav {
+  margin: 2.5rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+.docs-footer-nav a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.docs-footer-nav a:hover,
+.docs-footer-nav a:focus-visible {
+  text-decoration: underline;
 }
 
 .docs-cmd-list {

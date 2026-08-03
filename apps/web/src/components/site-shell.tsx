@@ -39,7 +39,7 @@ export function SiteShell({
               <Github className="size-4" aria-hidden="true" />
               <span className="sr-only">GitHub</span>
             </a>
-            <Link href="/#download" className="site-btn site-btn--small">
+            <Link href="/download" className="site-btn site-btn--small">
               Download
             </Link>
           </div>
