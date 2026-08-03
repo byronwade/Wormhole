@@ -33,13 +33,25 @@ export default function InstallationPage() {
       </section>
 
       <section>
-        <h2>CLI only</h2>
-        <p>Useful on servers and in automation:</p>
-        <DocsCode>{`cargo install --git https://github.com/byronwade/Wormhole teleport-daemon
-wormhole --help`}</DocsCode>
+        <h2>CLI install script</h2>
+        <p>Downloads the published CLI archive from GitHub Releases:</p>
+        <DocsCode>{`# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/byronwade/Wormhole/main/scripts/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/byronwade/Wormhole/main/scripts/install.ps1 | iex`}</DocsCode>
         <DocsNote title="FUSE still required">
           Mounts need a FUSE provider on the client machine even for CLI-only installs.
+          On macOS, prefer the desktop DMG for full host/mount — CI CLI archives are
+          signal-server only.
         </DocsNote>
+      </section>
+
+      <section>
+        <h2>CLI via Cargo</h2>
+        <p>Useful when you want a build from source:</p>
+        <DocsCode>{`cargo install --git https://github.com/byronwade/Wormhole teleport-daemon
+wormhole --help`}</DocsCode>
       </section>
 
       <section>

@@ -1,30 +1,22 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Apple, ArrowRight, Check, Copy, Monitor, Terminal } from "lucide-react";
+import { Apple, ArrowRight, Monitor, Terminal } from "lucide-react";
 import { SiteShell } from "@/components/site-shell";
-
-type Platform = "macos" | "windows" | "linux";
-
-interface GitHubRelease {
-  tag_name: string;
-  html_url: string;
-  assets: {
-    name: string;
-    browser_download_url: string;
-    size: number;
-  }[];
-}
-
-const GITHUB = "https://api.github.com/repos/byronwade/Wormhole/releases/latest";
+import { CopyLine } from "@/components/copy-line";
+import {
+  cliAssets,
+  desktopAssets,
+  fetchLatestRelease,
+  formatBytes,
+  primaryDesktopAsset,
+  RELEASES_PAGE,
+  type DownloadPlatform,
+} from "@/lib/releases";
 
 const copy: Record<
-  Platform,
+  DownloadPlatform,
   {
     title: string;
     icon: typeof Apple;
-    match: (name: string) => boolean;
     install: string[];
     notes: string[];
     other: { label: string; href: string }[];
@@ -33,15 +25,15 @@ const copy: Record<
   macos: {
     title: "Download for macOS",
     icon: Apple,
-    match: (n) => n.includes(".dmg"),
     install: [
       "Open the .dmg and drag Wormhole into Applications.",
-      "Install macFUSE if prompted (required for mounts).",
+      "Install macFUSE if prompted (required for mounts): brew install --cask macfuse",
       "Launch Wormhole and share a folder.",
     ],
     notes: [
-      "Apple Silicon and Intel builds ship as a universal DMG when available.",
+      "The desktop DMG is the full product on macOS (CLI tarballs are signal-server only in CI).",
       "First launch may require allowing the app in System Settings → Privacy & Security.",
+      "If Gatekeeper blocks it: right-click → Open, or run xattr -cr /Applications/Wormhole.app",
     ],
     other: [
       { label: "Windows", href: "/download/windows" },
@@ -51,14 +43,13 @@ const copy: Record<
   windows: {
     title: "Download for Windows",
     icon: Monitor,
-    match: (n) => n.includes("-setup.exe") || n.endsWith(".msi") || n.endsWith(".exe"),
     install: [
-      "Run the installer and follow the prompts.",
-      "Install WinFSP if prompted (required for mounts).",
+      "Run the setup.exe installer and follow the prompts.",
+      "Install WinFSP if prompted (required for mounts): https://winfsp.dev/rel/",
       "Open Wormhole from the Start menu.",
     ],
     notes: [
-      "Prefer the setup.exe when available.",
+      "Prefer setup.exe. MSI is also available below.",
       "Windows Defender may scan the first run; that’s expected for new binaries.",
     ],
     other: [
@@ -69,16 +60,14 @@ const copy: Record<
   linux: {
     title: "Download for Linux",
     icon: Terminal,
-    match: (n) =>
-      n.includes(".appimage") || n.endsWith(".deb") || n.endsWith(".rpm"),
     install: [
-      "Prefer the AppImage for a quick try, or install the .deb / .rpm for your distro.",
-      "Ensure FUSE 3 is available (`libfuse3`).",
+      "Prefer the AppImage for a quick try, or install the .deb for Debian/Ubuntu.",
+      "Ensure FUSE 3 is available (sudo apt install fuse3).",
       "Run Wormhole and share a folder.",
     ],
     notes: [
-      "CLI users can also build from source with Cargo.",
-      "See docs for distribution-specific notes.",
+      "CLI archives include wormhole, wormhole-mount, and wormhole-signal.",
+      "Or install with: curl -fsSL https://raw.githubusercontent.com/byronwade/Wormhole/main/scripts/install.sh | bash",
     ],
     other: [
       { label: "macOS", href: "/download/macos" },
@@ -87,61 +76,18 @@ const copy: Record<
   },
 };
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0\u00A0B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)}\u00A0${sizes[i]}`;
-}
-
-function CopyLine({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="dl-copy">
-      <code>{value}</code>
-      <button
-        type="button"
-        aria-label={copied ? "Copied" : "Copy"}
-        onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1600);
-          } catch {
-            /* ignore */
-          }
-        }}
-      >
-        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      </button>
-    </div>
-  );
-}
-
-export function DownloadPlatformPage({ platform }: { platform: Platform }) {
+export async function DownloadPlatformPage({
+  platform,
+}: {
+  platform: DownloadPlatform;
+}) {
   const meta = copy[platform];
   const Icon = meta.icon;
-  const [release, setRelease] = useState<GitHubRelease | null>(null);
-  const [asset, setAsset] = useState<GitHubRelease["assets"][0] | null>(null);
-
-  useEffect(() => {
-    const match = copy[platform].match;
-    fetch(GITHUB)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: GitHubRelease | null) => {
-        if (!data) return;
-        setRelease(data);
-        const found = data.assets.find((a) => match(a.name.toLowerCase())) ?? null;
-        setAsset(found);
-      })
-      .catch(() => {});
-  }, [platform]);
-
-  const href =
-    asset?.browser_download_url ??
-    release?.html_url ??
-    "https://github.com/byronwade/Wormhole/releases";
+  const release = await fetchLatestRelease();
+  const desktop = desktopAssets(release, platform);
+  const cli = cliAssets(release, platform);
+  const primary = primaryDesktopAsset(release, platform);
+  const primaryHref = primary?.browser_download_url ?? release.html_url ?? RELEASES_PAGE;
 
   return (
     <SiteShell>
@@ -151,29 +97,65 @@ export function DownloadPlatformPage({ platform }: { platform: Platform }) {
             <Icon className="size-4" aria-hidden="true" />
             {platform === "macos" ? "macOS" : platform === "windows" ? "Windows" : "Linux"}
           </p>
-          <h2>{meta.title}</h2>
-          <p>Get the desktop app, share a folder, send a code.</p>
+          <h1 className="site-for-index__title">{meta.title}</h1>
+          <p>
+            Direct downloads from GitHub Releases ({release.tag_name}). Real
+            installers—not placeholders.
+          </p>
         </div>
 
         <div className="dl-actions">
-          <a href={href} className="site-btn" target="_blank" rel="noopener noreferrer">
+          <a href={primaryHref} className="site-btn" rel="noopener noreferrer">
             <Icon className="size-4" aria-hidden="true" />
             <span>
-              {asset
-                ? `Download ${asset.name}`
-                : release
-                  ? `Get ${release.tag_name}`
-                  : "View releases"}
+              {primary ? `Download ${primary.name}` : `View ${release.tag_name} releases`}
             </span>
             <ArrowRight className="size-4" aria-hidden="true" />
           </a>
-          {asset && (
+          {primary && (
             <span className="dl-meta">
-              {formatBytes(asset.size)}
-              {release ? ` · ${release.tag_name}` : ""}
+              {formatBytes(primary.size)} · {release.tag_name}
             </span>
           )}
         </div>
+
+        {desktop.length > 1 && (
+          <div className="dl-asset-list">
+            <h2>All desktop packages</h2>
+            <ul>
+              {desktop.map((a) => (
+                <li key={a.name}>
+                  <a href={a.browser_download_url} rel="noopener noreferrer">
+                    {a.name}
+                  </a>
+                  <span>{formatBytes(a.size)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {cli.length > 0 && (
+          <div className="dl-asset-list">
+            <h2>CLI packages</h2>
+            <ul>
+              {cli.map((a) => (
+                <li key={a.name}>
+                  <a href={a.browser_download_url} rel="noopener noreferrer">
+                    {a.name}
+                  </a>
+                  <span>{formatBytes(a.size)}</span>
+                </li>
+              ))}
+            </ul>
+            {platform === "macos" && (
+              <p className="docs-muted">
+                macOS CLI archives currently ship the signal server only. Use the
+                DMG above for full host/mount.
+              </p>
+            )}
+          </div>
+        )}
 
         <ol className="site-steps dl-steps">
           {meta.install.map((step, i) => (
@@ -191,8 +173,8 @@ export function DownloadPlatformPage({ platform }: { platform: Platform }) {
 
         {platform === "linux" && (
           <div className="dl-cli">
-            <h3>From source</h3>
-            <CopyLine value="cargo install --git https://github.com/byronwade/Wormhole teleport-daemon" />
+            <h3>Install script</h3>
+            <CopyLine value="curl -fsSL https://raw.githubusercontent.com/byronwade/Wormhole/main/scripts/install.sh | bash" />
           </div>
         )}
 
@@ -200,6 +182,12 @@ export function DownloadPlatformPage({ platform }: { platform: Platform }) {
           {meta.notes.map((n) => (
             <li key={n}>{n}</li>
           ))}
+          <li>
+            All assets:{" "}
+            <a href={release.html_url} rel="noopener noreferrer">
+              {release.tag_name} on GitHub
+            </a>
+          </li>
         </ul>
 
         <p className="dl-others">

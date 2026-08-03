@@ -7592,7 +7592,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-blobs"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "blake3",
  "directories",
@@ -7610,7 +7610,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-cloud"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -7629,7 +7629,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "bincode",
@@ -7658,7 +7658,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-daemon"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bincode",
  "bytes",
@@ -7706,7 +7706,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-mcp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "rmcp",
@@ -7724,7 +7724,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-net"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "futures-util",
@@ -7742,7 +7742,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-service"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -7765,7 +7765,7 @@ dependencies = [
 
 [[package]]
 name = "teleport-signal"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "dashmap",

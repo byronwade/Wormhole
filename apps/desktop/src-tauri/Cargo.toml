@@ -1,6 +1,6 @@
 [package]
 name = "wormhole-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Wormhole Desktop Application"
 authors = ["Wormhole Team"]
 edition = "2021"
