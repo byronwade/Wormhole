@@ -212,8 +212,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Omit version — root package.json packageManager (pnpm@10.23.0) is authoritative.
+        # Specifying both causes pnpm/action-setup to fail with ERR_PNPM_BAD_PM_VERSION.
 
       - name: Get pnpm store directory
         shell: bash
