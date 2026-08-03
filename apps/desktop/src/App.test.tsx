@@ -35,9 +35,9 @@ describe("App Component — Portal shell", () => {
         expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
 
-      expect(screen.getAllByText("Share a folder").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Enter a code").length).toBeGreaterThan(0);
-      expect(screen.getByText(/this is the tunnel/i)).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /^Share$/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("button", { name: /Enter code/i }).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Files open in Finder/i)).toBeInTheDocument();
     });
 
     it("skips wizard when setup is complete", async () => {
@@ -73,11 +73,11 @@ describe("App Component — Portal shell", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getAllByText("Enter a code").length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("button", { name: /Enter code/i }).length).toBeGreaterThan(0);
       });
 
-      const shareBtn = screen.getAllByText("Share a folder")[0]?.closest("button");
-      const connectBtn = screen.getAllByText("Enter a code")[0]?.closest("button");
+      const shareBtn = screen.getAllByRole("button", { name: /^Share$/i })[0];
+      const connectBtn = screen.getAllByRole("button", { name: /Enter code/i })[0];
       expect(shareBtn).not.toBeDisabled();
       expect(connectBtn).not.toBeDisabled();
     });

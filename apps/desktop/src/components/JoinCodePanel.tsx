@@ -66,13 +66,13 @@ export function JoinCodePanel({
   }
 
   return (
-    <div className={cn("space-y-5", className)}>
+    <div className={cn("space-y-4", className)}>
       <div className="join-code-ceremony">
-        <p className="portal-label text-center text-zinc-500">Join code</p>
+        <p className="portal-label text-center">Join code</p>
         <div
           key={display}
           className={cn(
-            "join-code-hero motion-code-settle mt-3 select-all text-center font-mono-brand text-5xl font-semibold tracking-[0.14em] text-[#8B5CF6] sm:text-6xl",
+            "join-code-hero mt-2 select-all text-center font-mono-brand text-3xl font-semibold tracking-[0.12em] text-[#A78BFA] sm:text-4xl",
             !code && "opacity-35",
           )}
           aria-label={code ? `Join code ${display}` : "No join code yet"}
@@ -81,9 +81,8 @@ export function JoinCodePanel({
         </div>
         {code && (
           <p
-            className="motion-peer-in mt-3 text-center text-[11px] leading-relaxed tracking-wide text-zinc-500"
+            className="mt-2 text-center text-[11px] leading-relaxed text-zinc-500"
             title="Say this over the phone"
-            style={{ animationDelay: "120ms" }}
           >
             {speakJoinCode(code)}
           </p>
@@ -151,10 +150,10 @@ export function JoinCodePanel({
 
       {showQr && code && (
         <div className="flex flex-col items-center gap-3 pt-1">
-          <div className="rounded-2xl bg-white p-3.5 shadow-[0_20px_50px_-20px_rgba(124,58,237,0.45)] ring-1 ring-white/20">
+          <div className="rounded-lg bg-white p-2.5 ring-1 ring-white/10">
             <QRCodeSVG
               value={qrPayload}
-              size={172}
+              size={148}
               level="M"
               includeMargin={false}
               bgColor="#FFFFFF"

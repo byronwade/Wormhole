@@ -12,7 +12,7 @@ export interface MountStatusStripProps {
 }
 
 /**
- * Live tunnel instrument — speed, peer, Open in Finder.
+ * Compact live-mount status bar — speed, peer, Open in Finder.
  */
 export function MountStatusStrip({
   mountPath,
@@ -28,51 +28,44 @@ export function MountStatusStrip({
   return (
     <div
       className={cn(
-        "portal-instrument flex w-full flex-col gap-5 rounded-3xl px-6 py-5 sm:flex-row sm:items-center sm:gap-8 sm:px-7 sm:py-6",
+        "portal-instrument flex w-full flex-col gap-3 rounded-xl px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4",
         className,
       )}
       role="status"
       aria-live="polite"
     >
-      <div className="relative z-10 min-w-0 flex-1 space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="inline-flex items-center gap-2">
             {status === "syncing" ? (
-              <IconSpinner className="h-4 w-4 text-amber-300" />
+              <IconSpinner className="h-3.5 w-3.5 text-amber-300" />
             ) : (
               <span
                 className={cn(
-                  "h-2 w-2 rounded-full",
-                  status === "connected"
-                    ? "bg-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.65)]"
-                    : "bg-zinc-500",
+                  "h-1.5 w-1.5 rounded-full",
+                  status === "connected" ? "bg-teal-400" : "bg-zinc-500",
                 )}
                 aria-hidden
               />
             )}
-            <span className="text-sm font-medium tracking-tight text-[#FAFAFA]">
-              {statusText}
-            </span>
+            <span className="text-sm font-medium text-[#FAFAFA]">{statusText}</span>
           </span>
 
           {speedLabel && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-black/20 px-2.5 py-1 font-mono-brand text-xs text-[#E9D5FF] tabular-nums">
-              <IconSpeed className="h-3.5 w-3.5 text-[#A78BFA]" />
+            <span className="inline-flex items-center gap-1 font-mono-brand text-xs text-zinc-400 tabular-nums">
+              <IconSpeed className="h-3.5 w-3.5" />
               {speedLabel}
             </span>
           )}
 
           {peerLabel && (
-            <span className="inline-flex items-center gap-1.5 text-sm text-zinc-300">
-              <IconNearby className="h-3.5 w-3.5 text-teal-400/80" />
+            <span className="inline-flex items-center gap-1 text-sm text-zinc-400">
+              <IconNearby className="h-3.5 w-3.5" />
               {peerLabel}
             </span>
           )}
         </div>
-        <p
-          className="truncate font-mono-brand text-xs tracking-wide text-zinc-500"
-          title={mountPath}
-        >
+        <p className="truncate font-mono-brand text-xs text-zinc-500" title={mountPath}>
           {mountPath}
         </p>
       </div>
@@ -80,10 +73,10 @@ export function MountStatusStrip({
       <Button
         type="button"
         onClick={onOpenFinder}
-        className="portal-press portal-cta-primary relative z-10 min-h-12 w-full shrink-0 text-white sm:w-auto sm:px-7"
+        className="portal-press portal-cta-primary min-h-9 w-full shrink-0 text-sm text-white sm:w-auto sm:px-4"
       >
-        <IconOpen className="mr-2 h-4 w-4" />
-        Open in Finder / Explorer
+        <IconOpen className="mr-1.5 h-4 w-4" />
+        Open in Finder
       </Button>
     </div>
   );

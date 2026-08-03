@@ -1629,15 +1629,15 @@ function ShareDialog({
                       setIsDragging(false);
                       applyDroppedPath(e.dataTransfer.files);
                     }}
-                    className={`portal-drop-magnet w-full min-h-28 rounded-2xl border border-dashed px-4 py-7 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] ${
+                    className={`w-full min-h-24 rounded-xl border border-dashed px-4 py-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED] ${
                       isDragging
-                        ? "is-magnet border-[#7C3AED]/70 bg-[#7C3AED]/12"
-                        : "border-white/10 hover:border-[#7C3AED]/40 bg-white/[0.02]"
+                        ? "portal-drop-magnet border-[#7C3AED]/50"
+                        : "border-white/10 hover:border-white/20 bg-transparent"
                     }`}
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      <FolderUp className={`w-8 h-8 ${isDragging ? "text-[#A78BFA]" : "text-zinc-600"}`} aria-hidden />
-                      <span className="text-sm text-zinc-200">
+                    <div className="flex flex-col items-center gap-1.5">
+                      <FolderUp className={`w-6 h-6 ${isDragging ? "text-[#A78BFA]" : "text-zinc-600"}`} aria-hidden />
+                      <span className="text-sm text-zinc-300">
                         {isDragging ? "Drop folder to share" : "Drop a folder here"}
                       </span>
                       <span className="text-xs text-zinc-500">or click to browse…</span>
@@ -2213,17 +2213,15 @@ function SettingsPage({
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
-      <div className="portal-atmosphere pointer-events-none absolute inset-0 opacity-80" aria-hidden />
-      <div className="portal-grain pointer-events-none absolute inset-0 opacity-30" aria-hidden />
-      <div className="relative z-10 flex-1 overflow-y-auto px-6 py-8 md:px-10">
-        <div className="settings-prefs mx-auto space-y-8">
+      <div className="relative z-10 flex-1 overflow-y-auto px-5 py-6 md:px-8">
+        <div className="settings-prefs mx-auto space-y-6">
           {/* About Section */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <h2 className="portal-label">About</h2>
-            <div className="prefs-card p-5 space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#3B82F6] shadow-[0_12px_40px_-16px_rgba(124,58,237,0.7)]">
-                  <Share2 className="w-7 h-7 text-white" />
+            <div className="prefs-card p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#7C3AED]">
+                  <Share2 className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">Wormhole</h3>
