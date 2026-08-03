@@ -48,6 +48,14 @@ mod unix_impl {
         /// Mount point (must be in /Volumes on macOS with FSKit)
         mount_point: Option<PathBuf>,
 
+        /// Join code required by the host (Hello `join:` capability)
+        #[arg(long)]
+        join_code: Option<String>,
+
+        /// Host TLS cert fingerprint (hex) from SPAKE2-authenticated rendezvous
+        #[arg(long)]
+        cert_pin: Option<String>,
+
         /// Enable verbose logging
         #[arg(short, long)]
         verbose: bool,
@@ -55,6 +63,19 @@ mod unix_impl {
         /// Use kernel extension backend instead of FSKit (requires kext approval)
         #[arg(long)]
         use_kext: bool,
+    }
+
+    fn parse_cert_pin(hex_str: &str) -> Result<[u8; 32], String> {
+        let bytes = hex::decode(hex_str).map_err(|e| format!("invalid cert pin hex: {e}"))?;
+        if bytes.len() != 32 {
+            return Err(format!(
+                "cert pin must be 32 bytes (64 hex chars), got {}",
+                bytes.len()
+            ));
+        }
+        let mut fp = [0u8; 32];
+        fp.copy_from_slice(&bytes);
+        Ok(fp)
     }
 
     pub fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -127,11 +148,18 @@ mod unix_impl {
         // Create the FUSE ↔ async bridge
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
+        let cert_pin = match cli.cert_pin.as_deref() {
+            Some(s) => Some(parse_cert_pin(s)?),
+            None => None,
+        };
+
         // Create client config
         let config = ClientConfig {
             server_addr: cli.host,
             mount_point: actual_mount_point.clone(),
             request_timeout: Duration::from_secs(30),
+            join_code: cli.join_code.clone(),
+            cert_pin,
         };
 
         // Create the WormholeFS first so we can get a reference to its disk cache for GC
@@ -276,6 +304,14 @@ mod windows_impl {
         #[arg(default_value = "W:")]
         mount_point: String,
 
+        /// Join code required by the host (Hello `join:` capability)
+        #[arg(long)]
+        join_code: Option<String>,
+
+        /// Host TLS cert fingerprint (hex) from SPAKE2-authenticated rendezvous
+        #[arg(long)]
+        cert_pin: Option<String>,
+
         /// Enable verbose logging
         #[arg(short, long)]
         verbose: bool,
@@ -283,6 +319,19 @@ mod windows_impl {
         /// Enable write support (experimental)
         #[arg(long)]
         writable: bool,
+    }
+
+    fn parse_cert_pin(hex_str: &str) -> Result<[u8; 32], String> {
+        let bytes = hex::decode(hex_str).map_err(|e| format!("invalid cert pin hex: {e}"))?;
+        if bytes.len() != 32 {
+            return Err(format!(
+                "cert pin must be 32 bytes (64 hex chars), got {}",
+                bytes.len()
+            ));
+        }
+        let mut fp = [0u8; 32];
+        fp.copy_from_slice(&bytes);
+        Ok(fp)
     }
 
     pub fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -315,11 +364,18 @@ mod windows_impl {
         // Create the filesystem ↔ async bridge
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
+        let cert_pin = match cli.cert_pin.as_deref() {
+            Some(s) => Some(parse_cert_pin(s)?),
+            None => None,
+        };
+
         // Create client config (use a dummy path for Windows)
         let config = ClientConfig {
             server_addr: cli.host,
             mount_point: std::path::PathBuf::from(&cli.mount_point),
             request_timeout: Duration::from_secs(30),
+            join_code: cli.join_code.clone(),
+            cert_pin,
         };
 
         // Create the WinFSP filesystem

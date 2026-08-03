@@ -160,6 +160,15 @@ enum Commands {
     /// Initialize wormhole in the current directory
     Init(InitArgs),
 
+    /// Open a project aperture (`.wormhole/aperture.toml`)
+    Open(OpenArgs),
+
+    /// Resolve a content magnet against the local content store
+    Fetch(FetchArgs),
+
+    /// Dev: print playhead prefetch chunk indices for an inode/offset
+    Playhead(PlayheadArgs),
+
     /// Unmount a mounted share
     #[command(visible_alias = "umount", visible_alias = "disconnect")]
     Unmount(UnmountArgs),
@@ -339,6 +348,10 @@ struct MountArgs {
     /// Password (if host requires one)
     #[arg(long)]
     password: Option<String>,
+
+    /// Join code for QUIC Hello auth when mounting by host:port
+    #[arg(long)]
+    join_code: Option<String>,
 
     /// Transport backend: `quic` (classic) or `iroh` (endpoint id dial)
     #[arg(long, default_value = "quic", env = "WORMHOLE_TRANSPORT")]
@@ -1128,6 +1141,49 @@ struct InitArgs {
 }
 
 #[derive(Args)]
+struct OpenArgs {
+    /// Project folder containing `.wormhole` (default: `.`)
+    path: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct FetchArgs {
+    /// Magnet URI (`wormhole:magnet:blake3:…`, `blake3:…`, or raw hex)
+    magnet: String,
+
+    /// Fetch from a remote peer (`host:port`, default port 4433)
+    #[arg(long)]
+    from: Option<String>,
+
+    /// Only check whether the chunk is present (local, or remote if `--from`)
+    #[arg(long)]
+    check: bool,
+}
+
+#[derive(Args)]
+struct PlayheadArgs {
+    /// File inode
+    #[arg(long)]
+    inode: u64,
+
+    /// Byte offset of the playhead
+    #[arg(long)]
+    offset: u64,
+
+    /// Chunks to prefetch ahead (default 4)
+    #[arg(long, default_value = "4")]
+    ahead: u64,
+
+    /// Chunks to keep behind (default 2)
+    #[arg(long, default_value = "2")]
+    behind: u64,
+
+    /// Send hint to the local mount via playhead IPC
+    #[arg(long)]
+    apply: bool,
+}
+
+#[derive(Args)]
 struct UnmountArgs {
     /// Mount point or share ID
     target: String,
@@ -1394,6 +1450,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Ping(args) => run_ping(args, &cli).await,
         Commands::Bench(args) => run_bench(args, &cli).await,
         Commands::Init(args) => run_init(args, &cli),
+        Commands::Open(args) => run_open(args, &cli),
+        Commands::Fetch(args) => run_fetch(args, &cli).await,
+        Commands::Playhead(args) => run_playhead(args, &cli),
         Commands::Unmount(args) => run_unmount(args, &cli).await,
         Commands::List(args) => run_list(args, &cli).await,
         Commands::History(args) => run_history(args, &cli),
@@ -1513,6 +1572,7 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         shared_path: path.clone(),
         max_connections: args.max_connections,
         host_name: host_name.clone(),
+        join_code: Some(join_code.clone()),
     };
 
     // Display startup info
@@ -1523,6 +1583,7 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
     }
 
     let host = WormholeHost::new(config);
+    let cert_fingerprint = host.cert_fingerprint();
 
     // Handle Ctrl+C
     let running = Arc::new(AtomicBool::new(true));
@@ -1549,7 +1610,10 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
                 info!("Registering with signal server: {}", signal_server);
                 let rendezvous = RendezvousClient::new(Some(signal_server.clone()));
 
-                match rendezvous.host(&join_code_clone).await {
+                match rendezvous
+                    .host(&join_code_clone, Some(cert_fingerprint))
+                    .await
+                {
                     Ok(result) => {
                         info!("Peer connected via signal server: {:?}", result.peer_addr);
                         // Continue loop to accept more peers
@@ -1837,6 +1901,9 @@ async fn run_mount_direct(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std
     if args.use_kext {
         cmd.arg("--use-kext");
     }
+    if let Some(code) = args.join_code.as_deref() {
+        cmd.arg("--join-code").arg(code);
+    }
 
     let status = cmd.status()?;
 
@@ -1930,6 +1997,12 @@ async fn run_mount_via_signal(
             if args.use_kext {
                 cmd.arg("--use-kext");
             }
+            // Present the rendezvous join code on the QUIC Hello for host auth.
+            cmd.arg("--join-code").arg(&code);
+            // SPAKE2-authenticated TLS pin from rendezvous (MITM-resistant).
+            if let Some(fp) = rendezvous_result.cert_fingerprint {
+                cmd.arg("--cert-pin").arg(hex::encode(fp));
+            }
 
             let status = cmd.status()?;
 
@@ -2005,7 +2078,7 @@ async fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
         Some(PathBuf::from("wormhole-mcp")),
     ];
     for path in candidates.into_iter().flatten() {
-        if path == PathBuf::from("wormhole-mcp") || path.exists() {
+        if path == *"wormhole-mcp" || path.exists() {
             let status = std::process::Command::new(&path).status()?;
             if status.success() {
                 return Ok(());
@@ -2170,12 +2243,61 @@ async fn run_config(args: &ConfigArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
 }
 
 async fn run_peers(args: &PeersArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    use teleport_daemon::PeerRegistry;
+
     match &args.command {
-        PeersCommands::List(_) => {
-            println!("No known peers.");
-            println!();
-            println!("Peers are added automatically when you connect to shares.");
-            println!("Or add manually with: wormhole peers add <peer>");
+        PeersCommands::List(list_args) => {
+            let reg = PeerRegistry::load().unwrap_or_default();
+            let peers: Vec<_> = reg
+                .list()
+                .iter()
+                .filter(|p| list_args.all || !p.blocked)
+                .collect();
+            if peers.is_empty() {
+                println!("No known peers.");
+                println!();
+                println!("Add one with: wormhole peers add <host[:port]>");
+                return Ok(());
+            }
+            println!("{:<22} {:<16} {:<8} CAS", "ADDR", "NAME", "BLOCKED");
+            for p in peers {
+                println!(
+                    "{:<22} {:<16} {:<8} {}",
+                    p.addr,
+                    p.name.as_deref().unwrap_or("-"),
+                    if p.blocked { "yes" } else { "no" },
+                    if p.content_addressed { "yes" } else { "no" }
+                );
+            }
+        }
+        PeersCommands::Add(add_args) => {
+            let mut reg = PeerRegistry::load().unwrap_or_default();
+            reg.add(&add_args.peer, add_args.name.clone())?;
+            reg.save()?;
+            println!("Added peer {}", add_args.peer);
+        }
+        PeersCommands::Remove(rem_args) => {
+            let mut reg = PeerRegistry::load().unwrap_or_default();
+            if reg.remove(&rem_args.peer)? {
+                reg.save()?;
+                println!("Removed peer {}", rem_args.peer);
+            } else {
+                println!("Peer not found: {}", rem_args.peer);
+            }
+        }
+        PeersCommands::Show(show_args) => {
+            let reg = PeerRegistry::load().unwrap_or_default();
+            match reg.find(&show_args.peer) {
+                Some(p) => {
+                    println!("addr: {}", p.addr);
+                    println!("name: {}", p.name.as_deref().unwrap_or("-"));
+                    println!("content_addressed: {}", p.content_addressed);
+                    println!("blocked: {}", p.blocked);
+                }
+                None => {
+                    println!("Peer not found: {}", show_args.peer);
+                }
+            }
         }
         _ => {
             println!("Command not yet implemented");
@@ -2467,6 +2589,11 @@ fn run_init(args: &InitArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error
 "#,
         )?;
 
+        // Create project aperture
+        let aperture = teleport_daemon::aperture::ProjectAperture::default_new();
+        aperture.write(&path)?;
+        let aperture_path = teleport_daemon::aperture::ProjectAperture::aperture_path(&path);
+
         // Create .gitignore in .wormhole
         std::fs::write(wormhole_dir.join(".gitignore"), "*\n")?;
 
@@ -2474,9 +2601,135 @@ fn run_init(args: &InitArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error
         println!();
         println!("Created:");
         println!("  {}", config_path.display());
+        println!("  {}", aperture_path.display());
+        println!();
+        println!("To inspect the project aperture, run:");
+        println!("  wormhole open .");
         println!();
         println!("To share this folder, run:");
         println!("  wormhole host .");
+    }
+
+    Ok(())
+}
+
+fn run_open(args: &OpenArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
+    let aperture = match teleport_daemon::aperture::ProjectAperture::load(&path)? {
+        Some(a) => a,
+        None => {
+            return Err(format!(
+                "no aperture.toml at {} — run `wormhole init` first",
+                teleport_daemon::aperture::ProjectAperture::aperture_path(&path).display()
+            )
+            .into());
+        }
+    };
+
+    println!("Project aperture: {}", path.display());
+    println!(
+        "  name: {}",
+        aperture.name.as_deref().unwrap_or("(unnamed)")
+    );
+    println!("  roots: {:?}", aperture.roots);
+    println!("  exclude: {:?}", aperture.exclude);
+    println!("  playhead_prefetch: {}", aperture.playhead_prefetch);
+    println!("  content_addressed: {}", aperture.content_addressed);
+
+    // Validate roots are non-empty and excludes don't reject everything under roots.
+    if aperture.roots.is_empty() {
+        return Err("aperture roots is empty — add at least one root".into());
+    }
+    for root in &aperture.roots {
+        if root.contains("..") {
+            return Err(format!("invalid root (contains ..): {root}").into());
+        }
+        if !aperture.allows_relative(root) && root != "." {
+            eprintln!("warning: root `{root}` is matched by an exclude pattern");
+        }
+    }
+
+    println!("Aperture OK.");
+    Ok(())
+}
+
+async fn run_fetch(args: &FetchArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let hash = teleport_daemon::magnet::parse_magnet(&args.magnet).ok_or_else(|| {
+        format!(
+            "invalid magnet (expected wormhole:magnet:blake3:<hex>, blake3:<hex>, or 64-hex): {}",
+            args.magnet
+        )
+    })?;
+
+    let store = teleport_daemon::ContentStore::open_default()
+        .map_err(|e| format!("content store unavailable: {e}"))?;
+
+    if store.contains(&hash) {
+        let hex = hash.to_hex();
+        let uri = teleport_daemon::magnet::magnet_uri(&hash);
+        println!("ok");
+        println!("  hex: {hex}");
+        println!("  magnet: {uri}");
+        println!("  source: local");
+        if let Ok(data) = store.get(&hash) {
+            println!("  size: {} bytes", data.len());
+        }
+        return Ok(());
+    }
+
+    // --check without --from: local-only
+    if args.check && args.from.is_none() {
+        println!("chunk is not local: {}", hash.to_hex());
+        return Err("chunk not found in local content store".into());
+    }
+
+    let explicit = match &args.from {
+        Some(s) => Some(teleport_daemon::peers::parse_peer_socket_addr(s)?),
+        None => None,
+    };
+    // Mesh peers when no explicit --from; with --from only that peer.
+    let also_peers = explicit.is_none();
+
+    match teleport_daemon::mesh_fetch::fetch_hash_mesh(hash, explicit, also_peers).await {
+        Ok((data, source)) => {
+            let uri = teleport_daemon::magnet::magnet_uri(&hash);
+            println!("ok");
+            println!("  size: {} bytes", data.len());
+            println!("  source: {source}");
+            println!("  magnet: {uri}");
+            Ok(())
+        }
+        Err(e) => {
+            println!("chunk is not local: {}", hash.to_hex());
+            Err(e.into())
+        }
+    }
+}
+
+fn run_playhead(args: &PlayheadArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let mut gov = teleport_daemon::Governor::new();
+    let targets = gov.hint_playhead(args.inode, args.offset, args.ahead, args.behind);
+    println!(
+        "playhead inode={} offset={} → {} chunk(s)",
+        args.inode,
+        args.offset,
+        targets.len()
+    );
+    for chunk in &targets {
+        println!("  inode={} index={}", chunk.inode, chunk.index);
+    }
+
+    if args.apply {
+        let msg = teleport_daemon::playhead_ipc::PlayheadHintMsg {
+            inode: args.inode,
+            offset: args.offset,
+            ahead: Some(args.ahead),
+            behind: Some(args.behind),
+        };
+        match teleport_daemon::playhead_ipc::send_hint(&msg) {
+            Ok(()) => println!("hint sent to mount"),
+            Err(e) => eprintln!("warning: could not send hint to mount: {e}"),
+        }
     }
 
     Ok(())

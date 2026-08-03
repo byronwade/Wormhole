@@ -1,240 +1,108 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Share2,
-  Check,
-  ArrowRight,
-  Zap,
-  Users,
-  Building2,
-  Heart,
-  Github,
-} from "lucide-react";
+import { SiteShell } from "@/components/site-shell";
 
-export const metadata = {
-  title: "Pricing - Wormhole",
-  description: "Wormhole pricing plans. Free during alpha, with Pro and Team plans coming soon for advanced features.",
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "Wormhole pricing. Free core forever. Pro and Team for power users after launch.",
+  alternates: { canonical: "/pricing" },
 };
 
 const plans = [
   {
     name: "Free",
-    description: "For individuals and small projects",
     price: "$0",
     period: "forever",
-    badge: "Current",
-    badgeColor: "bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40",
+    blurb: "Individuals and small projects.",
     features: [
-      "Unlimited file sharing",
+      "Unlimited file sizes",
       "End-to-end encryption",
-      "Cross-platform support",
       "Join codes",
       "Community support",
-      "Open source",
     ],
-    cta: "Download Now",
-    ctaHref: "/#download",
-    highlight: false,
+    cta: "Download",
+    href: "/download",
+    primary: true,
   },
   {
     name: "Pro",
-    description: "For power users and freelancers",
     price: "$8",
     period: "/month",
-    badge: "Coming Soon",
-    badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/40",
+    blurb: "Freelancers and power users.",
     features: [
       "Everything in Free",
-      "Priority connections",
-      "Advanced caching",
-      "Transfer analytics",
+      "More simultaneous connections",
+      "Persistent join codes",
       "Priority support",
-      "Custom join codes",
     ],
-    cta: "Join Waitlist",
-    ctaHref: "https://github.com/byronwade/wormhole/discussions",
-    highlight: true,
+    cta: "Coming after launch",
+    href: "https://github.com/byronwade/Wormhole/discussions",
+    primary: false,
   },
   {
     name: "Team",
-    description: "For studios and organizations",
     price: "$15",
-    period: "/user/month",
-    badge: "Coming Soon",
-    badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/40",
+    period: "/user/mo",
+    blurb: "Studios and small teams.",
     features: [
       "Everything in Pro",
       "Team management",
-      "Access controls",
-      "Audit logs",
-      "Self-hosted option",
-      "Dedicated support",
+      "Usage analytics",
+      "Policy controls",
     ],
-    cta: "Contact Us",
-    ctaHref: "https://github.com/byronwade/wormhole/discussions",
-    highlight: false,
+    cta: "Coming after launch",
+    href: "https://github.com/byronwade/Wormhole/discussions",
+    primary: false,
   },
 ];
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Header */}
-      <nav className="border-b border-border sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-wormhole-hunter flex items-center justify-center">
-              <Share2 className="w-4 h-4 text-foreground" />
-            </div>
-            <span className="font-bold text-lg text-foreground">Wormhole</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Docs
-            </Link>
-            <Button size="sm" className="bg-wormhole-hunter hover:bg-wormhole-hunter-dark" render={<Link href="/#download" />}>Download</Button>
-          </div>
+    <SiteShell active="pricing">
+      <section className="site-section">
+        <div className="site-section__intro">
+          <h2>Pricing</h2>
+          <p>Free core forever. Paid tiers only when you need more horsepower.</p>
         </div>
-      </nav>
 
-      {/* Hero */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <Badge className="mb-6 bg-wormhole-hunter/20 text-wormhole-hunter-light border-wormhole-hunter/40">
-            Simple Pricing
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 tracking-tight">
-            Free while in alpha
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Wormhole is currently free for everyone during our alpha phase.
-            Pro features are coming soon for those who need more.
-          </p>
+        <div className="site-pricing">
+          {plans.map((plan) => (
+            <article key={plan.name} className="site-pricing__plan">
+              <h3>{plan.name}</h3>
+              <p className="site-pricing__price">
+                <span>{plan.price}</span>
+                <span className="site-pricing__period">{plan.period}</span>
+              </p>
+              <p className="site-pricing__blurb">{plan.blurb}</p>
+              <ul>
+                {plan.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+              {plan.primary ? (
+                <Link href={plan.href} className="site-btn site-btn--small">
+                  {plan.cta}
+                </Link>
+              ) : (
+                <a
+                  href={plan.href}
+                  className="site-btn site-btn--small site-btn--ghost"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {plan.cta}
+                </a>
+              )}
+            </article>
+          ))}
         </div>
-      </section>
 
-      {/* Pricing Cards */}
-      <section className="py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <Card
-                key={plan.name}
-                className={`bg-card/50 border-border relative ${
-                  plan.highlight ? "ring-2 ring-wormhole-hunter" : ""
-                }`}
-              >
-                {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-wormhole-hunter text-foreground border-0">
-                      Most Popular
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <CardTitle className="text-xl text-foreground">{plan.name}</CardTitle>
-                    <Badge className={plan.badgeColor}>{plan.badge}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{plan.description}</p>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                    <span className="text-muted-foreground">{plan.period}</span>
-                  </div>
-                  <ul className="space-y-3">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm">
-                        <Check className="w-4 h-4 text-wormhole-hunter-light flex-shrink-0" />
-                        <span className="text-muted-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${
-                      plan.highlight
-                        ? "bg-wormhole-hunter hover:bg-wormhole-hunter-dark"
-                        : "bg-muted hover:bg-muted"
-                    }`}
-                    render={<Link href={plan.ctaHref} />}
-                  >
-                    {plan.cta}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+        <p className="docs-muted" style={{ marginTop: "2rem", marginBottom: 0 }}>
+          Need SSO, audit logs, or a self-hosted control plane?{" "}
+          <a href="https://github.com/byronwade/Wormhole/discussions">Talk to us</a>.
+        </p>
       </section>
-
-      {/* FAQ */}
-      <section className="py-16 px-6 border-t border-border">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold text-foreground mb-8 text-center">
-            Frequently Asked Questions
-          </h2>
-          <div className="space-y-6">
-            <div className="p-6 rounded-lg bg-card/50 border border-border">
-              <h3 className="text-foreground font-medium mb-2">Will Free always be free?</h3>
-              <p className="text-muted-foreground text-sm">
-                Yes. Core file sharing functionality will always be free. We believe
-                essential tools shouldn&apos;t be locked behind paywalls. Pro features
-                will offer advanced capabilities for power users.
-              </p>
-            </div>
-            <div className="p-6 rounded-lg bg-card/50 border border-border">
-              <h3 className="text-foreground font-medium mb-2">What happens after alpha?</h3>
-              <p className="text-muted-foreground text-sm">
-                When we launch out of alpha, the Free tier will remain free. Pro and
-                Team plans will become available with the features listed above.
-                Early adopters may receive special perks.
-              </p>
-            </div>
-            <div className="p-6 rounded-lg bg-card/50 border border-border">
-              <h3 className="text-foreground font-medium mb-2">Can I self-host Wormhole?</h3>
-              <p className="text-muted-foreground text-sm">
-                Absolutely. Wormhole is open source under the MIT license. You can
-                run your own signal server and have complete control over your
-                infrastructure. See our self-hosting docs for details.
-              </p>
-            </div>
-            <div className="p-6 rounded-lg bg-card/50 border border-border">
-              <h3 className="text-foreground font-medium mb-2">How can I support the project?</h3>
-              <p className="text-muted-foreground text-sm">
-                You can sponsor the project on GitHub, contribute code, report bugs,
-                or simply spread the word. Every bit helps us keep Wormhole free
-                and make it better for everyone.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Sponsor CTA */}
-      <section className="py-16 px-6 border-t border-border bg-card/30">
-        <div className="max-w-4xl mx-auto text-center">
-          <Heart className="w-12 h-12 text-pink-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-foreground mb-4">Support Open Source</h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Wormhole is built by a small team in our spare time. Your sponsorship
-            helps us dedicate more time to development and keep the project alive.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="bg-pink-500 hover:bg-pink-600 text-foreground" render={<a href="https://github.com/sponsors/byronwade" target="_blank" rel="noopener noreferrer" />}>
-              <Heart className="w-4 h-4 mr-2" />
-              Become a Sponsor
-            </Button>
-            <Button size="lg" variant="outline" className="border-border text-muted-foreground hover:bg-muted" render={<a href="https://github.com/byronwade/wormhole" target="_blank" rel="noopener noreferrer" />}>
-              <Github className="w-4 h-4 mr-2" />
-              Star on GitHub
-            </Button>
-          </div>
-        </div>
-      </section>
-    </div>
+    </SiteShell>
   );
 }

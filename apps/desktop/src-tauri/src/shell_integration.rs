@@ -28,7 +28,8 @@ pub fn install_shell_integration() -> Result<ShellIntegrationStatus, String> {
         install_linux(&exe)?;
         return Ok(ShellIntegrationStatus {
             installed: true,
-            detail: "Added “Share with Wormhole” to the applications menu (inode/directory).".into(),
+            detail: "Added “Share with Wormhole” to the applications menu (inode/directory)."
+                .into(),
         });
     }
     #[cfg(target_os = "macos")]
@@ -140,8 +141,7 @@ pub fn shell_integration_status() -> Result<ShellIntegrationStatus, String> {
 #[cfg(target_os = "linux")]
 fn linux_desktop_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    PathBuf::from(home)
-        .join(".local/share/applications/wormhole-share-folder.desktop")
+    PathBuf::from(home).join(".local/share/applications/wormhole-share-folder.desktop")
 }
 
 #[cfg(target_os = "linux")]

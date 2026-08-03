@@ -19,6 +19,7 @@
 //! with inodes namespaced using GlobalInode (share_index << 48 | local_inode).
 
 use std::ffi::OsStr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, UNIX_EPOCH};
 
@@ -34,7 +35,8 @@ use teleport_core::{ChunkId, DirEntry, FileAttr, FileType, GlobalInode, Inode, S
 
 use crate::cache::HybridCacheManager;
 use crate::connection_manager::ConnectionManager;
-use crate::governor::Governor;
+use crate::governor::{Governor, MAX_PREFETCH_CONCURRENT};
+use crate::playhead_ipc::{self, PlayheadHintMsg};
 use crate::sync_engine::SyncEngine;
 
 /// TTL for FUSE kernel cache
@@ -72,9 +74,29 @@ pub struct MultiShareFS {
     shares: RwLock<Vec<MountedShare>>,
     /// Share name to index mapping
     name_to_index: DashMap<String, u16>,
+    /// In-flight prefetch threads (DoS cap)
+    prefetch_inflight: Arc<AtomicUsize>,
+    /// Optional playhead hint listener (NLE IPC)
+    playhead_sock: Option<std::os::unix::net::UnixDatagram>,
 }
 
 impl MultiShareFS {
+    fn try_bind_playhead() -> Option<std::os::unix::net::UnixDatagram> {
+        match playhead_ipc::bind_listener() {
+            Ok(sock) => {
+                info!(
+                    "playhead IPC listening on {}",
+                    playhead_ipc::socket_path().display()
+                );
+                Some(sock)
+            }
+            Err(e) => {
+                warn!(error = %e, "playhead IPC bind failed (hints disabled)");
+                None
+            }
+        }
+    }
+
     /// Create a new multi-share filesystem
     pub fn new(connection_manager: Arc<ConnectionManager>) -> Self {
         info!("Initializing MultiShareFS with virtual root");
@@ -89,6 +111,8 @@ impl MultiShareFS {
             writable: false,
             shares: RwLock::new(Vec::new()),
             name_to_index: DashMap::new(),
+            prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -106,6 +130,8 @@ impl MultiShareFS {
             writable: true,
             shares: RwLock::new(Vec::new()),
             name_to_index: DashMap::new(),
+            prefetch_inflight: Arc::new(AtomicUsize::new(0)),
+            playhead_sock: Self::try_bind_playhead(),
         }
     }
 
@@ -264,9 +290,71 @@ impl MultiShareFS {
         self.sync_engine.clone()
     }
 
+    /// Drain external playhead hints; treat hint.inode as local inode on share 0
+    /// (or unpack if it looks like a packed global inode).
+    fn drain_playhead_hints(&self) {
+        let mut hints: Vec<PlayheadHintMsg> = Vec::new();
+        if let Some(ref sock) = self.playhead_sock {
+            while let Some(hint) = playhead_ipc::try_recv(sock) {
+                hints.push(hint);
+            }
+        }
+        while let Some(hint) = playhead_ipc::try_recv_file(&playhead_ipc::hint_file_path()) {
+            hints.push(hint);
+        }
+        for hint in hints {
+            let ahead = hint.ahead.unwrap_or(4);
+            let behind = hint.behind.unwrap_or(2);
+            let (share_index, local_ino) = if hint.inode > 0xFFFF {
+                self.unpack_inode(hint.inode)
+            } else {
+                (0u16, hint.inode)
+            };
+            let targets = {
+                let mut gov = self.governor.lock();
+                gov.hint_playhead(local_ino, hint.offset, ahead, behind)
+            };
+            if !targets.is_empty() {
+                self.prefetch_chunks(share_index, targets);
+            }
+        }
+    }
+
     /// Check if writes are enabled
     pub fn is_writable(&self) -> bool {
         self.writable
+    }
+
+    /// Background prefetch for sequential / playhead targets on a share.
+    fn prefetch_chunks(&self, share_index: u16, targets: Vec<ChunkId>) {
+        for chunk_id in targets {
+            if self.cache.chunks.contains(&chunk_id) {
+                continue;
+            }
+            let current = self.prefetch_inflight.load(Ordering::Acquire);
+            if current >= MAX_PREFETCH_CONCURRENT {
+                continue;
+            }
+            if self
+                .prefetch_inflight
+                .compare_exchange(current, current + 1, Ordering::AcqRel, Ordering::Acquire)
+                .is_err()
+            {
+                continue;
+            }
+
+            let cm = self.connection_manager.clone();
+            let cache = self.cache.clone();
+            let inflight = self.prefetch_inflight.clone();
+            std::thread::spawn(move || {
+                let result = cm.read_chunk_blocking(share_index, chunk_id);
+                inflight.fetch_sub(1, Ordering::Release);
+                if let Ok(data) = result {
+                    cache.chunks.insert(chunk_id, data);
+                    trace!("prefetch: completed chunk {:?}", chunk_id);
+                }
+            });
+        }
     }
 
     /// Fetch a chunk from cache or network
@@ -480,12 +568,19 @@ impl Filesystem for MultiShareFS {
 
         let (share_index, local_ino) = self.unpack_inode(ino);
 
-        // Record access for governor
+        self.drain_playhead_hints();
+
+        // Record access for governor (sequential + playhead-first seeks)
         let chunk_id = ChunkId::from_offset(local_ino, offset);
-        let _prefetch_targets = {
+        let prefetch_targets = {
             let mut gov = self.governor.lock();
             gov.record_access(&chunk_id)
         };
+        if !prefetch_targets.is_empty() {
+            self.prefetch_chunks(share_index, prefetch_targets);
+        }
+
+        self.drain_playhead_hints();
 
         match self.read_stitched(share_index, local_ino, offset, size) {
             Ok(data) => {

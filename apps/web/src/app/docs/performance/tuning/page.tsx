@@ -1,64 +1,87 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Tuning - Wormhole Docs",
-  description: "Documentation for Tuning in Wormhole.",
+  title: "Performance Tuning — Wormhole Docs",
+  description: "Workload-oriented Wormhole mount and cache settings.",
 };
 
-export default function TuningPage() {
+export default function PerfTuningPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/performance" className="hover:text-foreground">Performance</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Tuning</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Performance", href: "/docs/performance" }}
+        title="Tuning"
+        description="Pick settings for the workload: scrubbing video, browsing code trees, or constrained WAN."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Tuning
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
+      <section>
+        <h2>Video / streaming</h2>
+        <DocsCode>{`wormhole mount CODE ~/mnt/video \\
+  --ram-cache-mb 2048 \\
+  --disk-cache-gb 50
+
+# config equivalent
+[cache]
+max_ram_bytes = 2147483648
+max_disk_bytes = 53687091200
+[client]
+read_ahead_chunks = 8`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>Many small files</h2>
+        <DocsCode>{`[client]
+attr_ttl_secs = 5
+dir_ttl_secs = 5
+read_ahead_chunks = 2`}</DocsCode>
+        <p>
+          Higher attr TTL reduces getattr chatter; lower prefetch avoids wasteful
+          chunk fetches.
         </p>
-      </div>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/performance"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Performance
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Bandwidth-limited WAN</h2>
+        <DocsCode>{`[cache]
+max_disk_bytes = 21474836480
+[network]
+request_timeout_secs = 60
+connect_timeout_secs = 20`}</DocsCode>
+        <DocsNote>
+          Keep the mount warm. Clearing cache on a slow link forces expensive
+          re-downloads.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>Host side</h2>
+        <ul>
+          <li>Serve from SSD when possible.</li>
+          <li>Avoid CPU-starved hosts during encode + share.</li>
+          <li>
+            Cap peers with <code>max_connections</code> if one client saturates the
+            link.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/configuration">Configuration</Link>
+          </li>
+          <li>
+            <Link href="/docs/performance/run-benchmarks">Run benchmarks</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

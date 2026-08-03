@@ -22,13 +22,13 @@ use teleport_core::{
 };
 
 use crate::bridge::FuseError;
-#[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
-use teleport_core::WireCodec;
 #[allow(deprecated)] // create_client_endpoint is deprecated but used for LAN/dev mode
 use crate::net::{
     connect, create_client_endpoint, negotiate_session_codec, recv_message, recv_message_with,
     send_message, send_message_with, QuicConnection,
 };
+#[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
+use teleport_core::WireCodec;
 
 /// Configuration for connecting to a host
 #[derive(Clone, Debug)]
@@ -230,7 +230,8 @@ impl ConnectionManager {
         };
 
         // Perform handshake
-        let (session_id, host_name, shares, codec) = self.handshake(&conn).await?;
+        let (session_id, host_name, shares, codec) =
+            self.handshake(&conn, config.join_code.as_deref()).await?;
 
         // Update host state
         if let Some(mut host) = self.hosts.get_mut(host_id) {
@@ -271,6 +272,7 @@ impl ConnectionManager {
     async fn handshake(
         &self,
         conn: &QuicConnection,
+        join_code: Option<&str>,
     ) -> Result<([u8; 16], String, Vec<ShareInfo>, WireCodec), ConnectionError> {
         use teleport_core::{HelloMessage, NetMessage, PROTOCOL_VERSION};
 
@@ -288,7 +290,7 @@ impl ConnectionManager {
             protocol_version: PROTOCOL_VERSION,
             client_id,
             capabilities: {
-                let mut caps = crate::net::client_capabilities();
+                let mut caps = crate::net::client_capabilities_with_join(join_code);
                 caps.push("write".into());
                 caps.push("multi-share".into());
                 caps
@@ -322,7 +324,7 @@ impl ConnectionManager {
 
                 let codec = negotiate_session_codec(
                     &{
-                        let mut caps = crate::net::client_capabilities();
+                        let mut caps = crate::net::client_capabilities_with_join(join_code);
                         caps.push("write".into());
                         caps.push("multi-share".into());
                         caps

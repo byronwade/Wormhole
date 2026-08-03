@@ -3,11 +3,44 @@
 //! Complements the legacy `ChunkId`-keyed disk cache with BLAKE3-keyed blobs
 //! for dedup and resume.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
+use parking_lot::RwLock;
 use teleport_blobs::{BlobError, BlobStore};
 use teleport_core::ContentHash;
 use tracing::debug;
+
+/// Per-connection set of content hashes a peer may fetch via BulkChunk.
+///
+/// Hashes are granted only after a verified share-path seed (read / manifest)
+/// on that same connection, preventing cross-session CAS fishing.
+#[derive(Debug, Default)]
+pub struct ChunkGrantSet {
+    inner: RwLock<HashSet<[u8; 32]>>,
+}
+
+impl ChunkGrantSet {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn grant(&self, hash: &ContentHash) {
+        self.inner.write().insert(*hash.as_bytes());
+    }
+
+    pub fn contains(&self, hash: &ContentHash) -> bool {
+        self.inner.read().contains(hash.as_bytes())
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.read().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.read().is_empty()
+    }
+}
 
 /// Shared content-addressed store for the daemon.
 #[derive(Clone)]
@@ -31,6 +64,17 @@ impl ContentStore {
     pub fn put(&self, data: &[u8]) -> Result<ContentHash, BlobError> {
         let hash = self.inner.put(data)?;
         debug!(%hash, size = data.len(), "content store put");
+        Ok(hash)
+    }
+
+    /// Put bytes and grant them on a per-connection grant set.
+    pub fn put_granted(
+        &self,
+        data: &[u8],
+        grants: &ChunkGrantSet,
+    ) -> Result<ContentHash, BlobError> {
+        let hash = self.put(data)?;
+        grants.grant(&hash);
         Ok(hash)
     }
 
@@ -67,5 +111,16 @@ mod tests {
         let h = store.put(b"daemon-blob").unwrap();
         assert!(store.contains(&h));
         assert_eq!(store.get(&h).unwrap(), b"daemon-blob");
+    }
+
+    #[test]
+    fn session_grants_are_isolated() {
+        let dir = TempDir::new().unwrap();
+        let store = ContentStore::open(dir.path()).unwrap();
+        let a = ChunkGrantSet::new();
+        let b = ChunkGrantSet::new();
+        let h = store.put_granted(b"only-for-a", &a).unwrap();
+        assert!(a.contains(&h));
+        assert!(!b.contains(&h));
     }
 }

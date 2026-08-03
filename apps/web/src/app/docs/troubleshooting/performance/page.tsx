@@ -1,64 +1,60 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Performance - Wormhole Docs",
-  description: "Documentation for Performance in Wormhole.",
+  title: "Performance Troubleshooting — Wormhole Docs",
+  description: "Fix slow reads, cache thrash, and high latency on Wormhole mounts.",
 };
 
-export default function PerformancePage() {
+export default function TroubleshootingPerfPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/troubleshooting" className="hover:text-foreground">Troubleshooting</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Performance</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Troubleshooting", href: "/docs/troubleshooting" }}
+        title="Performance issues"
+        description="Measure first. Cold cache and Wi‑Fi look like “Wormhole is slow”."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Performance
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Measure</h2>
+        <DocsCode>{`wormhole bench HOST:PORT
+wormhole cache stats --detailed
+wormhole status --detailed`}</DocsCode>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/troubleshooting"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Troubleshooting
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Patterns</h2>
+        <DocsTable
+          headers={["Pattern", "Action"]}
+          rows={[
+            ["First scrub slow, second fast", "Normal cold cache; enlarge RAM cache"],
+            ["Always slow sequential", "Check NIC/VPN; run bench on LAN"],
+            ["Random I/O crawls", "Expect RTT limits; raise prefetch carefully"],
+            ["High CPU on host", "Disk or encode contention on host"],
+            ["Cache thrash", "Raise max_ram_bytes / max_disk_bytes"],
+          ]}
+        />
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/performance/tuning">Tuning</Link>
+          </li>
+          <li>
+            <Link href="/docs/performance/run-benchmarks">Run benchmarks</Link>
+          </li>
+          <li>
+            <Link href="/docs/performance/cache">Cache performance</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

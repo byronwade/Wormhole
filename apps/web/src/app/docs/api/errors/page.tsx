@@ -1,64 +1,83 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Errors - Wormhole Docs",
-  description: "Documentation for Errors in Wormhole.",
+  title: "Errors — Wormhole Docs",
+  description: "CLI exit codes and protocol / application error categories.",
 };
 
-export default function ErrorsPage() {
+export default function ApiErrorsPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/api" className="hover:text-foreground">Api</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Errors</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "API", href: "/docs/api" }}
+        title="Errors"
+        description="Stable-ish exit codes for scripts; protocol errors map toward errno on FUSE."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Errors
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>CLI exit codes</h2>
+        <DocsTable
+          headers={["Code", "Meaning"]}
+          rows={[
+            ["0", "Success"],
+            ["1", "General error"],
+            ["2", "Usage error"],
+            ["3", "Connection error"],
+            ["4", "Authentication error"],
+            ["5", "Permission denied"],
+            ["6", "FUSE error"],
+            ["10", "Timeout"],
+          ]}
+        />
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/api"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Api
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Application categories</h2>
+        <DocsCode>{`# Connection
+E1001 Connection refused
+E1002 Connection timeout
+E1003 Connection reset
+E1004 TLS handshake failed
+E1005 PAKE failed (bad join code)
+
+# Mount
+E2001 Mount point busy
+E2002 Mount point missing
+E2003 FUSE unavailable
+E2004 Mount permission denied`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>Protocol ErrorCode → errno</h2>
+        <DocsTable
+          headers={["ErrorCode", "Typical errno"]}
+          rows={[
+            ["NotFound", "ENOENT"],
+            ["PermissionDenied", "EACCES"],
+            ["ReadOnly", "EROFS"],
+            ["IoError", "EIO"],
+            ["InvalidArgument", "EINVAL"],
+          ]}
+        />
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/troubleshooting/help">Getting help</Link>
+          </li>
+          <li>
+            <Link href="/docs/architecture/protocol">Protocol</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

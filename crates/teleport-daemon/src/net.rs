@@ -164,6 +164,9 @@ pub fn negotiate_session_codec(local_caps: &[String], remote_caps: &[String]) ->
     WireCodec::negotiate(local_caps, remote_caps)
 }
 
+/// Capability prefix carrying a normalized join code (`join:ABC123`).
+pub const CAP_JOIN_PREFIX: &str = "join:";
+
 /// Standard capability list for hosts (includes postcard).
 pub fn host_capabilities(writable: bool) -> Vec<String> {
     let mut caps = vec![CAP_CODEC_POSTCARD.into(), "read".into()];
@@ -177,6 +180,66 @@ pub fn host_capabilities(writable: bool) -> Vec<String> {
 /// Standard capability list for clients.
 pub fn client_capabilities() -> Vec<String> {
     vec![CAP_CODEC_POSTCARD.into(), "read".into()]
+}
+
+/// Build a `join:<normalized>` capability from a join code.
+pub fn join_capability(join_code: &str) -> String {
+    format!(
+        "{}{}",
+        CAP_JOIN_PREFIX,
+        teleport_core::crypto::normalize_join_code(join_code)
+    )
+}
+
+/// Append join-code auth capability when present.
+pub fn client_capabilities_with_join(join_code: Option<&str>) -> Vec<String> {
+    let mut caps = client_capabilities();
+    if let Some(code) = join_code {
+        let normalized = teleport_core::crypto::normalize_join_code(code);
+        if !normalized.is_empty() {
+            caps.push(format!("{}{}", CAP_JOIN_PREFIX, normalized));
+        }
+    }
+    caps
+}
+
+/// Extract normalized join code from a capability list, if advertised.
+pub fn join_code_from_capabilities(caps: &[String]) -> Option<String> {
+    caps.iter().find_map(|c| {
+        c.strip_prefix(CAP_JOIN_PREFIX)
+            .map(teleport_core::crypto::normalize_join_code)
+            .filter(|s| !s.is_empty())
+    })
+}
+
+/// Constant-time equality for equal-length byte strings.
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+/// Verify a client-presented join code against the host expectation.
+///
+/// Returns `true` when the host has no join code configured (dev/test open mode),
+/// or when the client advertised a matching `join:` capability.
+pub fn verify_join_code(expected: Option<&str>, client_caps: &[String]) -> bool {
+    let Some(expected) = expected else {
+        return true;
+    };
+    let expected = teleport_core::crypto::normalize_join_code(expected);
+    if expected.is_empty() {
+        return true;
+    }
+    match join_code_from_capabilities(client_caps) {
+        Some(got) => constant_time_eq(expected.as_bytes(), got.as_bytes()),
+        None => false,
+    }
 }
 
 /// Certificate fingerprint - BLAKE3 hash of DER-encoded certificate
@@ -343,18 +406,35 @@ pub fn create_client_endpoint_with_pinned_cert(
     Ok(endpoint)
 }
 
-/// Create a QUIC server endpoint
+/// Server TLS identity (self-signed cert + private key + BLAKE3 fingerprint).
 ///
-/// Returns the endpoint along with its certificate fingerprint, which should
-/// be shared with clients for certificate pinning (via signal server + PAKE).
-pub fn create_server_endpoint(
-    bind_addr: SocketAddr,
-) -> Result<(Endpoint, CertFingerprint), ConnectionError> {
-    let (certs, key, fingerprint) = generate_self_signed_cert_with_fingerprint();
+/// Generated once per host so the fingerprint can be PAKE-authenticated to peers
+/// before the QUIC handshake.
+pub struct ServerIdentity {
+    pub certs: Vec<CertificateDer<'static>>,
+    pub key: PrivateKeyDer<'static>,
+    pub fingerprint: CertFingerprint,
+}
 
+/// Generate a fresh self-signed server identity for QUIC.
+pub fn generate_server_identity() -> ServerIdentity {
+    let (certs, key, fingerprint) = generate_self_signed_cert_with_fingerprint();
+    ServerIdentity {
+        certs,
+        key,
+        fingerprint,
+    }
+}
+
+/// Create a QUIC server endpoint from a pre-generated identity.
+pub fn create_server_endpoint_with_identity(
+    bind_addr: SocketAddr,
+    identity: ServerIdentity,
+) -> Result<Endpoint, ConnectionError> {
+    let fingerprint = identity.fingerprint;
     let crypto = rustls::ServerConfig::builder()
         .with_no_client_auth()
-        .with_single_cert(certs, key)
+        .with_single_cert(identity.certs, identity.key)
         .map_err(|e| ConnectionError::Connect(e.to_string()))?;
 
     let mut config = ServerConfig::with_crypto(Arc::new(
@@ -371,6 +451,19 @@ pub fn create_server_endpoint(
         "Server endpoint created with cert fingerprint: {}",
         hex::encode(fingerprint)
     );
+    Ok(endpoint)
+}
+
+/// Create a QUIC server endpoint
+///
+/// Returns the endpoint along with its certificate fingerprint, which should
+/// be shared with clients for certificate pinning (via signal server + PAKE).
+pub fn create_server_endpoint(
+    bind_addr: SocketAddr,
+) -> Result<(Endpoint, CertFingerprint), ConnectionError> {
+    let identity = generate_server_identity();
+    let fingerprint = identity.fingerprint;
+    let endpoint = create_server_endpoint_with_identity(bind_addr, identity)?;
     Ok((endpoint, fingerprint))
 }
 
@@ -438,39 +531,37 @@ impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {
 
     fn verify_tls12_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        // Since we've verified the cert fingerprint, we trust the signature
-        // This is secure because we're using certificate pinning - only the holder
-        // of the private key can create valid signatures for the pinned cert
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+        // Pinning checks identity; still cryptographically verify the handshake signature.
+        rustls::crypto::verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+        )
     }
 
     fn verify_tls13_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        // Since we've verified the cert fingerprint, we trust the signature
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+        rustls::crypto::verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+        )
     }
 
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-        vec![
-            rustls::SignatureScheme::RSA_PKCS1_SHA256,
-            rustls::SignatureScheme::ECDSA_NISTP256_SHA256,
-            rustls::SignatureScheme::RSA_PKCS1_SHA384,
-            rustls::SignatureScheme::ECDSA_NISTP384_SHA384,
-            rustls::SignatureScheme::RSA_PKCS1_SHA512,
-            rustls::SignatureScheme::ECDSA_NISTP521_SHA512,
-            rustls::SignatureScheme::RSA_PSS_SHA256,
-            rustls::SignatureScheme::RSA_PSS_SHA384,
-            rustls::SignatureScheme::RSA_PSS_SHA512,
-            rustls::SignatureScheme::ED25519,
-        ]
+        rustls::crypto::ring::default_provider()
+            .signature_verification_algorithms
+            .supported_schemes()
     }
 }
 
@@ -497,35 +588,37 @@ impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
 
     fn verify_tls12_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+        // Dev mode skips identity checks but must still verify handshake signatures.
+        rustls::crypto::verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+        )
     }
 
     fn verify_tls13_signature(
         &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
     ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
-        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+        rustls::crypto::verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &rustls::crypto::ring::default_provider().signature_verification_algorithms,
+        )
     }
 
     fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-        vec![
-            rustls::SignatureScheme::RSA_PKCS1_SHA256,
-            rustls::SignatureScheme::ECDSA_NISTP256_SHA256,
-            rustls::SignatureScheme::RSA_PKCS1_SHA384,
-            rustls::SignatureScheme::ECDSA_NISTP384_SHA384,
-            rustls::SignatureScheme::RSA_PKCS1_SHA512,
-            rustls::SignatureScheme::ECDSA_NISTP521_SHA512,
-            rustls::SignatureScheme::RSA_PSS_SHA256,
-            rustls::SignatureScheme::RSA_PSS_SHA384,
-            rustls::SignatureScheme::RSA_PSS_SHA512,
-            rustls::SignatureScheme::ED25519,
-        ]
+        rustls::crypto::ring::default_provider()
+            .signature_verification_algorithms
+            .supported_schemes()
     }
 }
 
@@ -537,5 +630,26 @@ mod tests {
     fn test_cert_generation() {
         let (certs, _key) = generate_self_signed_cert();
         assert_eq!(certs.len(), 1);
+    }
+
+    #[test]
+    fn join_code_capability_roundtrip() {
+        let cap = join_capability("abc-def");
+        assert_eq!(cap, "join:ABCDEF");
+        let caps = client_capabilities_with_join(Some("abc-def"));
+        assert_eq!(
+            join_code_from_capabilities(&caps).as_deref(),
+            Some("ABCDEF")
+        );
+        assert!(verify_join_code(Some("ABCDEF"), &caps));
+        assert!(!verify_join_code(Some("ABCDEF"), &client_capabilities()));
+        assert!(verify_join_code(None, &client_capabilities()));
+    }
+
+    #[test]
+    fn constant_time_eq_rejects_mismatch() {
+        assert!(constant_time_eq(b"abcdef", b"abcdef"));
+        assert!(!constant_time_eq(b"abcdef", b"abcdeg"));
+        assert!(!constant_time_eq(b"abc", b"abcd"));
     }
 }

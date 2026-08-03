@@ -1,393 +1,101 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Radio, Lock, Shield, Activity, Settings } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "wormhole signal - Wormhole CLI Reference",
-  description: "Run a signal/rendezvous server for peer discovery and NAT traversal.",
+  title: "wormhole signal — CLI Reference",
+  description: "Run the Wormhole rendezvous / signal server from the CLI.",
 };
 
 export default function SignalCommandPage() {
   return (
-    <div className="space-y-12">
-      {/* Header */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/docs/cli" className="hover:text-foreground">CLI Reference</Link>
-          <span>/</span>
-          <span className="text-muted-foreground">signal</span>
-        </div>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight font-mono">
-          wormhole signal
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          Run a signal/rendezvous server for peer discovery and NAT traversal.
-        </p>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "CLI", href: "/docs/cli" }}
+        title="wormhole signal"
+        description="Start a WebSocket rendezvous server. Does not proxy file data."
+      />
 
-      {/* Synopsis */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Synopsis</h2>
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <pre className="text-sm">
-              <code className="text-green-400">wormhole signal</code>
-              <code className="text-muted-foreground"> [OPTIONS]</code>
-            </pre>
-          </CardContent>
-        </Card>
+      <section>
+        <h2>Synopsis</h2>
+        <DocsCode>{"wormhole signal [OPTIONS]"}</DocsCode>
       </section>
 
-      {/* Description */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Description</h2>
-        <p className="text-muted-foreground">
-          The signal server is a lightweight WebSocket service that helps Wormhole peers
-          discover each other using join codes. It facilitates the initial connection
-          handshake but never sees your file data.
-        </p>
-        <p className="text-muted-foreground">
-          By default, Wormhole uses the public signal server at{" "}
-          <code className="text-wormhole-hunter-light">wss://signal.wormhole.app</code>. You can run
-          your own for privacy, reliability, or air-gapped networks.
-        </p>
+      <section>
+        <h2>What it does</h2>
+        <ul>
+          <li>Registers join codes → peer addresses</li>
+          <li>Relays PAKE public messages for authentication setup</li>
+          <li>Helps with NAT candidate exchange</li>
+        </ul>
+        <p>It does not see file contents or directory listings.</p>
       </section>
 
-      {/* What the Signal Server Does */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">What It Does</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <h3 className="text-lg font-semibold text-green-400 mb-2">Does</h3>
-              <ul className="space-y-2 text-muted-foreground text-sm">
-                <li>- Maps join codes to IP addresses</li>
-                <li>- Facilitates NAT hole punching</li>
-                <li>- Relays PAKE handshake messages</li>
-                <li>- Provides STUN/TURN services (optional)</li>
-              </ul>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <h3 className="text-lg font-semibold text-red-400 mb-2">Does NOT</h3>
-              <ul className="space-y-2 text-muted-foreground text-sm">
-                <li>- See your files or file names</li>
-                <li>- Decrypt your traffic</li>
-                <li>- Store any user data</li>
-                <li>- Require authentication</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+      <section>
+        <h2>Options</h2>
+        <DocsTable
+          headers={["Option", "Description"]}
+          rows={[
+            ["--port <PORT>", "Listen port (default 8080)"],
+            ["--bind <ADDR>", "Bind address"],
+            ["--db <PATH>", "SQLite persistence"],
+            ["--max-connections <N>", "Concurrent sockets"],
+            ["--code-expiry <SECS>", "Join code TTL"],
+            ["--rate-limit", "Enable per-IP rate limits"],
+            ["--rate-limit-rpm <N>", "Requests per minute"],
+            ["--tls-cert / --tls-key", "Serve WSS directly"],
+            ["--metrics [--metrics-port]", "Prometheus endpoint"],
+            ["--daemon", "Background (platform-dependent)"],
+          ]}
+        />
       </section>
 
-      {/* Options */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Options</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Option</th>
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Default</th>
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Description</th>
-              </tr>
-            </thead>
-            <tbody className="text-muted-foreground">
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--port &lt;PORT&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">8080</td>
-                <td className="py-3 px-4">WebSocket listen port</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--bind &lt;ADDR&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">0.0.0.0</td>
-                <td className="py-3 px-4">Network interface to bind</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--max-connections &lt;N&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">1000</td>
-                <td className="py-3 px-4">Maximum concurrent WebSocket connections</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--code-expiry &lt;SECS&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">3600</td>
-                <td className="py-3 px-4">How long join codes remain valid (seconds)</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--rate-limit</td>
-                <td className="py-3 px-4 text-muted-foreground">false</td>
-                <td className="py-3 px-4">Enable rate limiting per IP</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--rate-limit-rpm &lt;N&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">60</td>
-                <td className="py-3 px-4">Requests per minute per IP (with rate limiting)</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--daemon</td>
-                <td className="py-3 px-4 text-muted-foreground">false</td>
-                <td className="py-3 px-4">Run in background as daemon</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--tls-cert &lt;PATH&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">-</td>
-                <td className="py-3 px-4">TLS certificate file (enables wss://)</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--tls-key &lt;PATH&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">-</td>
-                <td className="py-3 px-4">TLS private key file</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--enable-stun</td>
-                <td className="py-3 px-4 text-muted-foreground">false</td>
-                <td className="py-3 px-4">Enable STUN server for NAT traversal</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--enable-turn</td>
-                <td className="py-3 px-4 text-muted-foreground">false</td>
-                <td className="py-3 px-4">Enable TURN relay for restrictive NATs</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--admin-port &lt;PORT&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">-</td>
-                <td className="py-3 px-4">Admin API port (disabled by default)</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--metrics</td>
-                <td className="py-3 px-4 text-muted-foreground">false</td>
-                <td className="py-3 px-4">Enable Prometheus metrics endpoint</td>
-              </tr>
-              <tr className="border-b border-border/50">
-                <td className="py-3 px-4 font-mono text-green-400">--metrics-port &lt;PORT&gt;</td>
-                <td className="py-3 px-4 text-muted-foreground">9090</td>
-                <td className="py-3 px-4">Port for metrics endpoint</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Examples */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">Examples</h2>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Radio className="h-5 w-5 text-wormhole-hunter-light" />
-            Basic Usage
-          </h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <pre className="text-sm">
-                <code className="text-muted-foreground">{`# Start signal server on default port
-wormhole signal
-
-# Custom port
+      <section>
+        <h2>Examples</h2>
+        <DocsCode>{`wormhole signal
 wormhole signal --port 9000
 
-# Run as daemon
-wormhole signal --daemon`}</code>
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
+# Rate-limited public-ish deploy
+wormhole signal --rate-limit --rate-limit-rpm 30 --max-connections 5000
 
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Lock className="h-5 w-5 text-wormhole-hunter-light" />
-            With TLS (Production)
-          </h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <pre className="text-sm">
-                <code className="text-muted-foreground">{`# Enable TLS for secure WebSocket (wss://)
+# Metrics
+wormhole signal --metrics --metrics-port 9090
+
+# TLS (or terminate at Caddy — preferred)
 wormhole signal \\
-  --port 443 \\
-  --tls-cert /etc/letsencrypt/live/signal.example.com/fullchain.pem \\
-  --tls-key /etc/letsencrypt/live/signal.example.com/privkey.pem
-
-# With Let's Encrypt auto-renewal (use a reverse proxy like Caddy)
-# See self-hosting documentation for details`}</code>
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Shield className="h-5 w-5 text-wormhole-hunter-light" />
-            With Rate Limiting
-          </h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <pre className="text-sm">
-                <code className="text-muted-foreground">{`# Enable rate limiting for public deployment
-wormhole signal \\
-  --rate-limit \\
-  --rate-limit-rpm 30 \\
-  --max-connections 5000`}</code>
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Activity className="h-5 w-5 text-wormhole-hunter-light" />
-            With Monitoring
-          </h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <pre className="text-sm">
-                <code className="text-muted-foreground">{`# Enable Prometheus metrics
-wormhole signal \\
-  --metrics \\
-  --metrics-port 9090 \\
-  --admin-port 8081
-
-# Metrics available at http://localhost:9090/metrics
-# Admin API at http://localhost:8081/`}</code>
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Settings className="h-5 w-5 text-wormhole-hunter-light" />
-            Full Production Setup
-          </h3>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <pre className="text-sm">
-                <code className="text-muted-foreground">{`wormhole signal \\
-  --port 443 \\
   --tls-cert /etc/ssl/signal.crt \\
-  --tls-key /etc/ssl/signal.key \\
-  --max-connections 10000 \\
-  --code-expiry 7200 \\
-  --rate-limit \\
-  --rate-limit-rpm 60 \\
-  --enable-stun \\
-  --metrics \\
-  --daemon`}</code>
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
+  --tls-key /etc/ssl/signal.key`}</DocsCode>
+        <DocsNote>
+          Production checklist:{" "}
+          <Link href="/docs/self-hosting/production">self-hosting production</Link>.
+        </DocsNote>
       </section>
 
-      {/* Client Configuration */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Client Configuration</h2>
-        <p className="text-muted-foreground">
-          To use your own signal server, configure clients:
-        </p>
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <pre className="text-sm">
-              <code className="text-muted-foreground">{`# Per-command
-wormhole host ~/folder --signal-server wss://signal.example.com
-wormhole mount WORM-XXXX --signal wss://signal.example.com
-
-# Global configuration
-wormhole config set general.default_signal_server "wss://signal.example.com"
-
-# Environment variable
-export WORMHOLE_SIGNAL_SERVER="wss://signal.example.com"`}</code>
-            </pre>
-          </CardContent>
-        </Card>
+      <section>
+        <h2>Point peers at this server</h2>
+        <DocsCode>{`wormhole host ~/folder --signal-server wss://signal.example.com
+export WORMHOLE_SIGNAL_SERVER=wss://signal.example.com`}</DocsCode>
       </section>
 
-      {/* Output */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Output</h2>
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <pre className="text-xs overflow-x-auto">
-              <code className="text-muted-foreground">{`$ wormhole signal --metrics
-2024-01-15T10:30:00Z INFO  Starting Wormhole Signal Server
-2024-01-15T10:30:00Z INFO  Version: 0.1.0
-2024-01-15T10:30:00Z INFO  Listening on ws://0.0.0.0:8080
-2024-01-15T10:30:00Z INFO  Metrics available at http://0.0.0.0:9090/metrics
-2024-01-15T10:30:00Z INFO  Code expiry: 3600 seconds
-2024-01-15T10:30:00Z INFO  Max connections: 1000
-2024-01-15T10:30:00Z INFO  Signal server ready
-
-2024-01-15T10:30:15Z INFO  New connection from 192.168.1.42
-2024-01-15T10:30:15Z INFO  Code registered: WORM-ABCD
-2024-01-15T10:30:22Z INFO  New connection from 10.0.0.15
-2024-01-15T10:30:22Z INFO  Code lookup: WORM-ABCD -> 192.168.1.42:4433
-2024-01-15T10:30:22Z INFO  Peer exchange completed`}</code>
-            </pre>
-          </CardContent>
-        </Card>
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/self-hosting">Self-hosting</Link>
+          </li>
+          <li>
+            <Link href="/docs/architecture/signal-server">Architecture</Link>
+          </li>
+          <li>
+            <Link href="/docs/cli/all-commands">All commands</Link>
+          </li>
+        </ul>
       </section>
-
-      {/* Metrics */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Prometheus Metrics</h2>
-        <p className="text-muted-foreground">
-          When <code className="text-wormhole-hunter-light">--metrics</code> is enabled:
-        </p>
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <pre className="text-xs overflow-x-auto">
-              <code className="text-muted-foreground">{`# HELP wormhole_signal_connections_total Total WebSocket connections
-# TYPE wormhole_signal_connections_total counter
-wormhole_signal_connections_total 1247
-
-# HELP wormhole_signal_connections_active Current active connections
-# TYPE wormhole_signal_connections_active gauge
-wormhole_signal_connections_active 42
-
-# HELP wormhole_signal_codes_registered_total Total codes registered
-# TYPE wormhole_signal_codes_registered_total counter
-wormhole_signal_codes_registered_total 892
-
-# HELP wormhole_signal_codes_active Current active codes
-# TYPE wormhole_signal_codes_active gauge
-wormhole_signal_codes_active 15
-
-# HELP wormhole_signal_exchanges_total Total successful peer exchanges
-# TYPE wormhole_signal_exchanges_total counter
-wormhole_signal_exchanges_total 756
-
-# HELP wormhole_signal_request_duration_seconds Request latency
-# TYPE wormhole_signal_request_duration_seconds histogram
-wormhole_signal_request_duration_seconds_bucket{le="0.001"} 5420
-wormhole_signal_request_duration_seconds_bucket{le="0.01"} 5892`}</code>
-            </pre>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* See Also */}
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">See Also</h2>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/docs/self-hosting">
-            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
-              Self-Hosting Guide
-            </Badge>
-          </Link>
-          <Link href="/docs/architecture/signal-server">
-            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
-              Signal Server Architecture
-            </Badge>
-          </Link>
-          <Link href="/docs/security">
-            <Badge variant="outline" className="border-border hover:border-wormhole-hunter/50 cursor-pointer">
-              Security
-            </Badge>
-          </Link>
-        </div>
-      </section>
-    </div>
+    </DocsArticle>
   );
 }

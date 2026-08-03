@@ -33,6 +33,30 @@ impl SessionError {
     }
 }
 
+/// Paths that must never be listed via the local control plane.
+fn is_denied_list_path(path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        const DENIED_PREFIXES: &[&str] = &[
+            "/etc", "/proc", "/sys", "/dev", "/root", "/var/run", "/run", "/boot",
+        ];
+        for prefix in DENIED_PREFIXES {
+            if path.starts_with(prefix) {
+                return true;
+            }
+        }
+    }
+    #[cfg(windows)]
+    {
+        let s = path.to_string_lossy().to_ascii_lowercase();
+        if s.starts_with("c:\\windows") || s.starts_with("c:\\program files") {
+            return true;
+        }
+    }
+    let _ = path;
+    false
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StartHostRequest {
     pub id: Option<String>,
@@ -189,6 +213,7 @@ impl SessionManager {
             shared_path: share_path.clone(),
             max_connections: 10,
             host_name: host_name.clone(),
+            join_code: Some(join_code.clone()),
         };
 
         let id_clone = id.clone();
@@ -243,10 +268,20 @@ impl SessionManager {
     /// Connect over QUIC and list the remote root (no FUSE). Mirrors desktop “connect” data plane.
     pub async fn probe_remote(&self, target: &str) -> Result<ProbeResult, SessionError> {
         let addr = parse_target_addr(target)?;
+        // Prefer the join code of a local host bound on this port (same-machine probe).
+        let join_code = {
+            let hosts = self.hosts.lock().await;
+            hosts
+                .values()
+                .find(|h| h.info.port == addr.port())
+                .map(|h| h.info.join_code.clone())
+        };
         let mut client = WormholeClient::new(ClientConfig {
             server_addr: addr,
             mount_point: PathBuf::from("/tmp/wormhole-probe"),
             request_timeout: Duration::from_secs(8),
+            join_code,
+            cert_pin: None,
         });
 
         let mut last_err = None;
@@ -320,22 +355,30 @@ impl SessionManager {
         // Full FUSE mount via wormhole-mount helper (same as CLI)
         std::fs::create_dir_all(&mount_point)?;
         let addr = parse_target_addr(&req.target)?;
+        let join_code = {
+            let hosts = self.hosts.lock().await;
+            hosts
+                .values()
+                .find(|h| h.info.port == addr.port())
+                .map(|h| h.info.join_code.clone())
+        };
         let binary = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|d| d.join("wormhole-mount")))
             .filter(|p| p.exists())
             .unwrap_or_else(|| PathBuf::from("wormhole-mount"));
 
-        let mut child = tokio::process::Command::new(&binary)
-            .arg(format!("{}", addr))
-            .arg(&mount_point)
-            .spawn()
-            .map_err(|e| {
-                SessionError::msg(format!(
-                    "failed to spawn {}: {e}. Use data_plane_only or WORMHOLE_NO_FUSE=1",
-                    binary.display()
-                ))
-            })?;
+        let mut cmd = tokio::process::Command::new(&binary);
+        cmd.arg(format!("{}", addr)).arg(&mount_point);
+        if let Some(code) = join_code.as_deref() {
+            cmd.arg("--join-code").arg(code);
+        }
+        let mut child = cmd.spawn().map_err(|e| {
+            SessionError::msg(format!(
+                "failed to spawn {}: {e}. Use data_plane_only or WORMHOLE_NO_FUSE=1",
+                binary.display()
+            ))
+        })?;
 
         let id_clone = id.clone();
         let task = tokio::spawn(async move {
@@ -419,14 +462,26 @@ impl SessionManager {
         if !path.is_dir() {
             return Err(SessionError::msg("Not a directory"));
         }
+        // SECURITY: deny listing sensitive system trees via the control plane.
+        if is_denied_list_path(&path) {
+            return Err(SessionError::msg(
+                "listing this path is not allowed from the control plane",
+            ));
+        }
         let mut out = Vec::new();
         for entry in std::fs::read_dir(&path)? {
             let entry = entry?;
-            let meta = entry.metadata()?;
+            // Prefer file_type so we do not follow symlinks for is_dir classification.
+            let ft = entry.file_type()?;
+            let size = if ft.is_symlink() {
+                0
+            } else {
+                entry.metadata().map(|m| m.len()).unwrap_or(0)
+            };
             out.push(DirListingEntry {
                 name: entry.file_name().to_string_lossy().into_owned(),
-                is_dir: meta.is_dir(),
-                size: meta.len(),
+                is_dir: ft.is_dir(),
+                size,
             });
         }
         out.sort_by(|a, b| a.name.cmp(&b.name));

@@ -1,32 +1,69 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({
-  variable: "--font-inter",
+const display = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
+const sans = IBM_Plex_Sans({
+  variable: "--font-ibm-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const mono = IBM_Plex_Mono({
+  variable: "--font-ibm-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+});
+
+const SITE_URL = "https://wormhole.byronwade.com";
+
 export const metadata: Metadata = {
-  title: "Wormhole - Mount Any Folder. Any Computer. No Setup.",
-  description: "Share files instantly with anyone. No cloud uploads, no waiting. Just share a code and connect. P2P file sharing that feels like magic.",
-  keywords: ["file sharing", "P2P", "peer to peer", "mount folder", "network drive", "file transfer"],
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Wormhole — Mount Any Folder. Any Computer. No Setup.",
+    template: "%s · Wormhole",
+  },
+  description:
+    "Peer-to-peer project mesh. Playhead-first scrubbing, project apertures, and BLAKE3 byte magnets—no cloud uploads, no accounts.",
+  keywords: [
+    "file sharing",
+    "P2P",
+    "peer to peer",
+    "mount folder",
+    "network drive",
+    "file transfer",
+  ],
   authors: [{ name: "Wormhole Team" }],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Wormhole - Mount Any Folder. Any Computer. No Setup.",
-    description: "Share files instantly with anyone. No cloud uploads, no waiting.",
+    title: "Wormhole — Mount Any Folder. Any Computer. No Setup.",
+    description: "Share a code. Connect peer-to-peer. No cloud upload.",
+    url: SITE_URL,
+    siteName: "Wormhole",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Wormhole — Mount Any Folder. Any Computer. No Setup.",
+    description: "Share a code. Connect peer-to-peer. No cloud upload.",
   },
 };
 
-// AGENTS.md: Mobile input font-size ≥16px or set viewport
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5, // AGENTS.md: NEVER disable browser zoom
+  maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#0d0d0d",
+  themeColor: "#eef1f4",
 };
 
 export default function RootLayout({
@@ -36,9 +73,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+      <body
+        className={`${display.variable} ${sans.variable} ${mono.variable} font-sans antialiased`}
+      >
         <ThemeProvider>
-          {/* AGENTS.md: Include a "Skip to content" link */}
           <a href="#main-content" className="skip-to-content">
             Skip to content
           </a>

@@ -29,9 +29,7 @@ pub fn check_mount_token(
 ) -> Result<TokenGateResult, MountTokenError> {
     let Some(raw) = encoded.map(str::trim).filter(|s| !s.is_empty()) else {
         if require_token {
-            return Err(MountTokenError::InvalidKey(
-                "mount token required".into(),
-            ));
+            return Err(MountTokenError::InvalidKey("mount token required".into()));
         }
         return Ok(TokenGateResult::AnonymousAllowed);
     };

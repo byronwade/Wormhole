@@ -12,6 +12,7 @@ use teleport_core::{WireCodec, PROTOCOL_VERSION, ROOT_INODE};
 use teleport_net::{send_message, WormholeConnection, WormholeEndpoint, WORMHOLE_ALPN};
 use tracing::{debug, info, warn};
 
+use crate::content_store::ChunkGrantSet;
 use crate::host::{dispatch_request, InodeTable};
 use crate::lock_manager::LockManager;
 use crate::net::{host_capabilities, negotiate_session_codec};
@@ -168,6 +169,8 @@ async fn handle_peer(
         "iroh session established"
     );
 
+    let grants = ChunkGrantSet::new();
+
     // Subsequent streams: request/response
     loop {
         let (request, mut send) = match conn.accept_message().await {
@@ -183,6 +186,7 @@ async fn handle_peer(
             &shared_path,
             &lock_manager,
             &holder_id,
+            &grants,
         );
         if let Err(e) = send_message(&mut send, &response, codec).await {
             warn!(error = %e, "iroh response send failed");
@@ -209,7 +213,8 @@ pub async fn iroh_hello_client(
     };
     ep.online().await;
 
-    let peer_id = teleport_net::parse_endpoint_id_hex(endpoint_id_hex).map_err(|e| e.to_string())?;
+    let peer_id =
+        teleport_net::parse_endpoint_id_hex(endpoint_id_hex).map_err(|e| e.to_string())?;
     let addr = teleport_net::endpoint_addr_from_id(peer_id);
     let mut conn = ep.connect(addr).await.map_err(|e| e.to_string())?;
 

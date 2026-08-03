@@ -276,6 +276,102 @@ pub enum PakeError {
     HandshakeFailed,
 }
 
+/// Domain-separated context for cert-pin key derivation from SPAKE2 output.
+const CERT_PIN_CONTEXT: &[u8] = b"wormhole-cert-pin-v1";
+
+/// Derive a MAC key for authenticating TLS certificate fingerprints.
+///
+/// Bound to the SPAKE2 shared secret so a signal-server MITM cannot forge a pin.
+pub fn derive_cert_pin_key(shared_key: &[u8; SHARED_KEY_SIZE]) -> [u8; 32] {
+    *blake3::Hasher::new_keyed(shared_key)
+        .update(CERT_PIN_CONTEXT)
+        .finalize()
+        .as_bytes()
+}
+
+/// Authenticate a certificate fingerprint under a SPAKE2 shared key.
+pub fn mac_cert_fingerprint(
+    shared_key: &[u8; SHARED_KEY_SIZE],
+    fingerprint: &[u8; 32],
+) -> [u8; 32] {
+    let key = derive_cert_pin_key(shared_key);
+    *blake3::Hasher::new_keyed(&key)
+        .update(fingerprint)
+        .finalize()
+        .as_bytes()
+}
+
+/// Constant-time verify of a cert-fingerprint MAC.
+pub fn verify_cert_fingerprint_mac(
+    shared_key: &[u8; SHARED_KEY_SIZE],
+    fingerprint: &[u8; 32],
+    mac: &[u8; 32],
+) -> bool {
+    let expected = mac_cert_fingerprint(shared_key, fingerprint);
+    constant_time_eq(&expected, mac)
+}
+
+/// Constant-time equality for equal-length byte slices.
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+/// Wire prefix for SPAKE2 messages relayed over the signal server.
+pub const RELAY_PAKE_PREFIX: &str = "pake:";
+/// Wire prefix for authenticated cert-pin messages (`certpin:<fphex>:<machex>`).
+pub const RELAY_CERTPIN_PREFIX: &str = "certpin:";
+
+/// Encode a PAKE outbound message for signal relay.
+pub fn encode_pake_relay(message: &[u8]) -> String {
+    format!("{}{}", RELAY_PAKE_PREFIX, hex::encode(message))
+}
+
+/// Decode a PAKE relay payload.
+pub fn decode_pake_relay(payload: &str) -> Option<Vec<u8>> {
+    let hex_part = payload.strip_prefix(RELAY_PAKE_PREFIX)?;
+    hex::decode(hex_part).ok()
+}
+
+/// Encode an authenticated cert fingerprint for signal relay.
+pub fn encode_certpin_relay(shared_key: &[u8; SHARED_KEY_SIZE], fingerprint: &[u8; 32]) -> String {
+    let mac = mac_cert_fingerprint(shared_key, fingerprint);
+    format!(
+        "{}{}:{}",
+        RELAY_CERTPIN_PREFIX,
+        hex::encode(fingerprint),
+        hex::encode(mac)
+    )
+}
+
+/// Decode and verify a cert-pin relay payload.
+///
+/// Returns the fingerprint when the MAC verifies under `shared_key`.
+pub fn decode_certpin_relay(shared_key: &[u8; SHARED_KEY_SIZE], payload: &str) -> Option<[u8; 32]> {
+    let rest = payload.strip_prefix(RELAY_CERTPIN_PREFIX)?;
+    let (fp_hex, mac_hex) = rest.split_once(':')?;
+    let fp_bytes = hex::decode(fp_hex).ok()?;
+    let mac_bytes = hex::decode(mac_hex).ok()?;
+    if fp_bytes.len() != 32 || mac_bytes.len() != 32 {
+        return None;
+    }
+    let mut fingerprint = [0u8; 32];
+    let mut mac = [0u8; 32];
+    fingerprint.copy_from_slice(&fp_bytes);
+    mac.copy_from_slice(&mac_bytes);
+    if verify_cert_fingerprint_mac(shared_key, &fingerprint, &mac) {
+        Some(fingerprint)
+    } else {
+        None
+    }
+}
+
 impl std::fmt::Display for PakeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -370,6 +466,33 @@ mod tests {
         // Both should derive the same shared key
         assert_eq!(host_key, client_key);
         assert_eq!(host_key.len(), SHARED_KEY_SIZE);
+    }
+
+    #[test]
+    fn cert_pin_mac_binds_to_shared_key() {
+        let host = PakeHandshake::start_host("PIN-KEY");
+        let client = PakeHandshake::start_client("PIN-KEY");
+        let host_msg = host.outbound_message().to_vec();
+        let client_msg = client.outbound_message().to_vec();
+        let shared = host.finish(&client_msg).unwrap();
+        assert_eq!(shared, client.finish(&host_msg).unwrap());
+
+        let fingerprint = checksum(b"fake-cert-der");
+        let mac = mac_cert_fingerprint(&shared, &fingerprint);
+        assert!(verify_cert_fingerprint_mac(&shared, &fingerprint, &mac));
+
+        let wrong_key = [0u8; 32];
+        assert!(!verify_cert_fingerprint_mac(&wrong_key, &fingerprint, &mac));
+
+        let wire = encode_certpin_relay(&shared, &fingerprint);
+        assert_eq!(decode_certpin_relay(&shared, &wire), Some(fingerprint));
+        assert!(decode_certpin_relay(&wrong_key, &wire).is_none());
+
+        let pake_wire = encode_pake_relay(b"abc");
+        assert_eq!(
+            decode_pake_relay(&pake_wire).as_deref(),
+            Some(b"abc".as_slice())
+        );
     }
 
     #[test]

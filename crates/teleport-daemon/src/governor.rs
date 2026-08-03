@@ -121,24 +121,50 @@ impl Governor {
                 // Same chunk (re-read), no change to streak
             }
             _ => {
-                // Random access, reset streak
+                // Random access / scrub seek — reset streak and treat as playhead
                 state.sequential_streak = 0;
                 state.direction = AccessDirection::Random;
             }
         }
 
+        let was_seek = !matches!(diff, -1..=1);
         state.last_chunk = chunk_id.index;
 
         // Copy values before calling generate_prefetch_targets to avoid borrow issue
         let streak = state.sequential_streak;
         let direction = state.direction;
+        let inode = chunk_id.inode;
+        let index = chunk_id.index;
+        let window = self.prefetch_window;
 
-        // Generate prefetch targets if sequential pattern detected
+        // Sequential streaming: classic ahead/behind window
         if streak >= self.sequential_threshold {
-            self.generate_prefetch_targets(chunk_id, &direction)
-        } else {
-            vec![]
+            return self.generate_prefetch_targets(chunk_id, &direction);
         }
+
+        // Playhead-first: large seeks (timeline scrub, editor jump) get an
+        // immediate window around the landing chunk without waiting for a streak.
+        if was_seek {
+            let behind = (window / 2).max(1);
+            let mut targets = Vec::with_capacity((window + behind + 1) as usize);
+            targets.push(ChunkId::new(inode, index));
+            for i in 1..=window {
+                targets.push(ChunkId::new(inode, index + i));
+            }
+            for i in 1..=behind {
+                if index >= i {
+                    targets.push(ChunkId::new(inode, index - i));
+                }
+            }
+            // Arm forward streak so subsequent sequential reads continue prefetching
+            if let Some(state) = self.file_state.get_mut(&inode) {
+                state.direction = AccessDirection::Forward;
+                state.sequential_streak = self.sequential_threshold;
+            }
+            return targets;
+        }
+
+        vec![]
     }
 
     /// Generate prefetch targets based on access direction
@@ -200,6 +226,50 @@ impl Governor {
     pub fn clear(&mut self) {
         self.file_state.clear();
     }
+
+    /// Playhead-first prefetch: jump the governor to a byte offset and return
+    /// chunks around it (ahead + optional behind) for immediate fetch.
+    ///
+    /// This is the editor/NLE path — scrubbing is random to a sequential engine,
+    /// so we treat the hint as a hard seek and prefetch the playhead window
+    /// without waiting for a sequential streak.
+    pub fn hint_playhead(
+        &mut self,
+        inode: Inode,
+        byte_offset: u64,
+        ahead: u64,
+        behind: u64,
+    ) -> Vec<ChunkId> {
+        let index = byte_offset / teleport_core::CHUNK_SIZE as u64;
+        let state = self
+            .file_state
+            .get_or_insert_mut(inode, FileAccessState::default);
+        // Treat as forward streaming from the playhead unless we are near EOF
+        // and only asked for behind-window (still mark Forward for continuity).
+        state.last_chunk = index;
+        state.direction = AccessDirection::Forward;
+        state.sequential_streak = self.sequential_threshold;
+
+        let mut targets = Vec::with_capacity((ahead + behind + 1) as usize);
+        // Include the playhead chunk itself first (highest priority for scrub).
+        targets.push(ChunkId::new(inode, index));
+        for i in 1..=ahead {
+            targets.push(ChunkId::new(inode, index + i));
+        }
+        for i in 1..=behind {
+            if index >= i {
+                targets.push(ChunkId::new(inode, index - i));
+            }
+        }
+        targets
+    }
+
+    /// Convenience: playhead hint using the configured prefetch window ahead
+    /// and a small behind window for reverse scrub / keyframe lookback.
+    pub fn hint_playhead_default(&mut self, inode: Inode, byte_offset: u64) -> Vec<ChunkId> {
+        let behind = (self.prefetch_window / 2).max(1);
+        self.hint_playhead(inode, byte_offset, self.prefetch_window, behind)
+    }
 }
 
 impl Default for Governor {
@@ -256,21 +326,25 @@ mod tests {
     }
 
     #[test]
-    fn test_random_access_no_prefetch() {
+    fn test_random_seek_triggers_playhead_prefetch() {
         let mut gov = Governor::new();
 
-        // Random access pattern
+        // First touch — not a seek from a prior chunk
         let targets0 = gov.record_access(&ChunkId::new(1, 0));
-        let targets1 = gov.record_access(&ChunkId::new(1, 5));
-        let targets2 = gov.record_access(&ChunkId::new(1, 2));
-        let targets3 = gov.record_access(&ChunkId::new(1, 10));
-
         assert!(targets0.is_empty());
-        assert!(targets1.is_empty());
-        assert!(targets2.is_empty());
-        assert!(targets3.is_empty());
 
-        assert_eq!(gov.get_direction(1), AccessDirection::Random);
+        // Jump to chunk 5 — playhead-first window
+        let targets1 = gov.record_access(&ChunkId::new(1, 5));
+        assert!(!targets1.is_empty());
+        assert_eq!(targets1[0], ChunkId::new(1, 5));
+        assert!(targets1.contains(&ChunkId::new(1, 6)));
+
+        // Another scrub jump
+        let targets3 = gov.record_access(&ChunkId::new(1, 20));
+        assert!(!targets3.is_empty());
+        assert_eq!(targets3[0], ChunkId::new(1, 20));
+        // After playhead arming, direction is Forward for continued streaming
+        assert_eq!(gov.get_direction(1), AccessDirection::Forward);
     }
 
     #[test]
@@ -387,6 +461,42 @@ mod tests {
         assert_eq!(gov.get_streak(2), 1);
         assert_eq!(gov.get_streak(3), 1);
         assert_eq!(gov.get_streak(4), 0);
+    }
+
+    #[test]
+    fn test_hint_playhead_returns_window() {
+        let mut gov = Governor::with_config(4, 3);
+        let targets = gov.hint_playhead(7, teleport_core::CHUNK_SIZE as u64 * 10, 4, 2);
+        assert_eq!(targets[0], ChunkId::new(7, 10)); // playhead first
+        assert!(targets.contains(&ChunkId::new(7, 11)));
+        assert!(targets.contains(&ChunkId::new(7, 14)));
+        assert!(targets.contains(&ChunkId::new(7, 9)));
+        assert!(targets.contains(&ChunkId::new(7, 8)));
+        assert_eq!(gov.get_direction(7), AccessDirection::Forward);
+        assert!(gov.get_streak(7) >= 3);
+    }
+
+    #[test]
+    fn test_hint_playhead_at_start_no_behind() {
+        let mut gov = Governor::new();
+        let targets = gov.hint_playhead(1, 0, 3, 5);
+        assert_eq!(targets[0], ChunkId::new(1, 0));
+        assert!(!targets.iter().any(|c| c.index > 3));
+        // No negative indices
+        assert_eq!(targets.iter().filter(|c| c.index == 0).count(), 1);
+    }
+
+    #[test]
+    fn test_hint_playhead_resets_random_seek() {
+        let mut gov = Governor::new();
+        // Build forward streak elsewhere
+        for i in 0..5 {
+            gov.record_access(&ChunkId::new(1, i));
+        }
+        // Jump playhead far ahead
+        let targets = gov.hint_playhead_default(1, teleport_core::CHUNK_SIZE as u64 * 100);
+        assert_eq!(targets[0], ChunkId::new(1, 100));
+        assert!(!targets.is_empty());
     }
 
     #[test]

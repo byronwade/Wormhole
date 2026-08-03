@@ -49,6 +49,7 @@ pub mod multi_fuse;
 pub mod winfsp;
 
 // Platform-independent modules
+pub mod aperture;
 pub mod bulk_transfer;
 pub mod cache;
 pub mod client;
@@ -63,9 +64,13 @@ pub mod host;
 #[cfg(feature = "iroh")]
 pub mod iroh_host;
 pub mod lock_manager;
+pub mod magnet;
+pub mod mesh_fetch;
 pub mod mount_token_gate;
 pub mod multi_host;
 pub mod net;
+pub mod peers;
+pub mod playhead_ipc;
 pub mod rate_limiter;
 pub mod rendezvous;
 pub mod stream_pool;
@@ -74,6 +79,7 @@ pub mod throughput;
 pub mod updater;
 
 pub use content_store::ContentStore;
+pub use peers::{PeerEntry, PeerRegistry};
 
 // Bridge re-export (platform-agnostic)
 pub use bridge::{BridgeHandler, FuseAsyncBridge, FuseError, FuseRequest};

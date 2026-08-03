@@ -15,24 +15,28 @@ use tokio::sync::Semaphore;
 use tracing::{debug, error, info, warn};
 
 use teleport_core::{
-    crypto::checksum, CreateDirRequest, CreateDirResponse, CreateFileRequest, CreateFileResponse,
-    DeleteDirRequest, DeleteDirResponse, DeleteFileRequest, DeleteFileResponse, DirEntry,
-    ErrorCode, ErrorMessage, FileAttr, FileType, GetAttrRequest, GetAttrResponse, HelloAckMessage,
-    Inode, ListDirRequest, ListDirResponse, LockRequest, LockResponse, LockType, LookupRequest,
-    LookupResponse, NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest,
+    crypto::checksum, BulkChunkRequestMsg, BulkChunkResponseMsg, ContentChunk, ContentHash,
+    CreateDirRequest, CreateDirResponse, CreateFileRequest, CreateFileResponse, DeleteDirRequest,
+    DeleteDirResponse, DeleteFileRequest, DeleteFileResponse, DirEntry, ErrorCode, ErrorMessage,
+    FileAttr, FileManifest, FileType, GetAttrRequest, GetAttrResponse, HelloAckMessage, Inode,
+    ListDirRequest, ListDirResponse, LockRequest, LockResponse, LockType, LookupRequest,
+    LookupResponse, ManifestRequestMsg, ManifestResponseMsg, MissingChunksRequestMsg,
+    MissingChunksResponseMsg, NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest,
     ReleaseResponse, RenameRequest, RenameResponse, SetAttrRequest, SetAttrResponse,
     TruncateRequest, TruncateResponse, WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE,
     FIRST_USER_INODE, PROTOCOL_VERSION, ROOT_INODE,
 };
 
+use crate::content_store::{ChunkGrantSet, ContentStore};
 use crate::lock_manager::LockManager;
 use crate::rate_limiter::RateLimiter;
 
-use teleport_core::WireCodec;
 use crate::net::{
-    create_server_endpoint, host_capabilities, negotiate_session_codec, recv_message,
-    recv_message_with, send_message, send_message_with, ConnectionError,
+    create_server_endpoint_with_identity, generate_server_identity, host_capabilities,
+    negotiate_session_codec, recv_message, recv_message_with, send_message, send_message_with,
+    CertFingerprint, ConnectionError, ServerIdentity,
 };
+use teleport_core::WireCodec;
 
 /// SECURITY: Maximum session duration before forced re-authentication (24 hours)
 /// This prevents stale or compromised sessions from being used indefinitely.
@@ -53,6 +57,9 @@ pub struct HostConfig {
     pub shared_path: PathBuf,
     pub max_connections: usize,
     pub host_name: String,
+    /// When set, clients must advertise a matching `join:` capability in Hello.
+    /// `None` / empty keeps open mode for unit tests and local benches.
+    pub join_code: Option<String>,
 }
 
 impl Default for HostConfig {
@@ -64,9 +71,15 @@ impl Default for HostConfig {
             host_name: hostname::get()
                 .map(|h| h.to_string_lossy().into_owned())
                 .unwrap_or_else(|_| "wormhole-host".into()),
+            join_code: None,
         }
     }
 }
+
+/// Cap whole-file manifest sync to limit host CPU/memory DoS.
+const MAX_MANIFEST_FILE_BYTES: u64 = 512 * 1024 * 1024;
+/// 512 MiB / 128 KiB chunks.
+const MAX_MANIFEST_CHUNKS: usize = 4096;
 
 /// Inode table mapping inodes to paths
 pub(crate) struct InodeTable {
@@ -201,6 +214,10 @@ pub struct WormholeHost {
     lock_manager: Arc<LockManager>,
     /// Rate limiter for protection against brute-force attacks
     rate_limiter: Arc<RateLimiter>,
+    /// TLS identity generated at construction (moved into the endpoint on serve).
+    identity: parking_lot::Mutex<Option<ServerIdentity>>,
+    /// Stable cert fingerprint for PAKE pin binding (available before serve).
+    cert_fingerprint: CertFingerprint,
 }
 
 impl WormholeHost {
@@ -208,6 +225,8 @@ impl WormholeHost {
         let inodes = Arc::new(InodeTable::new(config.shared_path.clone()));
         let lock_manager = Arc::new(LockManager::default());
         let rate_limiter = Arc::new(RateLimiter::new());
+        let identity = generate_server_identity();
+        let cert_fingerprint = identity.fingerprint;
 
         Self {
             connection_semaphore: Arc::new(Semaphore::new(config.max_connections)),
@@ -215,12 +234,23 @@ impl WormholeHost {
             inodes,
             lock_manager,
             rate_limiter,
+            identity: parking_lot::Mutex::new(Some(identity)),
+            cert_fingerprint,
         }
+    }
+
+    /// BLAKE3 fingerprint of the host QUIC certificate (for SPAKE2 pin binding).
+    pub fn cert_fingerprint(&self) -> CertFingerprint {
+        self.cert_fingerprint
     }
 
     /// Start serving connections
     pub async fn serve(&self) -> Result<(), HostError> {
-        let (endpoint, cert_fingerprint) = create_server_endpoint(self.config.bind_addr)
+        let identity = self.identity.lock().take().ok_or_else(|| {
+            HostError::Bind("host identity already consumed by a prior serve()".into())
+        })?;
+        let cert_fingerprint = identity.fingerprint;
+        let endpoint = create_server_endpoint_with_identity(self.config.bind_addr, identity)
             .map_err(|e| HostError::Bind(format!("{:?}", e)))?;
 
         info!(
@@ -280,6 +310,7 @@ impl WormholeHost {
                     let inodes = self.inodes.clone();
                     let shared_path = self.config.shared_path.clone();
                     let host_name = self.config.host_name.clone();
+                    let join_code = self.config.join_code.clone();
                     let lock_manager = self.lock_manager.clone();
                     let rate_limiter = self.rate_limiter.clone();
 
@@ -295,6 +326,7 @@ impl WormholeHost {
                                     inodes,
                                     shared_path,
                                     host_name,
+                                    join_code,
                                     lock_manager,
                                 )
                                 .await
@@ -350,6 +382,7 @@ async fn handle_connection(
     inodes: Arc<InodeTable>,
     shared_path: PathBuf,
     host_name: String,
+    join_code: Option<String>,
     lock_manager: Arc<LockManager>,
 ) -> Result<(), ConnectionError> {
     // Wait for handshake stream with timeout
@@ -389,6 +422,19 @@ async fn handle_connection(
         }
     };
 
+    // SECURITY: require join-code capability when the host is configured with one.
+    if !crate::net::verify_join_code(join_code.as_deref(), &remote_caps) {
+        let error = NetMessage::Error(ErrorMessage {
+            code: ErrorCode::AuthFailed,
+            message: "join code required or invalid".into(),
+            related_inode: None,
+        });
+        send_message(&mut send, &error).await?;
+        return Err(ConnectionError::Receive(
+            "join code authentication failed".into(),
+        ));
+    }
+
     let local_caps = host_capabilities(true);
     let session_codec = negotiate_session_codec(&local_caps, &remote_caps);
 
@@ -421,6 +467,8 @@ async fn handle_connection(
 
     // SECURITY: Track session start time for expiration enforcement
     let session_started = Instant::now();
+    // Per-connection BulkChunk ACL — only hashes seeded on this connection.
+    let grants = Arc::new(ChunkGrantSet::new());
 
     // Handle requests
     loop {
@@ -445,6 +493,7 @@ async fn handle_connection(
                 let shared_path = shared_path.clone();
                 let lock_manager = lock_manager.clone();
                 let holder_id = holder_id.clone();
+                let grants = Arc::clone(&grants);
 
                 tokio::spawn(async move {
                     if let Err(e) = handle_request(
@@ -455,6 +504,7 @@ async fn handle_connection(
                         &lock_manager,
                         &holder_id,
                         session_codec,
+                        &grants,
                     )
                     .await
                     {
@@ -481,6 +531,7 @@ async fn handle_connection(
 }
 
 /// Handle a single request
+#[allow(clippy::too_many_arguments)]
 async fn handle_request(
     send: &mut quinn::SendStream,
     recv: &mut quinn::RecvStream,
@@ -489,9 +540,17 @@ async fn handle_request(
     lock_manager: &LockManager,
     holder_id: &str,
     codec: WireCodec,
+    grants: &ChunkGrantSet,
 ) -> Result<(), ConnectionError> {
     let request = recv_message_with(recv, codec).await?;
-    let response = dispatch_request(request, inodes, shared_path, lock_manager, holder_id);
+    let response = dispatch_request(
+        request,
+        inodes,
+        shared_path,
+        lock_manager,
+        holder_id,
+        grants,
+    );
     send_message_with(send, &response, codec).await
 }
 
@@ -502,12 +561,13 @@ pub(crate) fn dispatch_request(
     shared_path: &Path,
     lock_manager: &LockManager,
     holder_id: &str,
+    grants: &ChunkGrantSet,
 ) -> NetMessage {
     match request {
         NetMessage::Lookup(req) => handle_lookup(req, inodes, shared_path),
-        NetMessage::GetAttr(req) => handle_getattr(req, inodes),
-        NetMessage::ListDir(req) => handle_listdir(req, inodes),
-        NetMessage::ReadChunk(req) => handle_read_chunk(req, inodes, shared_path),
+        NetMessage::GetAttr(req) => handle_getattr(req, inodes, shared_path),
+        NetMessage::ListDir(req) => handle_listdir(req, inodes, shared_path),
+        NetMessage::ReadChunk(req) => handle_read_chunk(req, inodes, shared_path, grants),
         NetMessage::WriteChunk(req) => handle_write_chunk(req, inodes, shared_path, lock_manager),
         NetMessage::AcquireLock(req) => handle_acquire_lock(req, lock_manager, holder_id),
         NetMessage::ReleaseLock(req) => handle_release_lock(req, lock_manager),
@@ -526,10 +586,200 @@ pub(crate) fn dispatch_request(
                 .unwrap_or(0),
             payload: p.payload,
         }),
+        NetMessage::ManifestRequest(req) => {
+            handle_manifest_request(req, inodes, shared_path, grants)
+        }
+        NetMessage::MissingChunksRequest(req) => handle_missing_chunks_request(req),
+        NetMessage::BulkChunkRequest(req) => handle_bulk_chunk_request(req, grants),
         _ => NetMessage::Error(ErrorMessage {
             code: ErrorCode::NotImplemented,
             message: "request type not implemented".into(),
             related_inode: None,
+        }),
+    }
+}
+
+/// Build a [`FileManifest`] by reading `path` in [`CHUNK_SIZE`] pieces.
+///
+/// When a content store is available, each chunk is also `put` so subsequent
+/// [`BulkChunkRequest`] lookups succeed.
+pub(crate) fn build_file_manifest(
+    path: &Path,
+    inode: Inode,
+    grants: Option<&ChunkGrantSet>,
+) -> Result<FileManifest, String> {
+    let store = ContentStore::open_default().ok();
+    build_file_manifest_into(path, inode, store.as_ref(), grants)
+}
+
+/// Build a manifest, optionally populating `store` with chunk blobs.
+pub(crate) fn build_file_manifest_into(
+    path: &Path,
+    inode: Inode,
+    store: Option<&ContentStore>,
+    grants: Option<&ChunkGrantSet>,
+) -> Result<FileManifest, String> {
+    let mut file = fs::File::open(path).map_err(|e| e.to_string())?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    let file_size = metadata.len();
+
+    if file_size > MAX_MANIFEST_FILE_BYTES {
+        return Err(format!(
+            "file too large for manifest sync ({} bytes; max {})",
+            file_size, MAX_MANIFEST_FILE_BYTES
+        ));
+    }
+
+    let mut manifest = FileManifest::new(inode);
+    let mut offset = 0u64;
+    let mut buf = vec![0u8; CHUNK_SIZE];
+
+    while offset < file_size {
+        if manifest.chunks.len() >= MAX_MANIFEST_CHUNKS {
+            return Err(format!(
+                "manifest exceeds max chunk count ({})",
+                MAX_MANIFEST_CHUNKS
+            ));
+        }
+        let to_read = ((file_size - offset) as usize).min(CHUNK_SIZE);
+        let n = file.read(&mut buf[..to_read]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            break;
+        }
+        let data = &buf[..n];
+        let hash = ContentHash::compute(data);
+        if let Some(store) = store {
+            match grants {
+                Some(g) => {
+                    if let Err(e) = store.put_granted(data, g) {
+                        warn!(error = %e, "failed to put chunk into content store");
+                    }
+                }
+                None => {
+                    if let Err(e) = store.put(data) {
+                        warn!(error = %e, "failed to put chunk into content store");
+                    }
+                }
+            }
+        }
+        manifest.push_chunk(ContentChunk::new(hash, n as u32, offset));
+        offset += n as u64;
+    }
+
+    Ok(manifest)
+}
+
+pub(crate) fn handle_manifest_request(
+    req: ManifestRequestMsg,
+    inodes: &InodeTable,
+    shared_path: &Path,
+    grants: &ChunkGrantSet,
+) -> NetMessage {
+    let path = match inodes.get_path(req.inode) {
+        Some(p) => p,
+        None => {
+            return NetMessage::ManifestResponse(ManifestResponseMsg {
+                manifest: FileManifest::new(req.inode),
+                error: Some(format!("inode {} not found", req.inode)),
+            });
+        }
+    };
+
+    if let Err(e) = teleport_core::path::safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on manifest: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: FileManifest::new(req.inode),
+            error: Some("path escapes share".into()),
+        });
+    }
+
+    match build_file_manifest(&path, req.inode, Some(grants)) {
+        Ok(manifest) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest,
+            error: None,
+        }),
+        Err(e) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: FileManifest::new(req.inode),
+            error: Some(e),
+        }),
+    }
+}
+
+pub(crate) fn handle_missing_chunks_request(req: MissingChunksRequestMsg) -> NetMessage {
+    use std::collections::HashMap;
+
+    let hashes = req.manifest.unique_hashes();
+    let size_by_hash: HashMap<ContentHash, u64> = req
+        .manifest
+        .chunks
+        .iter()
+        .map(|c| (c.hash, c.size as u64))
+        .collect();
+
+    let missing_hashes = match ContentStore::open_default() {
+        Ok(store) => store.missing(&hashes),
+        Err(_) => {
+            // Store unavailable — report all unique hashes as missing.
+            hashes
+        }
+    };
+
+    let missing_bytes = missing_hashes
+        .iter()
+        .map(|h| size_by_hash.get(h).copied().unwrap_or(0))
+        .sum();
+
+    NetMessage::MissingChunksResponse(MissingChunksResponseMsg {
+        missing_hashes,
+        missing_bytes,
+    })
+}
+
+pub(crate) fn handle_bulk_chunk_request(
+    req: BulkChunkRequestMsg,
+    grants: &ChunkGrantSet,
+) -> NetMessage {
+    // SECURITY: only serve hashes seeded on this connection.
+    if !grants.contains(&req.hash) {
+        return NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+            hash: req.hash,
+            data: Vec::new(),
+            compressed: false,
+            original_size: 0,
+            error: Some("chunk not authorized for bulk fetch".into()),
+        });
+    }
+
+    match ContentStore::open_default() {
+        Ok(store) => match store.get(&req.hash) {
+            Ok(data) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+                hash: req.hash,
+                original_size: data.len() as u32,
+                compressed: false,
+                data,
+                error: None,
+            }),
+            Err(_) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+                hash: req.hash,
+                data: Vec::new(),
+                compressed: false,
+                original_size: 0,
+                error: Some(
+                    "chunk not in content store — host with content_addressed after first read"
+                        .into(),
+                ),
+            }),
+        },
+        Err(e) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+            hash: req.hash,
+            data: Vec::new(),
+            compressed: false,
+            original_size: 0,
+            error: Some(format!("content store unavailable: {e}")),
         }),
     }
 }
@@ -615,13 +865,18 @@ fn handle_lookup(req: LookupRequest, inodes: &InodeTable, shared_path: &Path) ->
     }
 }
 
-fn handle_getattr(req: GetAttrRequest, inodes: &InodeTable) -> NetMessage {
+fn handle_getattr(req: GetAttrRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
     let path = match inodes.get_path(req.inode) {
         Some(p) => p,
         None => {
             return NetMessage::GetAttrResponse(GetAttrResponse { attr: None });
         }
     };
+
+    // SECURITY: do not follow escaping symlinks for metadata disclosure.
+    if let Some(err) = enforce_within_share(shared_path, &path, req.inode) {
+        return err;
+    }
 
     match fs::metadata(&path) {
         Ok(meta) => {
@@ -639,7 +894,7 @@ fn handle_getattr(req: GetAttrRequest, inodes: &InodeTable) -> NetMessage {
     }
 }
 
-fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
+fn handle_listdir(req: ListDirRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
     let path = match inodes.get_path(req.inode) {
         Some(p) => p,
         None => {
@@ -650,6 +905,11 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
             });
         }
     };
+
+    // SECURITY: directory itself must resolve inside the share (no escaped symlink dirs).
+    if let Some(err) = enforce_within_share(shared_path, &path, req.inode) {
+        return err;
+    }
 
     match fs::read_dir(&path) {
         Ok(entries) => {
@@ -669,20 +929,27 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
                     let name = entry.file_name().to_string_lossy().into_owned();
                     let entry_path = entry.path();
 
-                    if let Ok(meta) = entry.metadata() {
-                        let file_type = if meta.is_dir() {
-                            FileType::Directory
-                        } else if meta.is_symlink() {
-                            FileType::Symlink
-                        } else {
-                            FileType::File
-                        };
+                    // Use file_type() so we do not follow symlinks while classifying.
+                    let Ok(ft) = entry.file_type() else {
+                        continue;
+                    };
+                    let file_type = if ft.is_dir() {
+                        FileType::Directory
+                    } else if ft.is_symlink() {
+                        FileType::Symlink
+                    } else {
+                        FileType::File
+                    };
 
-                        if let Some(inode) = inodes.get_or_create_inode(entry_path) {
-                            dir_entries.push(DirEntry::new(name, inode, file_type));
-                        }
-                        // Skip entries if inode allocation fails (shouldn't happen in practice)
+                    // Skip symlinks (and any entry) whose resolved target escapes the share.
+                    if teleport_core::path::safe_real_path(shared_path, &entry_path).is_err() {
+                        continue;
                     }
+
+                    if let Some(inode) = inodes.get_or_create_inode(entry_path) {
+                        dir_entries.push(DirEntry::new(name, inode, file_type));
+                    }
+                    // Skip entries if inode allocation fails (shouldn't happen in practice)
                 }
             }
 
@@ -718,7 +985,12 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
     }
 }
 
-fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
+fn handle_read_chunk(
+    req: ReadChunkRequest,
+    inodes: &InodeTable,
+    shared_path: &Path,
+    grants: &ChunkGrantSet,
+) -> NetMessage {
     let path = match inodes.get_path(req.chunk_id.inode) {
         Some(p) => p,
         None => {
@@ -772,6 +1044,13 @@ fn handle_read_chunk(req: ReadChunkRequest, inodes: &InodeTable, shared_path: &P
 
     buffer.truncate(bytes_read);
     let hash = checksum(&buffer);
+
+    // Seed content store + grant for this connection's BulkChunk ACL.
+    if let Ok(store) = ContentStore::open_default() {
+        if let Err(e) = store.put_granted(&buffer, grants) {
+            warn!(error = %e, "failed to seed content store from read_chunk");
+        }
+    }
 
     // Check if this is the final chunk
     // Use saturating_add to prevent overflow with very large offsets
@@ -1646,6 +1925,7 @@ mod tests {
         let inode = table.get_or_create_inode(file).unwrap();
         let chunks = bytes.len() / CHUNK_SIZE;
 
+        let grants = ChunkGrantSet::new();
         // warm the page cache
         for i in 0..chunks {
             let _ = handle_read_chunk(
@@ -1655,6 +1935,7 @@ mod tests {
                 },
                 &table,
                 dir.path(),
+                &grants,
             );
         }
         let start = Instant::now();
@@ -1666,6 +1947,7 @@ mod tests {
                 },
                 &table,
                 dir.path(),
+                &grants,
             );
         }
         let el = start.elapsed();
@@ -1729,7 +2011,8 @@ mod tests {
             priority: 0,
         };
 
-        let response = handle_read_chunk(request, &table, temp_dir.path());
+        let grants = ChunkGrantSet::new();
+        let response = handle_read_chunk(request, &table, temp_dir.path(), &grants);
 
         match response {
             NetMessage::ReadChunkResponse(resp) => {
@@ -1766,7 +2049,8 @@ mod tests {
             chunk_id: ChunkId::new(file_inode, 0),
             priority: 0,
         };
-        let resp1 = handle_read_chunk(req1, &table, temp_dir.path());
+        let grants = ChunkGrantSet::new();
+        let resp1 = handle_read_chunk(req1, &table, temp_dir.path(), &grants);
 
         match resp1 {
             NetMessage::ReadChunkResponse(r) => {
@@ -1782,7 +2066,7 @@ mod tests {
             chunk_id: ChunkId::new(file_inode, 1),
             priority: 0,
         };
-        let resp2 = handle_read_chunk(req2, &table, temp_dir.path());
+        let resp2 = handle_read_chunk(req2, &table, temp_dir.path(), &grants);
 
         match resp2 {
             NetMessage::ReadChunkResponse(r) => {
@@ -1798,7 +2082,7 @@ mod tests {
             chunk_id: ChunkId::new(file_inode, 2),
             priority: 0,
         };
-        let resp3 = handle_read_chunk(req3, &table, temp_dir.path());
+        let resp3 = handle_read_chunk(req3, &table, temp_dir.path(), &grants);
 
         match resp3 {
             NetMessage::ReadChunkResponse(r) => {
@@ -1821,7 +2105,8 @@ mod tests {
             priority: 0,
         };
 
-        let response = handle_read_chunk(request, &table, temp_dir.path());
+        let grants = ChunkGrantSet::new();
+        let response = handle_read_chunk(request, &table, temp_dir.path(), &grants);
 
         match response {
             NetMessage::Error(e) => {
@@ -1896,7 +2181,7 @@ mod tests {
             limit: 100,
         };
 
-        let response = handle_listdir(request, &table);
+        let response = handle_listdir(request, &table, temp_dir.path());
 
         match response {
             NetMessage::ListDirResponse(r) => {
@@ -1908,5 +2193,82 @@ mod tests {
             }
             _ => panic!("Expected ListDirResponse"),
         }
+    }
+
+    #[test]
+    fn test_build_file_manifest_chunks_and_store() {
+        let temp_dir = TempDir::new().unwrap();
+        let store_dir = TempDir::new().unwrap();
+        let store = ContentStore::open(store_dir.path()).unwrap();
+
+        let file_path = temp_dir.path().join("data.bin");
+        let total = CHUNK_SIZE + 100;
+        let data: Vec<u8> = (0..total).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&file_path, &data).unwrap();
+
+        let grants = ChunkGrantSet::new();
+        let manifest =
+            build_file_manifest_into(&file_path, 42, Some(&store), Some(&grants)).unwrap();
+        assert_eq!(manifest.inode, 42);
+        assert_eq!(manifest.total_size, total as u64);
+        assert_eq!(manifest.chunks.len(), 2);
+        assert_eq!(manifest.chunks[0].size as usize, CHUNK_SIZE);
+        assert_eq!(manifest.chunks[1].size, 100);
+        assert!(store.contains(&manifest.chunks[0].hash));
+        assert!(store.contains(&manifest.chunks[1].hash));
+        assert_eq!(
+            store.get(&manifest.chunks[0].hash).unwrap(),
+            data[..CHUNK_SIZE]
+        );
+    }
+
+    #[test]
+    fn test_handle_manifest_missing_inode() {
+        let temp_dir = TempDir::new().unwrap();
+        let table = InodeTable::new(temp_dir.path().to_path_buf());
+        let grants = ChunkGrantSet::new();
+        let resp = handle_manifest_request(
+            ManifestRequestMsg {
+                inode: 9999,
+                file_size: 0,
+            },
+            &table,
+            temp_dir.path(),
+            &grants,
+        );
+        match resp {
+            NetMessage::ManifestResponse(r) => {
+                assert!(r.error.is_some());
+                assert!(r.manifest.chunks.is_empty());
+            }
+            _ => panic!("Expected ManifestResponse"),
+        }
+    }
+
+    #[test]
+    fn test_dispatch_manifest_and_bulk_chunk() {
+        let temp_dir = TempDir::new().unwrap();
+        let store_dir = TempDir::new().unwrap();
+        // Isolate CAS: put via build into temp store, then exercise handlers that use
+        // open_default by also verifying build_file_manifest_into + missing/bulk logic
+        // through the pure helpers.
+        let store = ContentStore::open(store_dir.path()).unwrap();
+        let file_path = temp_dir.path().join("clip.bin");
+        let data = b"bulk-chunk-demo-bytes".to_vec();
+        std::fs::write(&file_path, &data).unwrap();
+
+        let table = InodeTable::new(temp_dir.path().to_path_buf());
+        let inode = table.get_or_create_inode(file_path.clone()).unwrap();
+        let grants = ChunkGrantSet::new();
+        let manifest =
+            build_file_manifest_into(&file_path, inode, Some(&store), Some(&grants)).unwrap();
+        assert_eq!(manifest.chunks.len(), 1);
+        let hash = manifest.chunks[0].hash;
+        assert_eq!(store.get(&hash).unwrap(), data);
+
+        // MissingChunks against empty store reports the hash; against filled store reports none.
+        let empty = ContentStore::open(TempDir::new().unwrap().path()).unwrap();
+        assert_eq!(empty.missing(&[hash]), vec![hash]);
+        assert!(store.missing(&[hash]).is_empty());
     }
 }

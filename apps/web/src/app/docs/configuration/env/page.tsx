@@ -1,64 +1,72 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Env - Wormhole Docs",
-  description: "Documentation for Env in Wormhole.",
+  title: "Environment Variables — Wormhole Docs",
+  description: "WORMHOLE_* env overrides for config, cache, logging, and signal.",
 };
 
-export default function EnvPage() {
+export default function EnvConfigPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/configuration" className="hover:text-foreground">Configuration</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Env</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Configuration", href: "/docs/configuration" }}
+        title="Environment variables"
+        description="Env vars override the TOML file. Useful for Docker, systemd, and CI."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Env
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Common variables</h2>
+        <DocsTable
+          headers={["Variable", "Description", "Example"]}
+          rows={[
+            ["WORMHOLE_CONFIG", "Config file path", "/etc/wormhole/config.toml"],
+            ["WORMHOLE_CACHE_DIR", "Cache directory", "/var/cache/wormhole"],
+            ["WORMHOLE_LOG_LEVEL", "Log level", "debug"],
+            ["WORMHOLE_SIGNAL_SERVER", "Signal WebSocket URL", "wss://signal.example.com"],
+            ["WORMHOLE_HOST_PORT", "Default host port", "5000"],
+            ["WORMHOLE_CACHE_RAM_MB", "RAM cache size (MB)", "1024"],
+            ["WORMHOLE_CACHE_DISK_GB", "Disk cache size (GB)", "20"],
+            ["RUST_LOG", "Detailed Rust filters", "wormhole=debug,quinn=info"],
+          ]}
+        />
+        <DocsNote>
+          Priority: CLI flags → env → config file → defaults. See{" "}
+          <Link href="/docs/configuration">configuration overview</Link>.
+        </DocsNote>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/configuration"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Configuration
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Docker example</h2>
+        <DocsCode>{`services:
+  wormhole:
+    image: wormhole/daemon:latest
+    environment:
+      - WORMHOLE_LOG_LEVEL=info
+      - WORMHOLE_CACHE_DISK_GB=50
+      - WORMHOLE_SIGNAL_SERVER=wss://signal.mycompany.com
+    volumes:
+      - ./data:/data
+      - ./cache:/var/cache/wormhole`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/self-hosting/docker">Self-hosting Docker</Link>
+          </li>
+          <li>
+            <Link href="/docs/configuration/examples">Example configs</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

@@ -7,20 +7,22 @@ use std::time::Duration;
 use tracing::info;
 
 use teleport_core::{
-    ChunkId, CreateDirRequest, CreateDirResponse, CreateFileRequest, CreateFileResponse,
-    DeleteDirRequest, DeleteDirResponse, DeleteFileRequest, DeleteFileResponse, DirEntry, FileAttr,
-    GetAttrRequest, GetAttrResponse, HelloMessage, Inode, ListDirRequest, ListDirResponse,
-    LockRequest, LockResponse, LockType, LookupRequest, LookupResponse, NetMessage,
-    ReadChunkRequest, ReadChunkResponse, ReleaseRequest, ReleaseResponse, RenameRequest,
-    RenameResponse, SetAttrRequest, SetAttrResponse, WriteChunkRequest, WriteChunkResponse,
-    PROTOCOL_VERSION, ROOT_INODE,
+    BulkChunkRequestMsg, BulkChunkResponseMsg, ChunkId, ContentHash, CreateDirRequest,
+    CreateDirResponse, CreateFileRequest, CreateFileResponse, DeleteDirRequest, DeleteDirResponse,
+    DeleteFileRequest, DeleteFileResponse, DirEntry, FileAttr, FileManifest, GetAttrRequest,
+    GetAttrResponse, HelloMessage, Inode, ListDirRequest, ListDirResponse, LockRequest,
+    LockResponse, LockType, LookupRequest, LookupResponse, ManifestRequestMsg, ManifestResponseMsg,
+    MissingChunksRequestMsg, MissingChunksResponseMsg, NetMessage, ReadChunkRequest,
+    ReadChunkResponse, ReleaseRequest, ReleaseResponse, RenameRequest, RenameResponse,
+    SetAttrRequest, SetAttrResponse, WriteChunkRequest, WriteChunkResponse, PROTOCOL_VERSION,
+    ROOT_INODE,
 };
 
 use crate::bridge::{BridgeHandler, FuseError, FuseRequest};
 #[allow(deprecated)] // create_client_endpoint is deprecated but used for LAN/dev mode
 use crate::net::{
-    connect, create_client_endpoint, negotiate_session_codec, recv_message_with, send_message_with,
-    QuicConnection,
+    connect, create_client_endpoint, create_client_endpoint_with_pinned_cert,
+    negotiate_session_codec, recv_message_with, send_message_with, QuicConnection,
 };
 use crate::sync_engine::SyncEngine;
 #[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
@@ -31,6 +33,11 @@ pub struct ClientConfig {
     pub server_addr: SocketAddr,
     pub mount_point: PathBuf,
     pub request_timeout: Duration,
+    /// Join code presented as a `join:` Hello capability when the host requires auth.
+    pub join_code: Option<String>,
+    /// Expected host TLS cert fingerprint (SPAKE2-authenticated via signal).
+    /// When set, the client pins the host certificate and rejects MITM.
+    pub cert_pin: Option<[u8; 32]>,
 }
 
 impl Default for ClientConfig {
@@ -39,6 +46,8 @@ impl Default for ClientConfig {
             server_addr: "127.0.0.1:4433".parse().unwrap(),
             mount_point: PathBuf::from("/tmp/wormhole"),
             request_timeout: Duration::from_secs(30),
+            join_code: None,
+            cert_pin: None,
         }
     }
 }
@@ -163,10 +172,15 @@ impl WormholeClient {
     }
 
     /// Connect to the server and perform handshake
-    #[allow(deprecated)] // Using insecure endpoint for LAN/dev connections
+    #[allow(deprecated)] // Using insecure endpoint for LAN/dev connections without a pin
     pub async fn connect(&mut self) -> Result<(), ClientError> {
-        let endpoint =
-            create_client_endpoint().map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
+        let endpoint = match self.config.cert_pin {
+            Some(fp) => create_client_endpoint_with_pinned_cert(0, fp)
+                .map_err(|e| ClientError::Connection(format!("{:?}", e)))?,
+            None => {
+                create_client_endpoint().map_err(|e| ClientError::Connection(format!("{:?}", e)))?
+            }
+        };
 
         let conn = connect(&endpoint, self.config.server_addr, "localhost")
             .await
@@ -185,7 +199,9 @@ impl WormholeClient {
         let hello = NetMessage::Hello(HelloMessage {
             protocol_version: PROTOCOL_VERSION,
             client_id,
-            capabilities: crate::net::client_capabilities(),
+            capabilities: crate::net::client_capabilities_with_join(
+                self.config.join_code.as_deref(),
+            ),
         });
 
         // Send Hello with timeout
@@ -218,8 +234,10 @@ impl WormholeClient {
                 self.session_id = Some(ack.session_id);
                 self.root_inode = ack.root_inode;
                 self.host_name = Some(ack.host_name.clone());
-                self.codec =
-                    negotiate_session_codec(&crate::net::client_capabilities(), &ack.capabilities);
+                self.codec = negotiate_session_codec(
+                    &crate::net::client_capabilities_with_join(self.config.join_code.as_deref()),
+                    &ack.capabilities,
+                );
                 info!(
                     host = %ack.host_name,
                     codec = ?self.codec,
@@ -517,6 +535,119 @@ impl WormholeClient {
 
                 Ok(data[chunk_offset..chunk_offset + to_read].to_vec())
             }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
+            _ => Err(FuseError::Internal("unexpected response".into())),
+        }
+    }
+
+    /// Fetch a content-addressed chunk by BLAKE3 hash (bulk / magnet path).
+    pub async fn fetch_bulk_chunk(
+        &self,
+        hash: ContentHash,
+        priority: u8,
+        transfer_id: u64,
+    ) -> Result<Vec<u8>, FuseError> {
+        let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
+
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let request = NetMessage::BulkChunkRequest(BulkChunkRequestMsg {
+            hash,
+            priority,
+            transfer_id,
+        });
+
+        send_message_with(&mut send, &request, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let response = recv_message_with(&mut recv, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        match response {
+            NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+                hash: resp_hash,
+                data,
+                error,
+                ..
+            }) => {
+                if let Some(err) = error {
+                    return Err(FuseError::IoError(err));
+                }
+                if ContentHash::compute(&data) != resp_hash || resp_hash != hash {
+                    return Err(FuseError::IoError("content hash mismatch".into()));
+                }
+                Ok(data)
+            }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
+            _ => Err(FuseError::Internal("unexpected response".into())),
+        }
+    }
+
+    /// Request a content-addressed file manifest from the host.
+    pub async fn request_manifest(
+        &self,
+        inode: Inode,
+        file_size: u64,
+    ) -> Result<FileManifest, FuseError> {
+        let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
+
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let request = NetMessage::ManifestRequest(ManifestRequestMsg { inode, file_size });
+
+        send_message_with(&mut send, &request, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let response = recv_message_with(&mut recv, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        match response {
+            NetMessage::ManifestResponse(ManifestResponseMsg { manifest, error }) => {
+                if let Some(err) = error {
+                    return Err(FuseError::IoError(err));
+                }
+                Ok(manifest)
+            }
+            NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
+            _ => Err(FuseError::Internal("unexpected response".into())),
+        }
+    }
+
+    /// Ask the host which hashes from `manifest` are missing locally on the host
+    /// (used for reverse-dedup / mesh negotiation).
+    pub async fn request_missing_chunks(
+        &self,
+        manifest: FileManifest,
+    ) -> Result<MissingChunksResponseMsg, FuseError> {
+        let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
+
+        let (mut send, mut recv) = conn
+            .open_stream()
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let request = NetMessage::MissingChunksRequest(MissingChunksRequestMsg { manifest });
+
+        send_message_with(&mut send, &request, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        let response = recv_message_with(&mut recv, self.codec)
+            .await
+            .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
+
+        match response {
+            NetMessage::MissingChunksResponse(msg) => Ok(msg),
             NetMessage::Error(e) => Err(FuseError::IoError(format!("{:?}: {}", e.code, e.message))),
             _ => Err(FuseError::Internal("unexpected response".into())),
         }
@@ -1107,6 +1238,7 @@ mod tests {
             shared_path: dir.path().to_path_buf(),
             max_connections: 4,
             host_name: "test-host".into(),
+            join_code: None,
         });
         tokio::spawn(async move {
             let _ = host.serve().await;
@@ -1117,6 +1249,8 @@ mod tests {
             server_addr: addr,
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
+            join_code: None,
+            cert_pin: None,
         });
         let mut connected = false;
         for _ in 0..50 {
@@ -1172,6 +1306,72 @@ mod tests {
             matches!(missing, Err(FuseError::NotFound)),
             "expected NotFound, got {missing:?}"
         );
+
+        // 9. CAS magnet path: reading seeds the host content store; BulkChunk
+        //    by BLAKE3 hash must round-trip (fetch --from data plane).
+        let chunk_hash = teleport_core::ContentHash::compute(small);
+        let magnet_bytes = client
+            .fetch_bulk_chunk(chunk_hash, 255, 1)
+            .await
+            .expect("bulk chunk by hash after seeded read");
+        assert_eq!(magnet_bytes, small);
+
+        let manifest = client
+            .request_manifest(small_attr.inode, small_attr.size)
+            .await
+            .expect("manifest for small.txt");
+        assert!(!manifest.chunks.is_empty());
+        assert_eq!(manifest.chunks[0].hash, chunk_hash);
+    }
+
+    /// Explicit mesh_fetch helper over a live host (same path as `wormhole fetch --from`).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn e2e_fetch_hash_from_addr_over_quic() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let payload = b"magnet-mesh-payload-v1";
+        std::fs::write(dir.path().join("blob.bin"), payload).unwrap();
+
+        let addr = free_loopback_addr();
+        let host = WormholeHost::new(HostConfig {
+            bind_addr: addr,
+            shared_path: dir.path().to_path_buf(),
+            max_connections: 4,
+            host_name: "magnet-host".into(),
+            join_code: None,
+        });
+        tokio::spawn(async move {
+            let _ = host.serve().await;
+        });
+
+        let mut client = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+            join_code: None,
+            cert_pin: None,
+        });
+        for _ in 0..50 {
+            if client.connect().await.is_ok() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        let attr = client.lookup(ROOT_INODE, "blob.bin").await.expect("lookup");
+        let _ = client
+            .read(attr.inode, 0, payload.len() as u32)
+            .await
+            .expect("seed host store via read");
+
+        let hash = teleport_core::ContentHash::compute(payload);
+        let (data, source) = crate::mesh_fetch::fetch_hash_mesh(hash, Some(addr), false)
+            .await
+            .expect("mesh fetch from explicit addr");
+        assert_eq!(data, payload);
+        assert!(
+            source.contains(&addr.to_string()) || source == "local",
+            "unexpected source {source}"
+        );
     }
 
     /// Performance baseline: sequential read throughput of a large file through
@@ -1192,6 +1392,7 @@ mod tests {
             shared_path: dir.path().to_path_buf(),
             max_connections: 4,
             host_name: "bench-host".into(),
+            join_code: None,
         });
         tokio::spawn(async move {
             let _ = host.serve().await;
@@ -1201,6 +1402,8 @@ mod tests {
             server_addr: addr,
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(30),
+            join_code: None,
+            cert_pin: None,
         });
         for _ in 0..50 {
             if client.connect().await.is_ok() {
@@ -1282,6 +1485,7 @@ mod tests {
             shared_path: share.path().to_path_buf(),
             max_connections: 4,
             host_name: "test-host".into(),
+            join_code: None,
         });
         tokio::spawn(async move {
             let _ = host.serve().await;
@@ -1291,6 +1495,8 @@ mod tests {
             server_addr: addr,
             mount_point: share.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
+            join_code: None,
+            cert_pin: None,
         });
         let mut connected = false;
         for _ in 0..50 {
@@ -1317,22 +1523,68 @@ mod tests {
             "lookup of escaping symlink should be rejected, got {escaped:?}"
         );
 
-        // Even if the client discovers the symlink's inode via readdir (which
-        // assigns inodes to all directory entries), reading it must be rejected
-        // and must NOT return the secret bytes.
+        // Listing must omit escaping symlinks (no inode allocation / metadata leak).
         let entries = client.readdir(ROOT_INODE, 0).await.expect("readdir");
-        if let Some(escape_entry) = entries.iter().find(|e| e.name == "escape") {
-            let read_attempt = client.read(escape_entry.inode, 0, 64).await;
-            assert!(
-                read_attempt.is_err(),
-                "reading escaping symlink must be rejected, got {read_attempt:?}"
-            );
-            if let Ok(bytes) = &read_attempt {
-                assert!(
-                    !bytes.windows(6).any(|w| w == b"SECRET"),
-                    "secret bytes leaked through symlink escape!"
-                );
+        assert!(
+            entries.iter().all(|e| e.name != "escape"),
+            "escaping symlink must not appear in readdir: {entries:?}"
+        );
+    }
+
+    /// Hosts configured with a join code must reject Hello without a matching capability.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn e2e_join_code_required_on_hello() {
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(dir.path().join("a.txt"), b"x").unwrap();
+
+        let addr = free_loopback_addr();
+        let host = WormholeHost::new(HostConfig {
+            bind_addr: addr,
+            shared_path: dir.path().to_path_buf(),
+            max_connections: 4,
+            host_name: "auth-host".into(),
+            join_code: Some("ABC123".into()),
+        });
+        tokio::spawn(async move {
+            let _ = host.serve().await;
+        });
+
+        let mut denied = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+            join_code: None,
+            cert_pin: None,
+        });
+        let mut saw_fail = false;
+        for _ in 0..50 {
+            match denied.connect().await {
+                Ok(()) => panic!("connect without join code must fail"),
+                Err(_) => {
+                    saw_fail = true;
+                    break;
+                }
             }
         }
+        assert!(saw_fail, "expected auth failure without join code");
+
+        let mut allowed = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+            join_code: Some("ABC123".into()),
+            cert_pin: None,
+        });
+        let mut connected = false;
+        for _ in 0..50 {
+            if allowed.connect().await.is_ok() {
+                connected = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert!(connected, "connect with correct join code must succeed");
+        let entries = allowed.readdir(ROOT_INODE, 0).await.expect("readdir");
+        assert!(entries.iter().any(|e| e.name == "a.txt"));
     }
 }

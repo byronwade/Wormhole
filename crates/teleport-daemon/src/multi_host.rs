@@ -22,18 +22,19 @@ use teleport_core::{
     crypto::checksum, path::safe_real_path, DirEntry, ErrorCode, ErrorMessage, FileAttr, FileType,
     GetAttrRequest, GetAttrResponse, HelloAckMessage, Inode, ListDirRequest, ListDirResponse,
     ListSharesResponse, LockRequest, LockResponse, LockType, LookupRequest, LookupResponse,
-    NetMessage, ReadChunkRequest, ReadChunkResponse, ReleaseRequest, ReleaseResponse, ShareId,
-    ShareInfo, WriteChunkRequest, WriteChunkResponse, CHUNK_SIZE, FIRST_USER_INODE,
-    PROTOCOL_VERSION, ROOT_INODE,
+    ManifestRequestMsg, ManifestResponseMsg, NetMessage, ReadChunkRequest, ReadChunkResponse,
+    ReleaseRequest, ReleaseResponse, ShareId, ShareInfo, WriteChunkRequest, WriteChunkResponse,
+    CHUNK_SIZE, FIRST_USER_INODE, PROTOCOL_VERSION, ROOT_INODE,
 };
 
+use crate::content_store::ChunkGrantSet;
 use crate::lock_manager::LockManager;
-use teleport_core::WireCodec;
 use crate::net::{
     create_server_endpoint, host_capabilities, negotiate_session_codec, recv_message,
     recv_message_with, send_message, send_message_with, ConnectionError,
 };
 use crate::rate_limiter::RateLimiter;
+use teleport_core::WireCodec;
 
 /// SECURITY: Maximum session duration before forced re-authentication (24 hours)
 /// This prevents stale or compromised sessions from being used indefinitely.
@@ -81,6 +82,8 @@ pub struct MultiHostConfig {
     pub host_name: String,
     /// Shared folders
     pub shares: Vec<SharedFolder>,
+    /// When set, clients must advertise a matching `join:` capability in Hello.
+    pub join_code: Option<String>,
 }
 
 impl Default for MultiHostConfig {
@@ -92,6 +95,7 @@ impl Default for MultiHostConfig {
                 .map(|h| h.to_string_lossy().into_owned())
                 .unwrap_or_else(|_| "wormhole-host".into()),
             shares: Vec::new(),
+            join_code: None,
         }
     }
 }
@@ -396,6 +400,18 @@ async fn handle_connection(
         }
     };
 
+    if !crate::net::verify_join_code(config.join_code.as_deref(), &remote_caps) {
+        let error = NetMessage::Error(ErrorMessage {
+            code: ErrorCode::AuthFailed,
+            message: "join code required or invalid".into(),
+            related_inode: None,
+        });
+        send_message(&mut send, &error).await?;
+        return Err(ConnectionError::Receive(
+            "join code authentication failed".into(),
+        ));
+    }
+
     // Generate session ID
     let mut session_id = [0u8; 16];
     getrandom::fill(&mut session_id).expect("RNG failed - system entropy source unavailable");
@@ -433,6 +449,8 @@ async fn handle_connection(
 
     // SECURITY: Track session start time for expiration enforcement
     let session_started = Instant::now();
+    // Per-connection BulkChunk ACL — only hashes seeded on this connection.
+    let grants = Arc::new(ChunkGrantSet::new());
 
     // Handle requests
     loop {
@@ -458,6 +476,7 @@ async fn handle_connection(
                 let lock_manager = lock_manager.clone();
                 let holder_id = holder_id.clone();
                 let config = config.clone();
+                let grants = Arc::clone(&grants);
 
                 tokio::spawn(async move {
                     if let Err(e) = handle_request(
@@ -469,6 +488,7 @@ async fn handle_connection(
                         &holder_id,
                         &config,
                         session_codec,
+                        &grants,
                     )
                     .await
                     {
@@ -503,6 +523,7 @@ async fn handle_request(
     holder_id: &str,
     config: &MultiHostConfig,
     codec: WireCodec,
+    grants: &ChunkGrantSet,
 ) -> Result<(), ConnectionError> {
     let request = recv_message_with(recv, codec).await?;
 
@@ -544,7 +565,7 @@ async fn handle_request(
         NetMessage::GetAttr(req) => {
             if let Some(share) = default_share {
                 if let Some(table) = share_tables.get(&share.id) {
-                    handle_getattr(req, table)
+                    handle_getattr(req, table, &share.path)
                 } else {
                     NetMessage::Error(ErrorMessage {
                         code: ErrorCode::FileNotFound,
@@ -563,7 +584,7 @@ async fn handle_request(
         NetMessage::ListDir(req) => {
             if let Some(share) = default_share {
                 if let Some(table) = share_tables.get(&share.id) {
-                    handle_listdir(req, table)
+                    handle_listdir(req, table, &share.path)
                 } else {
                     NetMessage::Error(ErrorMessage {
                         code: ErrorCode::FileNotFound,
@@ -582,7 +603,7 @@ async fn handle_request(
         NetMessage::ReadChunk(req) => {
             if let Some(share) = default_share {
                 if let Some(table) = share_tables.get(&share.id) {
-                    handle_read_chunk(req, table)
+                    handle_read_chunk(req, table, grants)
                 } else {
                     NetMessage::Error(ErrorMessage {
                         code: ErrorCode::FileNotFound,
@@ -633,6 +654,27 @@ async fn handle_request(
                 .as_millis() as u64,
             payload: p.payload,
         }),
+        NetMessage::ManifestRequest(req) => {
+            if let Some(share) = default_share {
+                if let Some(table) = share_tables.get(&share.id) {
+                    handle_manifest_request_share(req, table, &share.path, grants)
+                } else {
+                    NetMessage::Error(ErrorMessage {
+                        code: ErrorCode::FileNotFound,
+                        message: "share not found".into(),
+                        related_inode: None,
+                    })
+                }
+            } else {
+                NetMessage::Error(ErrorMessage {
+                    code: ErrorCode::FileNotFound,
+                    message: "no shares available".into(),
+                    related_inode: None,
+                })
+            }
+        }
+        NetMessage::MissingChunksRequest(req) => crate::host::handle_missing_chunks_request(req),
+        NetMessage::BulkChunkRequest(req) => crate::host::handle_bulk_chunk_request(req, grants),
         _ => NetMessage::Error(ErrorMessage {
             code: ErrorCode::NotImplemented,
             message: "request type not implemented".into(),
@@ -641,6 +683,46 @@ async fn handle_request(
     };
 
     send_message_with(send, &response, codec).await
+}
+
+fn handle_manifest_request_share(
+    req: ManifestRequestMsg,
+    table: &ShareInodeTable,
+    shared_path: &Path,
+    grants: &ChunkGrantSet,
+) -> NetMessage {
+    let path = match table.get_path(req.inode) {
+        Some(p) => p,
+        None => {
+            return NetMessage::ManifestResponse(ManifestResponseMsg {
+                manifest: teleport_core::FileManifest::new(req.inode),
+                error: Some(format!("inode {} not found", req.inode)),
+            });
+        }
+    };
+
+    if let Err(e) = safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on manifest: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: teleport_core::FileManifest::new(req.inode),
+            error: Some("path escapes share".into()),
+        });
+    }
+
+    match crate::host::build_file_manifest(&path, req.inode, Some(grants)) {
+        Ok(manifest) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest,
+            error: None,
+        }),
+        Err(e) => NetMessage::ManifestResponse(ManifestResponseMsg {
+            manifest: teleport_core::FileManifest::new(req.inode),
+            error: Some(e),
+        }),
+    }
 }
 
 fn handle_lookup(req: LookupRequest, table: &ShareInodeTable, shared_path: &Path) -> NetMessage {
@@ -711,13 +793,26 @@ fn handle_lookup(req: LookupRequest, table: &ShareInodeTable, shared_path: &Path
     }
 }
 
-fn handle_getattr(req: GetAttrRequest, table: &ShareInodeTable) -> NetMessage {
+fn handle_getattr(req: GetAttrRequest, table: &ShareInodeTable, shared_path: &Path) -> NetMessage {
     let path = match table.get_path(req.inode) {
         Some(p) => p,
         None => {
             return NetMessage::GetAttrResponse(GetAttrResponse { attr: None });
         }
     };
+
+    if let Err(e) = safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on getattr: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::Error(ErrorMessage {
+            code: ErrorCode::PathTraversal,
+            message: "symlink escapes shared directory".into(),
+            related_inode: Some(req.inode),
+        });
+    }
 
     match fs::metadata(&path) {
         Ok(meta) => {
@@ -735,7 +830,7 @@ fn handle_getattr(req: GetAttrRequest, table: &ShareInodeTable) -> NetMessage {
     }
 }
 
-fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
+fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable, shared_path: &Path) -> NetMessage {
     let path = match table.get_path(req.inode) {
         Some(p) => p,
         None => {
@@ -746,6 +841,19 @@ fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
             });
         }
     };
+
+    if let Err(e) = safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on listdir: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::Error(ErrorMessage {
+            code: ErrorCode::PathTraversal,
+            message: "symlink escapes shared directory".into(),
+            related_inode: Some(req.inode),
+        });
+    }
 
     match fs::read_dir(&path) {
         Ok(entries) => {
@@ -765,25 +873,30 @@ fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
                     let name = entry.file_name().to_string_lossy().into_owned();
                     let entry_path = entry.path();
 
-                    if let Ok(meta) = entry.metadata() {
-                        let file_type = if meta.is_dir() {
-                            FileType::Directory
-                        } else if meta.is_symlink() {
-                            FileType::Symlink
-                        } else {
-                            FileType::File
-                        };
+                    let Ok(ft) = entry.file_type() else {
+                        continue;
+                    };
+                    let file_type = if ft.is_dir() {
+                        FileType::Directory
+                    } else if ft.is_symlink() {
+                        FileType::Symlink
+                    } else {
+                        FileType::File
+                    };
 
-                        if let Some(inode) = table.get_or_create_inode(entry_path.clone()) {
-                            dir_entries.push(DirEntry::new(name, inode, file_type));
-                        } else {
-                            // Inode space exhausted - log and skip this entry
-                            // This is a critical condition that should be investigated
-                            error!(
-                                "Inode space exhausted while listing directory, skipping entry: {:?}",
-                                entry_path
-                            );
-                        }
+                    if safe_real_path(shared_path, &entry_path).is_err() {
+                        continue;
+                    }
+
+                    if let Some(inode) = table.get_or_create_inode(entry_path.clone()) {
+                        dir_entries.push(DirEntry::new(name, inode, file_type));
+                    } else {
+                        // Inode space exhausted - log and skip this entry
+                        // This is a critical condition that should be investigated
+                        error!(
+                            "Inode space exhausted while listing directory, skipping entry: {:?}",
+                            entry_path
+                        );
                     }
                 }
             }
@@ -820,7 +933,11 @@ fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
     }
 }
 
-fn handle_read_chunk(req: ReadChunkRequest, table: &ShareInodeTable) -> NetMessage {
+fn handle_read_chunk(
+    req: ReadChunkRequest,
+    table: &ShareInodeTable,
+    grants: &ChunkGrantSet,
+) -> NetMessage {
     let path = match table.get_path(req.chunk_id.inode) {
         Some(p) => p,
         None => {
@@ -883,6 +1000,13 @@ fn handle_read_chunk(req: ReadChunkRequest, table: &ShareInodeTable) -> NetMessa
 
     buffer.truncate(bytes_read);
     let hash = checksum(&buffer);
+
+    // Seed content store and grant this session for BulkChunk.
+    if let Ok(store) = crate::content_store::ContentStore::open_default() {
+        if let Err(e) = store.put_granted(&buffer, grants) {
+            warn!(error = %e, "failed to seed content store from multi_host read_chunk");
+        }
+    }
 
     // Check if this is the final chunk
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);

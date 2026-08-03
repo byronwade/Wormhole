@@ -1,64 +1,66 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Network - Wormhole Docs",
-  description: "Documentation for Network in Wormhole.",
+  title: "Network Troubleshooting — Wormhole Docs",
+  description: "Debug join codes, NAT, firewalls, and signal connectivity.",
 };
 
-export default function NetworkPage() {
+export default function TroubleshootingNetworkPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/troubleshooting" className="hover:text-foreground">Troubleshooting</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Network</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Troubleshooting", href: "/docs/troubleshooting" }}
+        title="Network issues"
+        description="Separate discovery (signal) from data (QUIC). Failures often sit in only one plane."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Network
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Diagnose</h2>
+        <DocsCode>{`wormhole doctor
+wormhole ping WORM-XXXX
+wormhole ping 192.168.1.20:4433
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/troubleshooting"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Troubleshooting
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+# LAN bypass of signal
+wormhole host ~/share --no-signal --port 4433
+wormhole mount 192.168.1.20:4433 ~/mnt`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>Common failures</h2>
+        <DocsTable
+          headers={["Symptom", "Try"]}
+          rows={[
+            ["Invalid / expired code", "Regenerate; check clock skew"],
+            ["Lookup works, QUIC fails", "UDP firewall / CGNAT; try LAN"],
+            ["PAKE failed", "Retype code; ensure same signal"],
+            ["Timeout behind corporate NAT", "Self-host signal; open UDP"],
+          ]}
+        />
+        <DocsNote>
+          Signal never carries file data. If discovery works but transfers fail, focus on
+          UDP/QUIC between peers. See{" "}
+          <Link href="/docs/architecture/signal-server">signal architecture</Link>.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/configuration/network">Network config</Link>
+          </li>
+          <li>
+            <Link href="/docs/self-hosting">Self-hosting</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

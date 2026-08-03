@@ -1,64 +1,87 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Network - Wormhole Docs",
-  description: "Documentation for Network in Wormhole.",
+  title: "Network Configuration — Wormhole Docs",
+  description: "Timeouts, QUIC streams, signal URL, and STUN settings.",
 };
 
-export default function NetworkPage() {
+export default function NetworkConfigPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/configuration" className="hover:text-foreground">Configuration</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Network</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Configuration", href: "/docs/configuration" }}
+        title="Network"
+        description="[network] controls connect/request timeouts, stream limits, signal URL, and STUN."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Network
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Keys</h2>
+        <DocsTable
+          headers={["Key", "Default", "Description"]}
+          rows={[
+            ["connect_timeout_secs", "10", "Time to establish QUIC"],
+            ["request_timeout_secs", "30", "Per-request deadline"],
+            ["keepalive_secs", "15", "Idle keepalive interval"],
+            ["max_streams", "100", "Max concurrent QUIC streams"],
+            ["enable_0rtt", "false", "QUIC 0-RTT resumption"],
+            ["signal_server", "ws://localhost:8080", "Rendezvous URL"],
+            ["stun_servers", "(Google STUN)", "NAT reflexive address helpers"],
+          ]}
+        />
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/configuration"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Configuration
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Example</h2>
+        <DocsCode>{`[network]
+connect_timeout_secs = 10
+request_timeout_secs = 30
+keepalive_secs = 15
+max_streams = 100
+enable_0rtt = false
+signal_server = "wss://signal.example.com"
+stun_servers = [
+  "stun.l.google.com:19302",
+  "stun1.l.google.com:19302"
+]`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>Related host/client knobs</h2>
+        <ul>
+          <li>
+            <code>[host].port</code> / <code>bind</code> — where the share listens
+          </li>
+          <li>
+            <code>[host].max_connections</code> — peer cap
+          </li>
+          <li>
+            CLI: <code>--no-signal</code>, <code>--port</code> on{" "}
+            <Link href="/docs/cli/host">host</Link> /{" "}
+            <Link href="/docs/cli/mount">mount</Link>
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/architecture/quic">QUIC</Link>
+          </li>
+          <li>
+            <Link href="/docs/troubleshooting/network">Network troubleshooting</Link>
+          </li>
+          <li>
+            <Link href="/docs/configuration/env">Environment variables</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }
