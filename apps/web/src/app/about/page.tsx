@@ -45,7 +45,7 @@ export default function AboutPage() {
         </div>
 
         <div className="site-hero__cta" style={{ marginTop: "2.5rem" }}>
-          <Link href="/#download" className="site-btn">
+          <Link href="/download" className="site-btn">
             Download
           </Link>
           <a

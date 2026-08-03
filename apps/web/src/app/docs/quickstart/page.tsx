@@ -21,7 +21,7 @@ export default function QuickStartPage() {
         <h2>1. Install</h2>
         <p>
           Grab a build for your OS from the{" "}
-          <Link href="/#download">download page</Link>, or see{" "}
+          <Link href="/download">download page</Link>, or see{" "}
           <Link href="/docs/installation">installation</Link> for package details.
         </p>
         <ul>

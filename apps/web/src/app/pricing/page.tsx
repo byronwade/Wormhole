@@ -20,7 +20,7 @@ const plans = [
       "Community support",
     ],
     cta: "Download",
-    href: "/#download",
+    href: "/download",
     primary: true,
   },
   {
