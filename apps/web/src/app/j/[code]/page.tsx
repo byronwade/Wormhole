@@ -42,7 +42,7 @@ function downloadPath(platform: Platform): string {
     case "linux":
       return "/download/linux";
     default:
-      return "/#download";
+      return "/download";
   }
 }
 
