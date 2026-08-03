@@ -76,18 +76,21 @@ export async function DownloadHub() {
               </h2>
               <p>{p.blurb}</p>
               {asset ? (
-                <p style={{ marginTop: "0.75rem" }}>
-                  <a href={asset.browser_download_url} className="site-link-quiet" style={{ display: "inline-flex", gap: "0.35rem", alignItems: "center" }}>
-                    {asset.name}
+                <p className="dl-card__asset">
+                  <a href={asset.browser_download_url} className="dl-card__link">
+                    <span>{asset.name}</span>
                     <ArrowRight className="size-3.5" aria-hidden="true" />
                   </a>
-                  <span className="docs-muted" style={{ display: "block", marginTop: "0.25rem" }}>
+                  <span className="docs-muted dl-card__meta">
                     {formatBytes(asset.size)} · {release.tag_name}
                   </span>
                 </p>
               ) : (
-                <p style={{ marginTop: "0.75rem" }}>
-                  <Link href={p.href}>See options →</Link>
+                <p className="dl-card__asset">
+                  <Link href={p.href} className="dl-card__link">
+                    See options
+                    <ArrowRight className="size-3.5" aria-hidden="true" />
+                  </Link>
                 </p>
               )}
             </div>
