@@ -19,7 +19,7 @@ export default function NotFound() {
           <Link href="/docs" className="site-btn site-btn--ghost">
             Docs
           </Link>
-          <Link href="/download" className="site-link-quiet">
+          <Link href="/download" className="site-btn site-btn--ghost">
             Downloads
           </Link>
         </div>
