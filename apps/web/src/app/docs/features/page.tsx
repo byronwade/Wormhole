@@ -9,9 +9,9 @@ import {
 } from "@/components/docs-ui";
 
 export const metadata: Metadata = {
-  title: "Revolutionary features",
+  title: "Features — Playhead, aperture, byte magnets",
   description:
-    "Playhead-first prefetch, project apertures, peer mesh magnets, and content-addressed chunks in Wormhole.",
+    "Playhead-first prefetch, project apertures, and BLAKE3 byte magnets—Wormhole’s live project mesh for editors and developers.",
 };
 
 export default function FeaturesPage() {
@@ -19,7 +19,7 @@ export default function FeaturesPage() {
     <DocsArticle>
       <DocsHeader
         crumb={{ label: "Docs", href: "/docs" }}
-        title="Revolutionary features"
+        title="Project mesh features"
         description="Wormhole is not a sync folder. It’s a live project mesh—scrub, open, and pull bytes by hash."
       />
 

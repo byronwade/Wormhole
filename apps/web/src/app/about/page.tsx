@@ -1,10 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
+import { SITE_URL } from "@/lib/site";
 
-export const metadata = {
-  title: "About — Wormhole",
+export const metadata: Metadata = {
+  title: "About — Open-source P2P folder mounts",
   description:
-    "Wormhole is open-source peer-to-peer folder mounting for people who work with large files.",
+    "Wormhole is open-source peer-to-peer folder mounting for video editors, game developers, VFX artists, and engineers tired of cloud upload waits.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "About Wormhole",
+    description:
+      "Built for creatives and developers who move huge files. Mount remote folders live—encrypted, free core, open source.",
+    url: `${SITE_URL}/about`,
+  },
 };
 
 export default function AboutPage() {
@@ -12,35 +21,33 @@ export default function AboutPage() {
     <SiteShell active="about">
       <section className="site-section">
         <div className="site-section__intro" style={{ maxWidth: "40rem" }}>
-          <h2>About Wormhole</h2>
+          <h1 className="site-for-index__title">About Wormhole</h1>
           <p>
-            File sharing should not mean uploading a copy of your life’s work to a
-            stranger’s hard drive and waiting for the progress bar to finish.
+            File sharing should not mean uploading a copy of your life’s work to
+            a stranger’s hard drive and waiting for the progress bar to finish.
           </p>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gap: "1.75rem",
-            maxWidth: "40rem",
-            color: "var(--ink-soft)",
-            fontSize: "1.0625rem",
-            lineHeight: 1.65,
-          }}
-        >
-          <p style={{ margin: 0 }}>
+        <div className="site-prose">
+          <p>
             Wormhole mounts a remote folder as a local drive over a direct
-            peer-to-peer connection. You share a code. They connect. The files stay
-            on the machines that already own them.
+            peer-to-peer connection. You share a code. They connect. The files
+            stay on the machines that already own them.
           </p>
-          <p style={{ margin: 0 }}>
-            It’s built for video editors, game developers, VFX artists, and anyone
-            tired of paying rent on storage they already have.
+          <p>
+            It’s built for a specific niche: video editors mounting render
+            output, game developers sharing builds and art, VFX freelancers
+            handing off shot trees, and developers who want a path—not a VPN
+            ceremony.
           </p>
-          <p style={{ margin: 0 }}>
-            The project is open source under the MIT license. Inspect it, fork it,
+          <p>
+            The stack is intentional: Rust, FUSE, QUIC, join-code PAKE. The
+            project is open source under the MIT license. Inspect it, fork it,
             improve it.
+          </p>
+          <p>
+            We’re not trying to replace every cloud. We’re trying to make “why
+            am I uploading this again?” a question you stop asking.
           </p>
         </div>
 
@@ -48,14 +55,9 @@ export default function AboutPage() {
           <Link href="/download" className="site-btn">
             Download
           </Link>
-          <a
-            href="https://github.com/byronwade/Wormhole"
-            className="site-btn site-btn--ghost"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View source
-          </a>
+          <Link href="/for" className="site-btn site-btn--ghost">
+            Who it’s for
+          </Link>
         </div>
       </section>
     </SiteShell>

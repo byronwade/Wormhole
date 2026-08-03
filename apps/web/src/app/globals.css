@@ -596,8 +596,29 @@
   inset: 0;
   background:
     radial-gradient(90% 70% at 85% 18%, #d5dce6 0%, transparent 58%),
-    radial-gradient(70% 55% at 12% 88%, #d0dbd6 0%, transparent 52%),
+    radial-gradient(70% 55% at 12% 88%, #cfd9d4 0%, transparent 52%),
+    radial-gradient(40% 35% at 48% 42%, color-mix(in oklab, #7c3aed 12%, transparent) 0%, transparent 70%),
     linear-gradient(165deg, #f3f5f7 0%, #e7ebf1 55%, #d8e0e8 100%);
+}
+
+.site-hero-visual__orbit {
+  position: absolute;
+  right: 6%;
+  top: 18%;
+  width: min(42vw, 20rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklab, #14171c 12%, transparent);
+  opacity: 0.55;
+  transform: rotate(-12deg);
+}
+
+.site-hero-visual__orbit::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in oklab, #14171c 16%, transparent);
 }
 
 .site-hero-visual__aperture {
@@ -701,7 +722,7 @@
 
 .site-hero__lede {
   margin: 0 0 1.75rem;
-  max-width: 34rem;
+  max-width: 36rem;
   font-size: 1.125rem;
   line-height: 1.55;
   color: #2f3540;
@@ -711,6 +732,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.site-hero__proof {
+  margin: 1.25rem 0 0;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  color: color-mix(in oklab, #2f3540 88%, transparent);
+  font-variant-numeric: tabular-nums;
 }
 
 .site-section {
@@ -730,7 +759,7 @@
 }
 
 .site-section--band .site-section__intro,
-.site-section--band .site-diff {
+.site-section--band-inner {
   max-width: 72rem;
   margin-left: auto;
   margin-right: auto;
@@ -742,6 +771,9 @@
   padding-left: 0;
   padding-right: 0;
   width: calc(100% - 2.5rem);
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .site-section__intro {
@@ -925,6 +957,227 @@
 .site-diff__vs {
   font-size: 0.925rem;
   color: var(--ink-soft);
+}
+
+.site-audience {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 800px) {
+  .site-audience {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+.site-audience__card {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  padding: 1.35rem 1.4rem;
+  text-decoration: none;
+  color: inherit;
+  background: color-mix(in oklab, #fff 70%, var(--paper));
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  min-height: 9.5rem;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.site-audience__card:hover,
+.site-audience__card:focus-visible {
+  border-color: color-mix(in oklab, var(--ink) 28%, var(--line));
+  background: #fff;
+  outline: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-audience__card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.site-audience__label {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.site-audience__card strong {
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.site-audience__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.site-audience__card:hover .site-audience__more,
+.site-audience__card:focus-visible .site-audience__more {
+  color: var(--ink);
+}
+
+.site-niche-hero {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 6.5rem 1.25rem 2.5rem;
+}
+
+.site-niche-hero__eyebrow {
+  margin: 0 0 0.85rem;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.site-niche-hero h1 {
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: clamp(2rem, 4.8vw, 3.25rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  margin: 0 0 1rem;
+  max-width: 16ch;
+  color: var(--ink);
+}
+
+.site-niche-hero__lede {
+  margin: 0 0 1.75rem;
+  max-width: 38rem;
+  font-size: 1.125rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.site-niche-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 800px) {
+  .site-niche-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.site-niche-item {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.site-niche-item h3 {
+  margin: 0;
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.site-niche-item p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.975rem;
+  line-height: 1.55;
+}
+
+.site-niche-item--pain h3 {
+  color: color-mix(in oklab, var(--ink) 92%, #7c3aed);
+}
+
+.site-audience-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+  max-width: 48rem;
+}
+
+.site-audience-list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.site-audience-list a {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 0;
+  text-decoration: none;
+  color: var(--ink);
+  min-height: 44px;
+}
+
+.site-audience-list a span {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.site-audience-list a strong {
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.site-audience-list a em {
+  font-style: normal;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 40rem;
+}
+
+.site-audience-list a:hover,
+.site-audience-list a:focus-visible {
+  color: var(--ink);
+}
+
+.site-audience-list a:hover strong,
+.site-audience-list a:focus-visible strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.site-for-index__title {
+  font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
+  font-size: clamp(1.85rem, 3.8vw, 2.65rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  margin: 0 0 0.75rem;
+  color: var(--ink);
+}
+
+.site-prose {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 40rem;
+  color: var(--ink-soft);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+.site-prose p {
+  margin: 0;
 }
 
 .site-faq {
@@ -1765,10 +2018,12 @@
   background: #fff;
 }
 
+.site-pricing__plan h2,
 .site-pricing__plan h3 {
   margin: 0;
   font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
   font-size: 1.2rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--ink);
 }

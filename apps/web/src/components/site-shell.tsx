@@ -19,6 +19,7 @@ export function SiteShell({
           </Link>
           <nav className="site-nav__links" aria-label="Primary">
             <Link href="/#how">How it works</Link>
+            <Link href="/for">Who it’s for</Link>
             <Link href="/docs" aria-current={active === "docs" ? "page" : undefined}>
               Docs
             </Link>
@@ -55,6 +56,7 @@ export function SiteShell({
           <p className="site-footer__tag">Mount any folder. Any computer. No setup.</p>
           <div className="site-footer__links">
             <Link href="/download">Download</Link>
+            <Link href="/for">Who it’s for</Link>
             <Link href="/docs">Docs</Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/changelog">Changelog</Link>

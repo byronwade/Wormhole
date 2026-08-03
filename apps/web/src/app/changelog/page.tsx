@@ -3,8 +3,9 @@ import { SiteShell } from "@/components/site-shell";
 import { ChangelogList } from "@/components/changelog-list";
 
 export const metadata: Metadata = {
-  title: "Changelog",
-  description: "Wormhole release notes from GitHub. Newest first.",
+  title: "Changelog — Product updates",
+  description:
+    "Wormhole release notes: P2P mounts, playhead prefetch, and CLI updates for editors and developers. Newest first.",
   alternates: { canonical: "/changelog" },
 };
 
