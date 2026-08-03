@@ -153,7 +153,7 @@ export function HomePage() {
           <div className="site-nav__actions">
             <a
               href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}
-              className="site-link-quiet"
+              className="site-link-quiet site-nav__github"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -167,12 +167,13 @@ export function HomePage() {
             </a>
             <button
               type="button"
-              className="site-nav__menu"
+              className={`site-nav__menu${menuOpen ? " is-open" : ""}`}
               aria-expanded={menuOpen}
               aria-controls="mobile-nav"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               onClick={() => setMenuOpen((v) => !v)}
             >
+              <span />
               <span />
               <span />
             </button>
@@ -182,7 +183,7 @@ export function HomePage() {
         {menuOpen && (
           <div id="mobile-nav" className="site-nav__drawer">
             <a href="#how" onClick={() => setMenuOpen(false)}>
-              How
+              How it works
             </a>
             <a href="#who" onClick={() => setMenuOpen(false)}>
               Who it’s for
@@ -195,6 +196,17 @@ export function HomePage() {
             </Link>
             <a href="#faq" onClick={() => setMenuOpen(false)}>
               FAQ
+            </a>
+            <Link href="/download" onClick={() => setMenuOpen(false)}>
+              Download
+            </Link>
+            <a
+              href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMenuOpen(false)}
+            >
+              GitHub
             </a>
           </div>
         )}

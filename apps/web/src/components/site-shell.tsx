@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Github } from "lucide-react";
 import { LogoMark } from "@/components/logo-mark";
+import { SiteNav } from "@/components/site-nav";
 
 export function SiteShell({
   children,
@@ -11,41 +11,7 @@ export function SiteShell({
 }) {
   return (
     <div className="site">
-      <header className="site-nav">
-        <div className="site-nav__inner">
-          <Link href="/" className="site-brand" aria-label="Wormhole home">
-            <LogoMark className="size-7 text-ink" />
-            <span className="site-brand__name">Wormhole</span>
-          </Link>
-          <nav className="site-nav__links" aria-label="Primary">
-            <Link href="/#how">How it works</Link>
-            <Link href="/for">Who it’s for</Link>
-            <Link href="/docs" aria-current={active === "docs" ? "page" : undefined}>
-              Docs
-            </Link>
-            <Link href="/pricing" aria-current={active === "pricing" ? "page" : undefined}>
-              Pricing
-            </Link>
-            <Link href="/about" aria-current={active === "about" ? "page" : undefined}>
-              About
-            </Link>
-          </nav>
-          <div className="site-nav__actions">
-            <a
-              href="https://github.com/byronwade/Wormhole"
-              className="site-link-quiet"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Github className="size-4" aria-hidden="true" />
-              <span className="sr-only">GitHub</span>
-            </a>
-            <Link href="/download" className="site-btn site-btn--small">
-              Download
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteNav active={active} />
       {children}
       <footer className="site-footer">
         <div className="site-footer__inner">
