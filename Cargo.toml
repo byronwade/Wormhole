@@ -52,7 +52,7 @@ iroh = "1.0"
 # Crypto (mount tokens, cloud auth)
 ed25519-dalek = { version = "2.1", features = ["rand_core", "serde"] }
 opaque-ke = { version = "4.0", features = ["ristretto255", "serde", "std"] }
-rand_core = "0.6"
+rand_core = "0.10"
 rand = { version = "0.8", features = ["getrandom"] }
 
 # Crypto
