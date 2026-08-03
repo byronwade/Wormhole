@@ -17,20 +17,30 @@ use crate::FEATURE_SURFACE;
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum ControlRequest {
     HostStart(StartHostRequest),
-    HostStop { id: String },
+    HostStop {
+        id: String,
+    },
     HostList,
     MountStart(StartMountRequest),
-    MountStop { id: String },
+    MountStop {
+        id: String,
+    },
     MountList,
     Status,
-    ProbeRemote { target: String },
+    ProbeRemote {
+        target: String,
+    },
     GenerateCode,
     LocalIps,
-    ListDirectory { path: String },
+    ListDirectory {
+        path: String,
+    },
     Doctor,
     CacheStats,
     CacheClear,
-    DefaultMountPath { label: String },
+    DefaultMountPath {
+        label: String,
+    },
     FeatureSurface,
     /// Forward a playhead scrub hint to the local mount via playhead IPC.
     PlayheadHint {

@@ -22,13 +22,13 @@ use teleport_core::{
 };
 
 use crate::bridge::FuseError;
-#[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
-use teleport_core::WireCodec;
 #[allow(deprecated)] // create_client_endpoint is deprecated but used for LAN/dev mode
 use crate::net::{
     connect, create_client_endpoint, negotiate_session_codec, recv_message, recv_message_with,
     send_message, send_message_with, QuicConnection,
 };
+#[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
+use teleport_core::WireCodec;
 
 /// Configuration for connecting to a host
 #[derive(Clone, Debug)]
@@ -230,9 +230,8 @@ impl ConnectionManager {
         };
 
         // Perform handshake
-        let (session_id, host_name, shares, codec) = self
-            .handshake(&conn, config.join_code.as_deref())
-            .await?;
+        let (session_id, host_name, shares, codec) =
+            self.handshake(&conn, config.join_code.as_deref()).await?;
 
         // Update host state
         if let Some(mut host) = self.hosts.get_mut(host_id) {

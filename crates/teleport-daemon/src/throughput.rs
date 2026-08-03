@@ -35,9 +35,7 @@ impl SessionMeter {
                 window_start: now,
                 bytes_in_window: 0,
                 last_bps: 0.0,
-                last_activity: now
-                    .checked_sub(Duration::from_secs(10))
-                    .unwrap_or(now),
+                last_activity: now.checked_sub(Duration::from_secs(10)).unwrap_or(now),
             }),
         }
     }
@@ -52,7 +50,10 @@ impl SessionMeter {
         };
         let now = Instant::now();
         if now.duration_since(state.window_start) >= Duration::from_secs(1) {
-            let elapsed = now.duration_since(state.window_start).as_secs_f64().max(0.001);
+            let elapsed = now
+                .duration_since(state.window_start)
+                .as_secs_f64()
+                .max(0.001);
             state.last_bps = state.bytes_in_window as f64 / elapsed;
             state.bytes_in_window = 0;
             state.window_start = now;

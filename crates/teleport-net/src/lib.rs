@@ -60,13 +60,17 @@ impl WormholeEndpoint {
     }
 
     /// Bind with an existing secret key (persistent identity).
-    pub async fn bind_with_key(secret_key: SecretKey, announce_mdns: bool) -> Result<Self, NetError> {
+    pub async fn bind_with_key(
+        secret_key: SecretKey,
+        announce_mdns: bool,
+    ) -> Result<Self, NetError> {
         let mut builder = Endpoint::builder(presets::N0)
             .secret_key(secret_key.clone())
             .alpns(vec![WORMHOLE_ALPN.to_vec()]);
 
         if announce_mdns {
-            builder = builder.address_lookup(iroh_mdns_address_lookup::MdnsAddressLookup::builder());
+            builder =
+                builder.address_lookup(iroh_mdns_address_lookup::MdnsAddressLookup::builder());
         }
 
         let endpoint = builder
@@ -89,7 +93,7 @@ impl WormholeEndpoint {
     /// Bind using only a custom relay URL (self-host). Falls back to N0 if URL parse fails.
     pub async fn bind_relay_only(relay_url: &str) -> Result<Self, NetError> {
         let _ = relay_url; // reserved: custom RelayMode::Custom once relay map helpers stabilize
-        // For now bind with N0 and document WORMHOLE_RELAY_URL for deploy compose.
+                           // For now bind with N0 and document WORMHOLE_RELAY_URL for deploy compose.
         Self::bind().await
     }
 

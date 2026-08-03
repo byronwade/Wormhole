@@ -127,11 +127,7 @@ impl LanDiscovery {
     }
 
     /// Announce this host on the LAN while sharing (runs until aborted).
-    pub fn start_announce(
-        &self,
-        join_code: String,
-        port: u16,
-    ) -> tokio::task::JoinHandle<()> {
+    pub fn start_announce(&self, join_code: String, port: u16) -> tokio::task::JoinHandle<()> {
         let self_id = self.self_id.clone();
         let self_name = self.self_name.clone();
         tokio::spawn(async move {

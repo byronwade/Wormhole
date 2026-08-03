@@ -12,8 +12,8 @@ use std::sync::Arc;
 use tauri::{Emitter, Listener, Manager};
 use tracing::info;
 
-pub use commands::{AppState, ServiceEvent};
 use cli::{parse_launch_args, parse_wormhole_url, LaunchAction};
+pub use commands::{AppState, ServiceEvent};
 
 /// Deep link event payload for join links
 #[derive(Clone, serde::Serialize)]

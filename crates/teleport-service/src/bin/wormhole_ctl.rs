@@ -287,8 +287,7 @@ async fn main() -> anyhow::Result<()> {
                     ahead,
                     behind,
                 };
-                teleport_daemon::playhead_ipc::send_hint(&msg)
-                    .map_err(|e| anyhow::anyhow!(e))?;
+                teleport_daemon::playhead_ipc::send_hint(&msg).map_err(|e| anyhow::anyhow!(e))?;
                 println!("\"hint sent\"");
             }
         }

@@ -103,9 +103,9 @@ async fn main() -> Result<()> {
 async fn serve_control_plane(bind: &str) -> Result<()> {
     use std::collections::HashMap;
     use std::sync::Arc;
+    use teleport_cloud::{apply_polar_event, PolarWebhookEvent};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
-    use teleport_cloud::{apply_polar_event, PolarWebhookEvent};
 
     let entitlements = Arc::new(parking_lot::RwLock::new(HashMap::new()));
     let listener = TcpListener::bind(bind)

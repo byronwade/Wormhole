@@ -121,9 +121,7 @@ impl ProjectAperture {
             if root_norm.is_empty() || root_norm == "." {
                 return true;
             }
-            if normalized == root_norm
-                || normalized.starts_with(&format!("{root_norm}/"))
-            {
+            if normalized == root_norm || normalized.starts_with(&format!("{root_norm}/")) {
                 return true;
             }
         }

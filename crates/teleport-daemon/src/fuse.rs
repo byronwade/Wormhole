@@ -60,7 +60,10 @@ impl WormholeFS {
     fn try_bind_playhead() -> Option<std::os::unix::net::UnixDatagram> {
         match playhead_ipc::bind_listener() {
             Ok(sock) => {
-                info!("playhead IPC listening on {}", playhead_ipc::socket_path().display());
+                info!(
+                    "playhead IPC listening on {}",
+                    playhead_ipc::socket_path().display()
+                );
                 Some(sock)
             }
             Err(e) => {
