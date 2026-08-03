@@ -349,6 +349,10 @@ struct MountArgs {
     #[arg(long)]
     password: Option<String>,
 
+    /// Join code for QUIC Hello auth when mounting by host:port
+    #[arg(long)]
+    join_code: Option<String>,
+
     /// Transport backend: `quic` (classic) or `iroh` (endpoint id dial)
     #[arg(long, default_value = "quic", env = "WORMHOLE_TRANSPORT")]
     transport: String,
@@ -1568,6 +1572,7 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         shared_path: path.clone(),
         max_connections: args.max_connections,
         host_name: host_name.clone(),
+        join_code: Some(join_code.clone()),
     };
 
     // Display startup info
@@ -1892,6 +1897,9 @@ async fn run_mount_direct(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std
     if args.use_kext {
         cmd.arg("--use-kext");
     }
+    if let Some(code) = args.join_code.as_deref() {
+        cmd.arg("--join-code").arg(code);
+    }
 
     let status = cmd.status()?;
 
@@ -1985,6 +1993,8 @@ async fn run_mount_via_signal(
             if args.use_kext {
                 cmd.arg("--use-kext");
             }
+            // Present the rendezvous join code on the QUIC Hello for host auth.
+            cmd.arg("--join-code").arg(&code);
 
             let status = cmd.status()?;
 

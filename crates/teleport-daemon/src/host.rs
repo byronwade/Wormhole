@@ -56,6 +56,9 @@ pub struct HostConfig {
     pub shared_path: PathBuf,
     pub max_connections: usize,
     pub host_name: String,
+    /// When set, clients must advertise a matching `join:` capability in Hello.
+    /// `None` / empty keeps open mode for unit tests and local benches.
+    pub join_code: Option<String>,
 }
 
 impl Default for HostConfig {
@@ -67,9 +70,15 @@ impl Default for HostConfig {
             host_name: hostname::get()
                 .map(|h| h.to_string_lossy().into_owned())
                 .unwrap_or_else(|_| "wormhole-host".into()),
+            join_code: None,
         }
     }
 }
+
+/// Cap whole-file manifest sync to limit host CPU/memory DoS.
+const MAX_MANIFEST_FILE_BYTES: u64 = 512 * 1024 * 1024;
+/// 512 MiB / 128 KiB chunks.
+const MAX_MANIFEST_CHUNKS: usize = 4096;
 
 /// Inode table mapping inodes to paths
 pub(crate) struct InodeTable {
@@ -283,6 +292,7 @@ impl WormholeHost {
                     let inodes = self.inodes.clone();
                     let shared_path = self.config.shared_path.clone();
                     let host_name = self.config.host_name.clone();
+                    let join_code = self.config.join_code.clone();
                     let lock_manager = self.lock_manager.clone();
                     let rate_limiter = self.rate_limiter.clone();
 
@@ -298,6 +308,7 @@ impl WormholeHost {
                                     inodes,
                                     shared_path,
                                     host_name,
+                                    join_code,
                                     lock_manager,
                                 )
                                 .await
@@ -353,6 +364,7 @@ async fn handle_connection(
     inodes: Arc<InodeTable>,
     shared_path: PathBuf,
     host_name: String,
+    join_code: Option<String>,
     lock_manager: Arc<LockManager>,
 ) -> Result<(), ConnectionError> {
     // Wait for handshake stream with timeout
@@ -391,6 +403,19 @@ async fn handle_connection(
             return Err(ConnectionError::Receive("expected Hello".into()));
         }
     };
+
+    // SECURITY: require join-code capability when the host is configured with one.
+    if !crate::net::verify_join_code(join_code.as_deref(), &remote_caps) {
+        let error = NetMessage::Error(ErrorMessage {
+            code: ErrorCode::AuthFailed,
+            message: "join code required or invalid".into(),
+            related_inode: None,
+        });
+        send_message(&mut send, &error).await?;
+        return Err(ConnectionError::Receive(
+            "join code authentication failed".into(),
+        ));
+    }
 
     let local_caps = host_capabilities(true);
     let session_codec = negotiate_session_codec(&local_caps, &remote_caps);
@@ -508,8 +533,8 @@ pub(crate) fn dispatch_request(
 ) -> NetMessage {
     match request {
         NetMessage::Lookup(req) => handle_lookup(req, inodes, shared_path),
-        NetMessage::GetAttr(req) => handle_getattr(req, inodes),
-        NetMessage::ListDir(req) => handle_listdir(req, inodes),
+        NetMessage::GetAttr(req) => handle_getattr(req, inodes, shared_path),
+        NetMessage::ListDir(req) => handle_listdir(req, inodes, shared_path),
         NetMessage::ReadChunk(req) => handle_read_chunk(req, inodes, shared_path),
         NetMessage::WriteChunk(req) => handle_write_chunk(req, inodes, shared_path, lock_manager),
         NetMessage::AcquireLock(req) => handle_acquire_lock(req, lock_manager, holder_id),
@@ -559,11 +584,24 @@ pub(crate) fn build_file_manifest_into(
     let metadata = file.metadata().map_err(|e| e.to_string())?;
     let file_size = metadata.len();
 
+    if file_size > MAX_MANIFEST_FILE_BYTES {
+        return Err(format!(
+            "file too large for manifest sync ({} bytes; max {})",
+            file_size, MAX_MANIFEST_FILE_BYTES
+        ));
+    }
+
     let mut manifest = FileManifest::new(inode);
     let mut offset = 0u64;
     let mut buf = vec![0u8; CHUNK_SIZE];
 
     while offset < file_size {
+        if manifest.chunks.len() >= MAX_MANIFEST_CHUNKS {
+            return Err(format!(
+                "manifest exceeds max chunk count ({})",
+                MAX_MANIFEST_CHUNKS
+            ));
+        }
         let to_read = ((file_size - offset) as usize).min(CHUNK_SIZE);
         let n = file.read(&mut buf[..to_read]).map_err(|e| e.to_string())?;
         if n == 0 {
@@ -653,6 +691,17 @@ pub(crate) fn handle_missing_chunks_request(req: MissingChunksRequestMsg) -> Net
 }
 
 pub(crate) fn handle_bulk_chunk_request(req: BulkChunkRequestMsg) -> NetMessage {
+    // SECURITY: only serve hashes published via verified share-path seeds.
+    if !crate::content_store::is_published_hash(&req.hash) {
+        return NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
+            hash: req.hash,
+            data: Vec::new(),
+            compressed: false,
+            original_size: 0,
+            error: Some("chunk not authorized for bulk fetch".into()),
+        });
+    }
+
     match ContentStore::open_default() {
         Ok(store) => match store.get(&req.hash) {
             Ok(data) => NetMessage::BulkChunkResponse(BulkChunkResponseMsg {
@@ -764,13 +813,18 @@ fn handle_lookup(req: LookupRequest, inodes: &InodeTable, shared_path: &Path) ->
     }
 }
 
-fn handle_getattr(req: GetAttrRequest, inodes: &InodeTable) -> NetMessage {
+fn handle_getattr(req: GetAttrRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
     let path = match inodes.get_path(req.inode) {
         Some(p) => p,
         None => {
             return NetMessage::GetAttrResponse(GetAttrResponse { attr: None });
         }
     };
+
+    // SECURITY: do not follow escaping symlinks for metadata disclosure.
+    if let Some(err) = enforce_within_share(shared_path, &path, req.inode) {
+        return err;
+    }
 
     match fs::metadata(&path) {
         Ok(meta) => {
@@ -788,7 +842,7 @@ fn handle_getattr(req: GetAttrRequest, inodes: &InodeTable) -> NetMessage {
     }
 }
 
-fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
+fn handle_listdir(req: ListDirRequest, inodes: &InodeTable, shared_path: &Path) -> NetMessage {
     let path = match inodes.get_path(req.inode) {
         Some(p) => p,
         None => {
@@ -799,6 +853,11 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
             });
         }
     };
+
+    // SECURITY: directory itself must resolve inside the share (no escaped symlink dirs).
+    if let Some(err) = enforce_within_share(shared_path, &path, req.inode) {
+        return err;
+    }
 
     match fs::read_dir(&path) {
         Ok(entries) => {
@@ -818,20 +877,27 @@ fn handle_listdir(req: ListDirRequest, inodes: &InodeTable) -> NetMessage {
                     let name = entry.file_name().to_string_lossy().into_owned();
                     let entry_path = entry.path();
 
-                    if let Ok(meta) = entry.metadata() {
-                        let file_type = if meta.is_dir() {
-                            FileType::Directory
-                        } else if meta.is_symlink() {
-                            FileType::Symlink
-                        } else {
-                            FileType::File
-                        };
+                    // Use file_type() so we do not follow symlinks while classifying.
+                    let Ok(ft) = entry.file_type() else {
+                        continue;
+                    };
+                    let file_type = if ft.is_dir() {
+                        FileType::Directory
+                    } else if ft.is_symlink() {
+                        FileType::Symlink
+                    } else {
+                        FileType::File
+                    };
 
-                        if let Some(inode) = inodes.get_or_create_inode(entry_path) {
-                            dir_entries.push(DirEntry::new(name, inode, file_type));
-                        }
-                        // Skip entries if inode allocation fails (shouldn't happen in practice)
+                    // Skip symlinks (and any entry) whose resolved target escapes the share.
+                    if teleport_core::path::safe_real_path(shared_path, &entry_path).is_err() {
+                        continue;
                     }
+
+                    if let Some(inode) = inodes.get_or_create_inode(entry_path) {
+                        dir_entries.push(DirEntry::new(name, inode, file_type));
+                    }
+                    // Skip entries if inode allocation fails (shouldn't happen in practice)
                 }
             }
 
@@ -2052,7 +2118,7 @@ mod tests {
             limit: 100,
         };
 
-        let response = handle_listdir(request, &table);
+        let response = handle_listdir(request, &table, temp_dir.path());
 
         match response {
             NetMessage::ListDirResponse(r) => {

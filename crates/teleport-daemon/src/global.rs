@@ -163,6 +163,7 @@ where
         host_name: hostname::get()
             .map(|h| h.to_string_lossy().into_owned())
             .unwrap_or_else(|_| "wormhole-host".into()),
+        join_code: Some(join_code.clone()),
     };
 
     // Emit host ready event

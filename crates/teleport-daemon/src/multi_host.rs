@@ -81,6 +81,8 @@ pub struct MultiHostConfig {
     pub host_name: String,
     /// Shared folders
     pub shares: Vec<SharedFolder>,
+    /// When set, clients must advertise a matching `join:` capability in Hello.
+    pub join_code: Option<String>,
 }
 
 impl Default for MultiHostConfig {
@@ -92,6 +94,7 @@ impl Default for MultiHostConfig {
                 .map(|h| h.to_string_lossy().into_owned())
                 .unwrap_or_else(|_| "wormhole-host".into()),
             shares: Vec::new(),
+            join_code: None,
         }
     }
 }
@@ -396,6 +399,18 @@ async fn handle_connection(
         }
     };
 
+    if !crate::net::verify_join_code(config.join_code.as_deref(), &remote_caps) {
+        let error = NetMessage::Error(ErrorMessage {
+            code: ErrorCode::AuthFailed,
+            message: "join code required or invalid".into(),
+            related_inode: None,
+        });
+        send_message(&mut send, &error).await?;
+        return Err(ConnectionError::Receive(
+            "join code authentication failed".into(),
+        ));
+    }
+
     // Generate session ID
     let mut session_id = [0u8; 16];
     getrandom::fill(&mut session_id).expect("RNG failed - system entropy source unavailable");
@@ -544,7 +559,7 @@ async fn handle_request(
         NetMessage::GetAttr(req) => {
             if let Some(share) = default_share {
                 if let Some(table) = share_tables.get(&share.id) {
-                    handle_getattr(req, table)
+                    handle_getattr(req, table, &share.path)
                 } else {
                     NetMessage::Error(ErrorMessage {
                         code: ErrorCode::FileNotFound,
@@ -563,7 +578,7 @@ async fn handle_request(
         NetMessage::ListDir(req) => {
             if let Some(share) = default_share {
                 if let Some(table) = share_tables.get(&share.id) {
-                    handle_listdir(req, table)
+                    handle_listdir(req, table, &share.path)
                 } else {
                     NetMessage::Error(ErrorMessage {
                         code: ErrorCode::FileNotFound,
@@ -773,13 +788,26 @@ fn handle_lookup(req: LookupRequest, table: &ShareInodeTable, shared_path: &Path
     }
 }
 
-fn handle_getattr(req: GetAttrRequest, table: &ShareInodeTable) -> NetMessage {
+fn handle_getattr(req: GetAttrRequest, table: &ShareInodeTable, shared_path: &Path) -> NetMessage {
     let path = match table.get_path(req.inode) {
         Some(p) => p,
         None => {
             return NetMessage::GetAttrResponse(GetAttrResponse { attr: None });
         }
     };
+
+    if let Err(e) = safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on getattr: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::Error(ErrorMessage {
+            code: ErrorCode::PathTraversal,
+            message: "symlink escapes shared directory".into(),
+            related_inode: Some(req.inode),
+        });
+    }
 
     match fs::metadata(&path) {
         Ok(meta) => {
@@ -797,7 +825,7 @@ fn handle_getattr(req: GetAttrRequest, table: &ShareInodeTable) -> NetMessage {
     }
 }
 
-fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
+fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable, shared_path: &Path) -> NetMessage {
     let path = match table.get_path(req.inode) {
         Some(p) => p,
         None => {
@@ -808,6 +836,19 @@ fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
             });
         }
     };
+
+    if let Err(e) = safe_real_path(shared_path, &path) {
+        warn!(
+            "Path traversal attempt via symlink on listdir: {} ({})",
+            path.display(),
+            e
+        );
+        return NetMessage::Error(ErrorMessage {
+            code: ErrorCode::PathTraversal,
+            message: "symlink escapes shared directory".into(),
+            related_inode: Some(req.inode),
+        });
+    }
 
     match fs::read_dir(&path) {
         Ok(entries) => {
@@ -827,25 +868,30 @@ fn handle_listdir(req: ListDirRequest, table: &ShareInodeTable) -> NetMessage {
                     let name = entry.file_name().to_string_lossy().into_owned();
                     let entry_path = entry.path();
 
-                    if let Ok(meta) = entry.metadata() {
-                        let file_type = if meta.is_dir() {
-                            FileType::Directory
-                        } else if meta.is_symlink() {
-                            FileType::Symlink
-                        } else {
-                            FileType::File
-                        };
+                    let Ok(ft) = entry.file_type() else {
+                        continue;
+                    };
+                    let file_type = if ft.is_dir() {
+                        FileType::Directory
+                    } else if ft.is_symlink() {
+                        FileType::Symlink
+                    } else {
+                        FileType::File
+                    };
 
-                        if let Some(inode) = table.get_or_create_inode(entry_path.clone()) {
-                            dir_entries.push(DirEntry::new(name, inode, file_type));
-                        } else {
-                            // Inode space exhausted - log and skip this entry
-                            // This is a critical condition that should be investigated
-                            error!(
-                                "Inode space exhausted while listing directory, skipping entry: {:?}",
-                                entry_path
-                            );
-                        }
+                    if safe_real_path(shared_path, &entry_path).is_err() {
+                        continue;
+                    }
+
+                    if let Some(inode) = table.get_or_create_inode(entry_path.clone()) {
+                        dir_entries.push(DirEntry::new(name, inode, file_type));
+                    } else {
+                        // Inode space exhausted - log and skip this entry
+                        // This is a critical condition that should be investigated
+                        error!(
+                            "Inode space exhausted while listing directory, skipping entry: {:?}",
+                            entry_path
+                        );
                     }
                 }
             }

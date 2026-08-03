@@ -19,7 +19,8 @@ pub async fn fetch_hash_from_addr(
         server_addr: addr,
         mount_point: PathBuf::from("/tmp"),
         request_timeout: Duration::from_secs(30),
-    });
+        join_code: None,
+        });
     client
         .connect()
         .await

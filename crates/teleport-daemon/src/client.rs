@@ -33,6 +33,8 @@ pub struct ClientConfig {
     pub server_addr: SocketAddr,
     pub mount_point: PathBuf,
     pub request_timeout: Duration,
+    /// Join code presented as a `join:` Hello capability when the host requires auth.
+    pub join_code: Option<String>,
 }
 
 impl Default for ClientConfig {
@@ -41,6 +43,7 @@ impl Default for ClientConfig {
             server_addr: "127.0.0.1:4433".parse().unwrap(),
             mount_point: PathBuf::from("/tmp/wormhole"),
             request_timeout: Duration::from_secs(30),
+            join_code: None,
         }
     }
 }
@@ -187,7 +190,7 @@ impl WormholeClient {
         let hello = NetMessage::Hello(HelloMessage {
             protocol_version: PROTOCOL_VERSION,
             client_id,
-            capabilities: crate::net::client_capabilities(),
+            capabilities: crate::net::client_capabilities_with_join(self.config.join_code.as_deref()),
         });
 
         // Send Hello with timeout
@@ -220,8 +223,10 @@ impl WormholeClient {
                 self.session_id = Some(ack.session_id);
                 self.root_inode = ack.root_inode;
                 self.host_name = Some(ack.host_name.clone());
-                self.codec =
-                    negotiate_session_codec(&crate::net::client_capabilities(), &ack.capabilities);
+                self.codec = negotiate_session_codec(
+                    &crate::net::client_capabilities_with_join(self.config.join_code.as_deref()),
+                    &ack.capabilities,
+                );
                 info!(
                     host = %ack.host_name,
                     codec = ?self.codec,
@@ -1222,6 +1227,7 @@ mod tests {
             shared_path: dir.path().to_path_buf(),
             max_connections: 4,
             host_name: "test-host".into(),
+            join_code: None,
         });
         tokio::spawn(async move {
             let _ = host.serve().await;
@@ -1232,6 +1238,7 @@ mod tests {
             server_addr: addr,
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
+            join_code: None,
         });
         let mut connected = false;
         for _ in 0..50 {
@@ -1318,6 +1325,7 @@ mod tests {
             shared_path: dir.path().to_path_buf(),
             max_connections: 4,
             host_name: "magnet-host".into(),
+            join_code: None,
         });
         tokio::spawn(async move {
             let _ = host.serve().await;
@@ -1327,6 +1335,7 @@ mod tests {
             server_addr: addr,
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
+            join_code: None,
         });
         for _ in 0..50 {
             if client.connect().await.is_ok() {
@@ -1370,6 +1379,7 @@ mod tests {
             shared_path: dir.path().to_path_buf(),
             max_connections: 4,
             host_name: "bench-host".into(),
+            join_code: None,
         });
         tokio::spawn(async move {
             let _ = host.serve().await;
@@ -1379,6 +1389,7 @@ mod tests {
             server_addr: addr,
             mount_point: dir.path().to_path_buf(),
             request_timeout: Duration::from_secs(30),
+            join_code: None,
         });
         for _ in 0..50 {
             if client.connect().await.is_ok() {
@@ -1460,6 +1471,7 @@ mod tests {
             shared_path: share.path().to_path_buf(),
             max_connections: 4,
             host_name: "test-host".into(),
+            join_code: None,
         });
         tokio::spawn(async move {
             let _ = host.serve().await;
@@ -1469,6 +1481,7 @@ mod tests {
             server_addr: addr,
             mount_point: share.path().to_path_buf(),
             request_timeout: Duration::from_secs(5),
+            join_code: None,
         });
         let mut connected = false;
         for _ in 0..50 {
@@ -1495,22 +1508,66 @@ mod tests {
             "lookup of escaping symlink should be rejected, got {escaped:?}"
         );
 
-        // Even if the client discovers the symlink's inode via readdir (which
-        // assigns inodes to all directory entries), reading it must be rejected
-        // and must NOT return the secret bytes.
+        // Listing must omit escaping symlinks (no inode allocation / metadata leak).
         let entries = client.readdir(ROOT_INODE, 0).await.expect("readdir");
-        if let Some(escape_entry) = entries.iter().find(|e| e.name == "escape") {
-            let read_attempt = client.read(escape_entry.inode, 0, 64).await;
-            assert!(
-                read_attempt.is_err(),
-                "reading escaping symlink must be rejected, got {read_attempt:?}"
-            );
-            if let Ok(bytes) = &read_attempt {
-                assert!(
-                    !bytes.windows(6).any(|w| w == b"SECRET"),
-                    "secret bytes leaked through symlink escape!"
-                );
+        assert!(
+            entries.iter().all(|e| e.name != "escape"),
+            "escaping symlink must not appear in readdir: {entries:?}"
+        );
+    }
+
+    /// Hosts configured with a join code must reject Hello without a matching capability.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn e2e_join_code_required_on_hello() {
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(dir.path().join("a.txt"), b"x").unwrap();
+
+        let addr = free_loopback_addr();
+        let host = WormholeHost::new(HostConfig {
+            bind_addr: addr,
+            shared_path: dir.path().to_path_buf(),
+            max_connections: 4,
+            host_name: "auth-host".into(),
+            join_code: Some("ABC123".into()),
+        });
+        tokio::spawn(async move {
+            let _ = host.serve().await;
+        });
+
+        let mut denied = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+            join_code: None,
+        });
+        let mut saw_fail = false;
+        for _ in 0..50 {
+            match denied.connect().await {
+                Ok(()) => panic!("connect without join code must fail"),
+                Err(_) => {
+                    saw_fail = true;
+                    break;
+                }
             }
         }
+        assert!(saw_fail, "expected auth failure without join code");
+
+        let mut allowed = WormholeClient::new(ClientConfig {
+            server_addr: addr,
+            mount_point: dir.path().to_path_buf(),
+            request_timeout: Duration::from_secs(5),
+            join_code: Some("ABC123".into()),
+        });
+        let mut connected = false;
+        for _ in 0..50 {
+            if allowed.connect().await.is_ok() {
+                connected = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert!(connected, "connect with correct join code must succeed");
+        let entries = allowed.readdir(ROOT_INODE, 0).await.expect("readdir");
+        assert!(entries.iter().any(|e| e.name == "a.txt"));
     }
 }

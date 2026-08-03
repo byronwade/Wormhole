@@ -7937,6 +7937,7 @@ dependencies = [
  "directories",
  "hex",
  "hostname",
+ "libc",
  "serde",
  "serde_json",
  "teleport-core",

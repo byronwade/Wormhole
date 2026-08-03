@@ -48,6 +48,10 @@ mod unix_impl {
         /// Mount point (must be in /Volumes on macOS with FSKit)
         mount_point: Option<PathBuf>,
 
+        /// Join code required by the host (Hello `join:` capability)
+        #[arg(long)]
+        join_code: Option<String>,
+
         /// Enable verbose logging
         #[arg(short, long)]
         verbose: bool,
@@ -132,6 +136,7 @@ mod unix_impl {
             server_addr: cli.host,
             mount_point: actual_mount_point.clone(),
             request_timeout: Duration::from_secs(30),
+            join_code: cli.join_code.clone(),
         };
 
         // Create the WormholeFS first so we can get a reference to its disk cache for GC
@@ -276,6 +281,10 @@ mod windows_impl {
         #[arg(default_value = "W:")]
         mount_point: String,
 
+        /// Join code required by the host (Hello `join:` capability)
+        #[arg(long)]
+        join_code: Option<String>,
+
         /// Enable verbose logging
         #[arg(short, long)]
         verbose: bool,
@@ -320,6 +329,7 @@ mod windows_impl {
             server_addr: cli.host,
             mount_point: std::path::PathBuf::from(&cli.mount_point),
             request_timeout: Duration::from_secs(30),
+            join_code: cli.join_code.clone(),
         };
 
         // Create the WinFSP filesystem

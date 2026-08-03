@@ -157,6 +157,7 @@ pub async fn handle_request(mgr: &SessionManager, req: ControlRequest) -> Contro
 
 #[cfg(unix)]
 pub async fn serve_unix(path: PathBuf, mgr: Arc<SessionManager>) -> anyhow::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
     use std::sync::atomic::{AtomicBool, Ordering};
     use tokio::net::UnixListener;
 
@@ -165,8 +166,12 @@ pub async fn serve_unix(path: PathBuf, mgr: Arc<SessionManager>) -> anyhow::Resu
     }
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
+        // SECURITY: restrict control-plane directory to the service user.
+        let _ = std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700));
     }
     let listener = UnixListener::bind(&path)?;
+    // SECURITY: socket must not be world/group-writable.
+    let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
     info!(path = %path.display(), "control plane listening");
     let shutting_down = Arc::new(AtomicBool::new(false));
 
@@ -205,6 +210,18 @@ async fn handle_connection(
     stream: tokio::net::UnixStream,
     mgr: Arc<SessionManager>,
 ) -> anyhow::Result<bool> {
+    // SECURITY: only accept control clients from the same UID as this process.
+    if let Ok(cred) = stream.peer_cred() {
+        let self_uid = unsafe { libc::getuid() };
+        if cred.uid() != self_uid {
+            anyhow::bail!(
+                "control peer uid {} rejected (expected {})",
+                cred.uid(),
+                self_uid
+            );
+        }
+    }
+
     let (reader, mut writer) = stream.into_split();
     let mut lines = BufReader::new(reader).lines();
     let mut shutdown = false;
