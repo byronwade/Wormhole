@@ -1,64 +1,74 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Building Clients - Wormhole Docs",
-  description: "Documentation for Building Clients in Wormhole.",
+  title: "Building Clients — Wormhole Docs",
+  description: "How to implement a Wormhole-compatible peer client.",
 };
 
 export default function BuildingClientsPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/api" className="hover:text-foreground">Api</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Building Clients</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "API", href: "/docs/api" }}
+        title="Building clients"
+        description="Speak the wire protocol over QUIC, authenticate with SPAKE2 when using join codes, then mount or fetch chunks."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Building Clients
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Steps</h2>
+        <ol>
+          <li>
+            Resolve the host: join code via{" "}
+            <Link href="/docs/architecture/signal-server">signal</Link>, or direct{" "}
+            <code>host:port</code>.
+          </li>
+          <li>
+            Open QUIC (TLS&nbsp;1.3). Complete{" "}
+            <Link href="/docs/security/pake">PAKE</Link> when required.
+          </li>
+          <li>
+            Exchange <code>Hello</code> / <code>Welcome</code>; learn root inode and
+            capabilities.
+          </li>
+          <li>
+            Issue Lookup / ReadDir / ReadChunk messages per the{" "}
+            <Link href="/docs/architecture/protocol">protocol</Link>.
+          </li>
+          <li>Optionally present a local FS (FUSE/WinFSP) or a custom UI.</li>
+        </ol>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/api"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Api
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Reuse the crates</h2>
+        <DocsCode>{`# Prefer linking teleport-core types rather than re-deriving bincode layouts
+# Protocol: crates/teleport-core/src/protocol.rs
+# CHUNK_SIZE = 128 * 1024`}</DocsCode>
+        <DocsNote>
+          Stay additive: new fields must be <code>Option&lt;T&gt;</code>. Test
+          round-trips against the reference daemon.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/api/messages">Messages</Link>
+          </li>
+          <li>
+            <Link href="/docs/api/errors">Errors</Link>
+          </li>
+          <li>
+            <Link href="/docs/architecture/quic">QUIC</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

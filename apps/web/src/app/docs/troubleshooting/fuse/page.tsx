@@ -1,64 +1,65 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Fuse - Wormhole Docs",
-  description: "Documentation for Fuse in Wormhole.",
+  title: "FUSE Troubleshooting — Wormhole Docs",
+  description: "Fix macFUSE, WinFSP, and Linux FUSE mount failures.",
 };
 
-export default function FusePage() {
+export default function TroubleshootingFusePage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/troubleshooting" className="hover:text-foreground">Troubleshooting</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Fuse</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Troubleshooting", href: "/docs/troubleshooting" }}
+        title="FUSE issues"
+        description="Most mount failures are missing drivers, permissions, or a busy mountpoint."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Fuse
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Quick checks</h2>
+        <DocsCode>{`wormhole doctor
+# macOS: confirm macFUSE is allowed in System Settings → Privacy & Security
+# Linux: ls -l /dev/fuse ; groups | grep fuse
+# Windows: confirm WinFSP is installed`}</DocsCode>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/troubleshooting"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Troubleshooting
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Symptoms</h2>
+        <DocsTable
+          headers={["Symptom", "Likely cause"]}
+          rows={[
+            ["“FUSE not available”", "Driver missing or not loaded"],
+            ["Permission denied on mount", "User not in fuse group / SIP / approval"],
+            ["Mount point busy", "Stale mount; unmount first"],
+            ["Empty or frozen Finder/Explorer", "getattr storm / network hang"],
+          ]}
+        />
+        <DocsCode>{`wormhole unmount ~/mnt
+# Linux stale mount
+fusermount3 -u ~/mnt`}</DocsCode>
+        <DocsNote>
+          Installation: <Link href="/docs/installation">install guide</Link>. Architecture:{" "}
+          <Link href="/docs/architecture/fuse">FUSE</Link>.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/cli/mount">wormhole mount</Link>
+          </li>
+          <li>
+            <Link href="/docs/troubleshooting/help">Getting help</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

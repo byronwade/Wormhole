@@ -1,64 +1,80 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Docker - Wormhole Docs",
-  description: "Documentation for Docker in Wormhole.",
+  title: "Docker Self-Hosting — Wormhole Docs",
+  description: "Run the Wormhole signal server in Docker or Compose.",
 };
 
-export default function DockerPage() {
+export default function SelfHostingDockerPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/self-hosting" className="hover:text-foreground">Self Hosting</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Docker</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Self-hosting", href: "/docs/self-hosting" }}
+        title="Docker"
+        description="Container image for teleport-signal with optional SQLite persistence."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Docker
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Run</h2>
+        <DocsCode>{`docker run -d \\
+  --name wormhole-signal \\
+  -p 8080:8080 \\
+  -e DB_PATH=/data/signal.db \\
+  -v ./data:/data \\
+  wormhole/signal:latest`}</DocsCode>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/self-hosting"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Self Hosting
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Compose</h2>
+        <DocsCode>{`services:
+  signal:
+    image: wormhole/signal:latest
+    container_name: wormhole-signal
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - WORMHOLE_SIGNAL_PORT=8080
+      - WORMHOLE_SIGNAL_DB_PATH=/data/signal.db
+      - WORMHOLE_LOG_LEVEL=info
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3`}</DocsCode>
+        <DocsNote>
+          Terminate TLS at a reverse proxy (Caddy/nginx) in front of port 8080 for{" "}
+          <code>wss://</code>. See{" "}
+          <Link href="/docs/self-hosting/production">production</Link>.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>Clients</h2>
+        <DocsCode>{`export WORMHOLE_SIGNAL_SERVER=wss://signal.example.com
+wormhole host ~/share
+wormhole mount WORM-XXXX ~/mnt`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/self-hosting/monitoring">Monitoring</Link>
+          </li>
+          <li>
+            <Link href="/docs/configuration/env">Environment variables</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

@@ -1,64 +1,76 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Cache - Wormhole Docs",
-  description: "Documentation for Cache in Wormhole.",
+  title: "Cache Configuration — Wormhole Docs",
+  description: "RAM and disk cache size, TTL, and GC settings.",
 };
 
-export default function CachePage() {
+export default function CacheConfigPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/configuration" className="hover:text-foreground">Configuration</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Cache</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Configuration", href: "/docs/configuration" }}
+        title="Cache"
+        description="[cache] sizes the L1 RAM and L2 disk stores and controls expiry."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Cache
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Keys</h2>
+        <DocsTable
+          headers={["Key", "Default", "Description"]}
+          rows={[
+            ["max_disk_bytes", "10737418240", "Disk cache cap (10 GB)"],
+            ["max_ram_bytes", "536870912", "RAM cache cap (512 MB)"],
+            ["cache_dir", "(platform default)", "Override cache location"],
+            ["chunk_ttl_secs", "3600", "Soft TTL before GC"],
+            ["gc_interval_secs", "60", "Garbage collection interval"],
+            ["secure_delete", "false", "Overwrite on delete"],
+          ]}
+        />
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/configuration"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Configuration
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Example</h2>
+        <DocsCode>{`[cache]
+max_disk_bytes = 21474836480
+max_ram_bytes = 1073741824
+# cache_dir = "/var/cache/wormhole"
+chunk_ttl_secs = 3600
+gc_interval_secs = 60
+secure_delete = false`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>CLI and env</h2>
+        <DocsCode>{`wormhole config set cache.max_ram_bytes 1073741824
+export WORMHOLE_CACHE_RAM_MB=1024
+export WORMHOLE_CACHE_DISK_GB=20
+export WORMHOLE_CACHE_DIR=/var/cache/wormhole
+
+wormhole cache status
+wormhole cache clear`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/architecture/caching">Caching architecture</Link>
+          </li>
+          <li>
+            <Link href="/docs/performance/cache">Cache performance</Link>
+          </li>
+          <li>
+            <Link href="/docs/cli/cache">wormhole cache</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

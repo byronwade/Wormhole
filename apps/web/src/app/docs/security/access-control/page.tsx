@@ -1,64 +1,104 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Access Control - Wormhole Docs",
-  description: "Documentation for Access Control in Wormhole.",
+  title: "Access Control — Wormhole Docs",
+  description: "Who can mount a share, path sanitization, and read-only defaults.",
 };
 
 export default function AccessControlPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/security" className="hover:text-foreground">Security</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Access Control</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Security", href: "/docs/security" }}
+        title="Access control"
+        description="Join codes gate who connects. Path checks keep shares inside the chosen root."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Access Control
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
+      <section>
+        <h2>Who can connect</h2>
+        <ul>
+          <li>Anyone with a valid, unexpired join code can attempt a mount.</li>
+          <li>PAKE proves knowledge of the code; the code is not sent as a password.</li>
+          <li>Hosts can limit concurrent peers via config (<code>max_connections</code>).</li>
+        </ul>
+        <DocsNote title="Alpha default">
+          Shares are read-only unless you explicitly enable writes. Prefer{" "}
+          <code>--read-only</code> / <code>writable = false</code> for production
+          alpha use.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>Share root</h2>
+        <p>
+          The host picks one folder. Clients only see paths under that root.
+          Network-supplied relative paths are sanitized before any filesystem
+          access.
         </p>
-      </div>
+        <DocsCode>{`# Reject .. and absolute paths; canonicalize; require prefix under root
+fn safe_path(root: &Path, relative: &str) -> Option<PathBuf> {
+    if relative.contains("..") || relative.starts_with('/') {
+        return None;
+    }
+    let full = root.join(relative).canonicalize().ok()?;
+    full.starts_with(root.canonicalize().ok()?).then_some(full)
+}`}</DocsCode>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/security"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Security
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Symlinks</h2>
+        <p>
+          Directory scanning does not follow symlinks out of the share. Escaping
+          the root via symlink targets is rejected by the same containment check.
+        </p>
+      </section>
+
+      <section>
+        <h2>Modes</h2>
+        <DocsTable
+          headers={["Mode", "Behavior"]}
+          rows={[
+            ["Read-only (default)", "Rejects write/create/rename/remove from clients"],
+            ["Writable (opt-in)", "Allows writes when the host enables them (Phase 7+)"],
+            ["LAN / --no-signal", "No public rendezvous; peers need a direct address"],
+          ]}
+        />
+      </section>
+
+      <section>
+        <h2>Practical tips</h2>
+        <ul>
+          <li>Share the smallest folder that still works for collaborators.</li>
+          <li>Rotate join codes when a session ends or a code may have leaked.</li>
+          <li>
+            Self-host the{" "}
+            <Link href="/docs/self-hosting">signal server</Link> if you do not want
+            a third party to see rendezvous metadata.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/security/pake">PAKE</Link>
+          </li>
+          <li>
+            <Link href="/docs/security/threat-model">Threat model</Link>
+          </li>
+          <li>
+            <Link href="/docs/cli/host">wormhole host</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

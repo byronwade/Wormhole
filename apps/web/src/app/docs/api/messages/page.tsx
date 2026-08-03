@@ -1,64 +1,66 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Messages - Wormhole Docs",
-  description: "Documentation for Messages in Wormhole.",
+  title: "Protocol Messages — Wormhole Docs",
+  description: "High-level Wormhole request and response message catalog.",
 };
 
-export default function MessagesPage() {
+export default function ApiMessagesPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/api" className="hover:text-foreground">Api</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Messages</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "API", href: "/docs/api" }}
+        title="Messages"
+        description="Summary of host/client messages. Canonical definitions live in teleport-core."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Messages
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>Metadata</h2>
+        <DocsTable
+          headers={["Request", "Response"]}
+          rows={[
+            ["GetAttr { inode }", "Attr(FileAttr)"],
+            ["Lookup { parent, name }", "Entry(DirEntry)"],
+            ["ReadDir { inode, offset }", "DirEntries([...])"],
+          ]}
+        />
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/api"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Api
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Data</h2>
+        <DocsTable
+          headers={["Request", "Response"]}
+          rows={[
+            ["ReadChunk { inode, offset, size }", "Data(bytes)"],
+            ["WriteChunk { … } (Phase 7+)", "Ok / Error"],
+          ]}
+        />
+        <p>Typical <code>size</code> is 128&nbsp;KB (<code>CHUNK_SIZE</code>).</p>
+      </section>
+
+      <section>
+        <h2>Control</h2>
+        <DocsCode>{`Hello { version, capabilities } → Welcome { version, share_name, root_inode, … }
+Ping { timestamp } → Pong { timestamp, server_time }`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/architecture/protocol">Full protocol docs</Link>
+          </li>
+          <li>
+            <Link href="/docs/api/errors">Errors</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

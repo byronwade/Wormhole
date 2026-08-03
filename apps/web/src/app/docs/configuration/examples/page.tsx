@@ -1,64 +1,94 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Examples - Wormhole Docs",
-  description: "Documentation for Examples in Wormhole.",
+  title: "Configuration Examples — Wormhole Docs",
+  description: "Sample Wormhole configs for LAN, WAN, and self-hosted signal.",
 };
 
-export default function ExamplesPage() {
+export default function ConfigExamplesPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/configuration" className="hover:text-foreground">Configuration</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Examples</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Configuration", href: "/docs/configuration" }}
+        title="Examples"
+        description="Drop-in TOML snippets for common deployments."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Examples
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
+      <section>
+        <h2>LAN-only (no signal)</h2>
+        <DocsCode>{`[host]
+port = 4433
+bind = "0.0.0.0"
+writable = false
+
+[network]
+# Clients use host:port directly
+# wormhole mount 192.168.1.20:4433
+
+[cache]
+max_ram_bytes = 1073741824
+max_disk_bytes = 21474836480`}</DocsCode>
+        <p>
+          Host with <code>wormhole host ~/share --no-signal</code>.
         </p>
-      </div>
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/configuration"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Configuration
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Join codes via public or private signal</h2>
+        <DocsCode>{`[network]
+signal_server = "wss://signal.example.com"
+connect_timeout_secs = 15
+request_timeout_secs = 45
+
+[client]
+read_ahead_chunks = 8
+auto_reconnect = true`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>Self-hosted signal on the same box</h2>
+        <DocsCode>{`[signal]
+port = 8080
+bind = "0.0.0.0"
+db_path = "/var/lib/wormhole/signal.db"
+rate_limit = true
+rate_limit_rpm = 60
+
+[network]
+signal_server = "ws://127.0.0.1:8080"`}</DocsCode>
+        <p>
+          Production TLS usually sits behind Caddy/nginx — see{" "}
+          <Link href="/docs/self-hosting/production">production</Link>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Low-memory client</h2>
+        <DocsCode>{`[cache]
+max_ram_bytes = 134217728   # 128 MB
+max_disk_bytes = 4294967296 # 4 GB
+
+[client]
+read_ahead_chunks = 2
+attr_ttl_secs = 5`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/configuration">Configuration reference</Link>
+          </li>
+          <li>
+            <Link href="/docs/performance/tuning">Tuning</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

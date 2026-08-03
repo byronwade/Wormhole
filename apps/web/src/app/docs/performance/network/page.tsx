@@ -1,64 +1,76 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+  DocsTable,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Network - Wormhole Docs",
-  description: "Documentation for Network in Wormhole.",
+  title: "Network Performance — Wormhole Docs",
+  description: "LAN vs WAN throughput, streams, and timeout tuning.",
 };
 
-export default function NetworkPage() {
+export default function PerfNetworkPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/performance" className="hover:text-foreground">Performance</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Network</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Performance", href: "/docs/performance" }}
+        title="Network performance"
+        description="QUIC multiplexes chunk reads. Throughput tracks your path; latency dominates random I/O."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Network
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>What usually limits you</h2>
+        <DocsTable
+          headers={["Situation", "Limiter"]}
+          rows={[
+            ["1 GbE LAN sequential", "NIC / disk of host"],
+            ["Wi‑Fi", "Airtime and retransmits"],
+            ["WAN", "Bandwidth + RTT"],
+            ["Random 4K reads", "RTT × ops"],
+            ["Many parallel opens", "Stream limits / CPU"],
+          ]}
+        />
+      </section>
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/performance"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Performance
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <section>
+        <h2>Knobs</h2>
+        <DocsCode>{`[network]
+max_streams = 100
+request_timeout_secs = 30
+keepalive_secs = 15
+enable_0rtt = false
+
+[client]
+read_ahead_chunks = 4`}</DocsCode>
+        <DocsNote>
+          Prefer wired LAN for editors. For WAN, increase timeouts and lean on disk
+          cache so remounts avoid re-fetching.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>Measure</h2>
+        <DocsCode>{`wormhole bench 192.168.1.42:4433
+wormhole ping WORM-XXXX`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/architecture/quic">QUIC</Link>
+          </li>
+          <li>
+            <Link href="/docs/configuration/network">Network config</Link>
+          </li>
+          <li>
+            <Link href="/docs/troubleshooting/network">Network troubleshooting</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }

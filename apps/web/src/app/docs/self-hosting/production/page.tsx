@@ -1,64 +1,97 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import {
+  DocsArticle,
+  DocsCode,
+  DocsHeader,
+  DocsNote,
+} from "@/components/docs-ui";
 
 export const metadata = {
-  title: "Production - Wormhole Docs",
-  description: "Documentation for Production in Wormhole.",
+  title: "Production Self-Hosting — Wormhole Docs",
+  description: "TLS, systemd, and hardening for a public Wormhole signal server.",
 };
 
-export default function ProductionPage() {
+export default function SelfHostingProductionPage() {
   return (
-    <div className="space-y-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/docs/self-hosting" className="hover:text-foreground">Self Hosting</Link>
-        <span>/</span>
-        <span className="text-muted-foreground">Production</span>
-      </div>
+    <DocsArticle>
+      <DocsHeader
+        crumb={{ label: "Self-hosting", href: "/docs/self-hosting" }}
+        title="Production"
+        description="Put TLS in front, persist rooms to disk, rate-limit, and run under systemd."
+      />
 
-      {/* Header */}
-      <div className="space-y-4">
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40">
-          Coming Soon
-        </Badge>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">
-          Production
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          This documentation page is currently being written.
-        </p>
-      </div>
+      <section>
+        <h2>TLS with Caddy</h2>
+        <DocsCode>{`# Caddyfile
+signal.example.com {
+    reverse_proxy localhost:8080
+}
 
-      {/* Coming Soon Card */}
-      <Card className="bg-card/50 border-border">
-        <CardContent className="p-8 text-center">
-          <Construction className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Under Construction</h2>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            We&apos;re working on comprehensive documentation for this feature. 
-            Check back soon or contribute to our docs on GitHub.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/docs/self-hosting"
-              className="inline-flex items-center gap-2 text-sm text-wormhole-hunter-light hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Self Hosting
-            </Link>
-            <a
-              href="https://github.com/byronwade/wormhole/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              Request this doc
-            </a>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+caddy run --config Caddyfile
+wormhole signal --port 8080 --db /var/lib/wormhole/signal.db --rate-limit`}</DocsCode>
+        <DocsNote>
+          Prefer terminating TLS at the proxy. Native <code>--tls-cert</code> /{" "}
+          <code>--tls-key</code> works if you manage certs yourself.
+        </DocsNote>
+      </section>
+
+      <section>
+        <h2>systemd</h2>
+        <DocsCode>{`[Unit]
+Description=Wormhole Signal Server
+After=network.target
+
+[Service]
+Type=simple
+User=wormhole
+Group=wormhole
+ExecStart=/usr/local/bin/wormhole-signal \\
+    --port 8080 \\
+    --db /var/lib/wormhole/signal.db \\
+    --rate-limit \\
+    --rate-limit-rpm 60 \\
+    --max-connections 1000
+Restart=always
+RestartSec=10
+Environment=RUST_LOG=info
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wormhole
+
+[Install]
+WantedBy=multi-user.target`}</DocsCode>
+        <DocsCode>{`sudo useradd -r -s /bin/false wormhole
+sudo mkdir -p /var/lib/wormhole && sudo chown wormhole:wormhole /var/lib/wormhole
+sudo systemctl enable --now wormhole-signal`}</DocsCode>
+      </section>
+
+      <section>
+        <h2>Checklist</h2>
+        <ul>
+          <li>
+            <code>wss://</code> only on the public internet
+          </li>
+          <li>SQLite (or equivalent) persistence with backups</li>
+          <li>Rate limiting enabled</li>
+          <li>
+            <Link href="/docs/self-hosting/monitoring">Health + metrics</Link> scraped
+          </li>
+          <li>Firewall: only 443 (or your WSS port) exposed</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>See also</h2>
+        <ul>
+          <li>
+            <Link href="/docs/self-hosting/docker">Docker</Link>
+          </li>
+          <li>
+            <Link href="/docs/security/threat-model">Threat model</Link>
+          </li>
+        </ul>
+      </section>
+    </DocsArticle>
   );
 }
