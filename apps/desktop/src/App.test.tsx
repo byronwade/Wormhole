@@ -3,80 +3,57 @@ import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 
-describe("App Component", () => {
+describe("App Component — Portal shell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Clear localStorage before each test
     localStorage.clear();
-    // Set setup as complete to skip wizard
     localStorage.setItem("wormhole_setup_complete", "true");
   });
 
-  describe("Sidebar Navigation", () => {
-    it("renders the sidebar with navigation items", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      // Wait for initial load
-      await waitFor(() => {
-        expect(screen.getByText("All Files")).toBeInTheDocument();
-      });
-
-      expect(screen.getByText("Shared with Me")).toBeInTheDocument();
-      expect(screen.getByText("My Shares")).toBeInTheDocument();
-    });
-
-    it("renders Recent and Favorites sections", async () => {
+  describe("Chrome", () => {
+    it("has no left sidebar navigation", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Recent")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Favorites")).toBeInTheDocument();
-    });
-
-    it("renders Settings button", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Settings")).toBeInTheDocument();
-      });
+      expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     });
   });
 
-  describe("Main Content Area", () => {
-    it("renders Connect and Share buttons in empty state", async () => {
+  describe("Portal empty state", () => {
+    it("shows Portal brand composition", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect to Share")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Share a Folder")).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /^Share$/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("button", { name: /Enter code/i }).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Files open in Finder/i)).toBeInTheDocument();
     });
 
-    it("shows empty state when no files", async () => {
+    it("skips wizard when setup is complete", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("No Files to Browse")).toBeInTheDocument();
+        expect(screen.queryByText("Welcome to Wormhole")).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Portal" })).toBeInTheDocument();
       });
     });
   });
 
   describe("Setup Wizard", () => {
     it("shows setup wizard on first launch", async () => {
-      // Clear the setup complete flag
       localStorage.removeItem("wormhole_setup_complete");
 
       await act(async () => {
@@ -87,65 +64,25 @@ describe("App Component", () => {
         expect(screen.getByText("Welcome to Wormhole")).toBeInTheDocument();
       });
     });
-
-    it("skips wizard when setup is complete", async () => {
-      localStorage.setItem("wormhole_setup_complete", "true");
-
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        // Should show main app, not wizard
-        expect(screen.queryByText("Welcome to Wormhole")).not.toBeInTheDocument();
-        expect(screen.getByText("All Files")).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe("File Browser", () => {
-    it("renders correctly with no active folder", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        // Should show the empty state / welcome screen
-        expect(screen.getByText("All Files")).toBeInTheDocument();
-      });
-    });
   });
 
   describe("User Interactions", () => {
-    it("Connect to Share button is clickable", async () => {
+    it("Share and Enter code CTAs are clickable", async () => {
       await act(async () => {
         render(<App />);
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Connect to Share")).toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: /Enter code/i }).length).toBeGreaterThan(0);
       });
 
-      const connectButton = screen.getByText("Connect to Share").closest("button");
-      expect(connectButton).toBeInTheDocument();
-      expect(connectButton).not.toBeDisabled();
+      const shareBtn = screen.getAllByRole("button", { name: /^Share$/i })[0];
+      const connectBtn = screen.getAllByRole("button", { name: /Enter code/i })[0];
+      expect(shareBtn).not.toBeDisabled();
+      expect(connectBtn).not.toBeDisabled();
     });
 
-    it("Share a Folder button is clickable", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Share a Folder")).toBeInTheDocument();
-      });
-
-      const shareButton = screen.getByText("Share a Folder").closest("button");
-      expect(shareButton).toBeInTheDocument();
-      expect(shareButton).not.toBeDisabled();
-    });
-
-    it("sidebar buttons are interactive", async () => {
+    it("Settings opens from Portal header", async () => {
       const user = userEvent.setup();
 
       await act(async () => {
@@ -153,62 +90,15 @@ describe("App Component", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("My Shares")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
       });
 
-      // Click on My Shares
-      const mySharesButton = screen.getByText("My Shares").closest("button");
-      if (mySharesButton) {
-        await user.click(mySharesButton);
-      }
-
-      // Should now show My Shares view header
-      await waitFor(() => {
-        // The header should show "My Shares" when that view is active
-        const headers = screen.getAllByText("My Shares");
-        expect(headers.length).toBeGreaterThan(0);
-      });
-    });
-  });
-
-  describe("Accessibility", () => {
-    it("main navigation elements are accessible", async () => {
-      await act(async () => {
-        render(<App />);
-      });
+      await user.click(screen.getByRole("button", { name: "Settings" }));
 
       await waitFor(() => {
-        const sidebar = screen.getByText("All Files").closest("nav") || screen.getByText("All Files").closest("div");
-        expect(sidebar).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Portal/i })).toBeInTheDocument();
       });
-    });
-
-    it("buttons are focusable", async () => {
-      await act(async () => {
-        render(<App />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Connect to Share")).toBeInTheDocument();
-      });
-
-      const connectButton = screen.getByText("Connect to Share").closest("button");
-      expect(connectButton).toBeInTheDocument();
-      // Buttons should be focusable (not have tabindex=-1)
-      expect(connectButton).not.toHaveAttribute("tabindex", "-1");
-    });
-  });
-});
-
-describe("ErrorBoundary", () => {
-  it("renders children when no error", async () => {
-    await act(async () => {
-      render(<App />);
-    });
-
-    await waitFor(() => {
-      // App should render normally
-      expect(screen.getByText("All Files")).toBeInTheDocument();
     });
   });
 });

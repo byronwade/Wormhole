@@ -1,0 +1,24 @@
+[package]
+name = "teleport-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "iroh-based P2P networking for Wormhole (dial-by-key, relays, mDNS)"
+rust-version.workspace = true
+
+[dependencies]
+teleport-core = { path = "../teleport-core" }
+iroh = { workspace = true }
+iroh-mdns-address-lookup = "0.4"
+tokio = { workspace = true }
+bytes = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+futures-util = { workspace = true }
+hex = { workspace = true }
+rand_core = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }

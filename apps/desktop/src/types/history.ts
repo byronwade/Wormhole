@@ -4,6 +4,8 @@
 export type ShareStatus = "active" | "paused" | "inactive" | "expired";
 export type ConnectionStatus = "connected" | "disconnected" | "connecting" | "error";
 export type ExpirationOption = "forever" | "1h" | "24h" | "7d" | "30d";
+/** Long-lived mount share vs ephemeral drop. */
+export type ShareMode = "mount" | "drop";
 
 // Convert expiration option to milliseconds (null = forever)
 export function expirationToMs(option: ExpirationOption): number | null {
@@ -50,6 +52,7 @@ export interface ShareHistoryItem {
   lastActiveAt: number; // Last time it was active
   expirationOption: ExpirationOption; // Selected expiration option
   expiresAt: number | null; // Unix timestamp when share expires, null = never
+  shareMode?: ShareMode; // mount (default) or drop
 }
 
 // Connection history item - represents a connection to a remote share

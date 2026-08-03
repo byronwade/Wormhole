@@ -32,13 +32,15 @@ docs/
 │   ├── 06-troubleshooting.md             # Common issues and solutions
 │   ├── 07-performance-benchmarks.md      # Targets, methodology, metrics
 │   ├── 08-deployment-guide.md            # Production deployment
+│   ├── 16-bleeding-edge-oss-modernization.md  # Proposed iroh/postcard/Polar stack
 │   ├── phase-1-hello-world-fs/           # FUSE skeleton, metadata
 │   ├── phase-2-p2p-tunnel/               # QUIC data plane
 │   ├── phase-3-integration/              # RAM cache, streaming
 │   ├── phase-4-performance-caching/      # Disk cache, LRU
 │   ├── phase-5-product-wrapper/          # Tauri GUI
 │   ├── phase-6-security-compliance/      # NAT, PAKE encryption
-│   └── phase-7-release-ops/              # Bidirectional writes
+│   ├── phase-7-release-ops/              # Bidirectional writes
+│   └── phase-8-high-perf-transfers/      # Throughput, dedup, zero-copy
 │
 └── marketing/                            # Business & brand
     ├── 00-marketing-overview.md          # Summary of all marketing
@@ -63,6 +65,7 @@ CHANGELOG.md                              # Version history (root)
 | **Writing tests** | `01-testing-strategy.md` |
 | **Security decisions** | `02-security-guide.md` |
 | **Why we chose X** | `03-architecture-decisions.md` |
+| **Stack modernization / OSS replacements** | `16-bleeding-edge-oss-modernization.md` |
 | **Wire protocol work** | `04-protocol-specification.md` |
 | **API design** | `05-api-reference.md` |
 | **Debugging issues** | `06-troubleshooting.md` |

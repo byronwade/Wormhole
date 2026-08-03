@@ -7,6 +7,7 @@ import {
   ShareStatus,
   ConnectionStatus,
   ExpirationOption,
+  ShareMode,
   loadHistory,
   saveHistory,
   generateId,
@@ -31,7 +32,7 @@ interface UseWormholeHistoryReturn {
   connections: ConnectionHistoryItem[];
 
   // Share operations
-  addShare: (path: string, joinCode: string, port: number, name?: string, id?: string, expirationOption?: ExpirationOption, expiresAt?: number | null) => ShareHistoryItem;
+  addShare: (path: string, joinCode: string, port: number, name?: string, id?: string, expirationOption?: ExpirationOption, expiresAt?: number | null, shareMode?: ShareMode) => ShareHistoryItem;
   updateShare: (id: string, updates: Partial<ShareHistoryItem>) => void;
   removeShare: (id: string) => void;
   setShareStatus: (id: string, status: ShareStatus) => void;
@@ -90,8 +91,20 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
 
         // Update connection statuses based on backend state
         updated.connections = prev.connections.map((conn) => {
-          if (activeMountPoints.has(conn.mountPoint)) {
-            return { ...conn, status: "connected" as const, lastConnectedAt: Date.now() };
+          if (activeMountPoints.has(conn.mountPoint) || activeMounts.some((m) => m.id === conn.id)) {
+            return {
+              ...conn,
+              status: "connected" as const,
+              lastConnectedAt: Date.now(),
+              errorMessage: undefined,
+            };
+          }
+          // Don't clobber in-flight reconnect / user-facing errors mid-flight
+          if (conn.status === "connecting") {
+            return conn;
+          }
+          if (conn.status === "error") {
+            return { ...conn, status: "disconnected" as const };
           }
           return { ...conn, status: "disconnected" as const };
         });
@@ -110,7 +123,7 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
 
   // Share operations
   const addShare = useCallback(
-    (path: string, joinCode: string, port: number, name?: string, id?: string, expirationOption?: ExpirationOption, expiresAt?: number | null): ShareHistoryItem => {
+    (path: string, joinCode: string, port: number, name?: string, id?: string, expirationOption?: ExpirationOption, expiresAt?: number | null, shareMode?: ShareMode): ShareHistoryItem => {
       const folderName = path.split("/").pop() || "Shared Folder";
       const displayName = name || folderName;
       const shareId = id || generateId();
@@ -127,6 +140,7 @@ export function useWormholeHistory(): UseWormholeHistoryReturn {
         lastActiveAt: Date.now(),
         expirationOption: expirationOption || "forever",
         expiresAt: expiresAt ?? null,
+        shareMode: shareMode || "mount",
       };
 
       setHistory((prev) => addShareToHistory(prev, newShare));

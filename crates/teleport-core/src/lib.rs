@@ -4,11 +4,14 @@
 //! It has no dependencies on networking or filesystem code.
 
 pub mod buffer_pool;
+pub mod codec;
 pub mod compression;
 pub mod config;
 pub mod crypto;
 pub mod error;
 pub mod io;
+pub mod mount_token;
+pub mod opaque_auth;
 pub mod path;
 pub mod protocol;
 pub mod types;
@@ -20,16 +23,26 @@ pub use buffer_pool::{
 pub use compression::{CompressionResult, CompressionStats, SmartCompressor};
 pub use io::{platform_io, AsyncIO, IoStats};
 
+pub use codec::{
+    deserialize_dual, deserialize_with_codec, serialize_with_codec, WireCodec, CAP_CODEC_BINCODE,
+    CAP_CODEC_POSTCARD,
+};
 pub use config::{CacheConfig, ClientConfig, Config, HostConfig, NetworkConfig, SignalConfig};
 pub use error::*;
+pub use mount_token::{
+    decode_token, encode_token, generate_team_keypair, issue_token, key_id, sign_grant,
+    verify_token, MountGrant, MountToken, MountTokenError, DEFAULT_TOKEN_TTL_SECS,
+    PAID_TOKEN_TTL_SECS,
+};
+pub use opaque_auth::{OpaqueError, OpaqueServerState};
 pub use protocol::*;
 pub use types::*;
 
 /// Chunk size in bytes (128 KB)
 pub const CHUNK_SIZE: usize = 128 * 1024;
 
-/// Protocol version
-pub const PROTOCOL_VERSION: u32 = 1;
+/// Protocol version (2 = postcard-capable handshake)
+pub const PROTOCOL_VERSION: u32 = 2;
 
 /// Maximum path length in bytes
 pub const MAX_PATH_LEN: usize = 4096;

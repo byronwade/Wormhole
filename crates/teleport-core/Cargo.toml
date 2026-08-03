@@ -8,6 +8,7 @@ description = "Core types, protocol, and crypto for Wormhole"
 [dependencies]
 serde = { workspace = true }
 bincode = { workspace = true }
+postcard = { workspace = true }
 thiserror = { workspace = true }
 blake3 = { workspace = true }
 spake2 = { workspace = true }
@@ -20,6 +21,12 @@ parking_lot = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 zstd = { workspace = true }
+ed25519-dalek = { workspace = true }
+opaque-ke = { workspace = true }
+rand_core = { workspace = true }
+rand = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

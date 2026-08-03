@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@wormhole/shared": ["../../packages/shared/src/index.ts"]
     }
   },
   "include": ["src"],

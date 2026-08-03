@@ -8,6 +8,9 @@
     "shell:allow-open",
     "dialog:allow-open",
     "dialog:default",
-    "drag:default"
+    "drag:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ]
 }

@@ -466,3 +466,16 @@ fn read(...) {
 - ADR-012: File Locking Protocol
 - ADR-013: Versioning and Migration
 - ADR-014: Telemetry and Analytics (if any)
+- ADR-015: **iroh as networking substrate** — [`adr/015-iroh-networking.md`](./adr/015-iroh-networking.md) ✅
+- ADR-016: **postcard dual-decode** — [`adr/016-postcard-codec.md`](./adr/016-postcard-codec.md) ✅
+- ADR-017: **Polar + self-host BaaS** — [`adr/017-polar-selfhost-billing.md`](./adr/017-polar-selfhost-billing.md) ✅
+- ADR-018: Content-addressed blob store — [`adr/018-content-addressed-blobs.md`](./adr/018-content-addressed-blobs.md) ✅; optional `iroh-blobs` feature for tickets
+
+### Accepted supersessions (2026-08-02)
+
+| Existing ADR | Change |
+|--------------|--------|
+| ADR-001 quinn | quinn remains under iroh; app code uses `teleport-net` Endpoint |
+| ADR-002 bincode | postcard preferred via capability negotiation; bincode for bootstrap |
+| ADR-007 SPAKE2 | Keep for join codes; OPAQUE added for cloud passwords |
+| ADR-009 WebSocket signaling | iroh relay preferred; custom signal optional during migration |

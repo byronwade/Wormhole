@@ -1,0 +1,48 @@
+# Wormhole open-core self-host stack (control plane only).
+#
+# Components:
+# - iroh-relay: NAT fallback (encrypted packets only)
+# - teleport-signal: legacy WebSocket rooms (optional during migration)
+# - postgres: team/auth data for paid tier (wire your BaaS of choice)
+#
+# File bytes NEVER transit these services.
+
+services:
+  iroh-relay:
+    image: n0computer/iroh-relay:latest
+    restart: unless-stopped
+    ports:
+      - "3340:3340/udp"
+      - "3340:3340/tcp"
+    environment:
+      RUST_LOG: info
+
+  signal:
+    build:
+      context: ../..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      RUST_LOG: info
+      WORMHOLE_SIGNAL_BIND: 0.0.0.0:8080
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wormhole
+      POSTGRES_PASSWORD: wormhole
+      POSTGRES_DB: wormhole
+    ports:
+      - "5432:5432"
+    volumes:
+      - wh-pg:/var/lib/postgresql/data
+
+  # Run teleport-cloud binary on the host or in CI to issue mount tokens:
+  #   cargo run -p teleport-cloud -- init --seed /secrets/team.seed
+  #   cargo run -p teleport-cloud -- issue --subject user@studio --share renders
+
+volumes:
+  wh-pg:

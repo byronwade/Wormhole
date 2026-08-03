@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { X, Minus, Square, Copy } from "lucide-react";
+import { X, Minus, Square, Copy } from "@/components/icons";
 import { useState, useEffect } from "react";
 
 interface WindowControlsProps {

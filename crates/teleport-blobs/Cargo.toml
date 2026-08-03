@@ -1,0 +1,29 @@
+[package]
+name = "teleport-blobs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Content-addressed blob store (BLAKE3) for Wormhole caches and transfers"
+rust-version.workspace = true
+
+[features]
+default = []
+## Optional verified streaming via iroh-blobs tickets (pull path).
+iroh-blobs = ["dep:iroh-blobs", "dep:iroh"]
+
+[dependencies]
+teleport-core = { path = "../teleport-core" }
+blake3 = { workspace = true }
+directories = { workspace = true }
+hex = { workspace = true }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+iroh-blobs = { version = "0.103", optional = true, default-features = false, features = ["fs-store"] }
+iroh = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }

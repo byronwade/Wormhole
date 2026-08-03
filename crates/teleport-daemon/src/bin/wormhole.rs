@@ -103,7 +103,7 @@ struct Cli {
     config: Option<PathBuf>,
 
     /// Disable colored output
-    #[arg(long, global = true, env = "NO_COLOR")]
+    #[arg(long, global = true, env = "NO_COLOR", action = clap::ArgAction::SetTrue)]
     no_color: bool,
 }
 
@@ -182,6 +182,16 @@ enum Commands {
 
     /// Show doctor diagnostics and system health
     Doctor(DoctorArgs),
+
+    /// Run the Wormhole MCP server (stdio) — same features as wormhole-ctl / desktop
+    Mcp,
+
+    /// Delegate to wormhole-ctl (control-plane CLI with full session parity)
+    #[command(hide = true)]
+    Ctl {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
 }
 
 // ============================================================================
@@ -221,6 +231,10 @@ struct HostArgs {
     /// Don't register with signal server (direct IP only)
     #[arg(long)]
     no_signal: bool,
+
+    /// Transport backend: `quic` (classic quinn) or `iroh` (dial-by-key)
+    #[arg(long, default_value = "quic", env = "WORMHOLE_TRANSPORT")]
+    transport: String,
 
     /// Use a specific join code instead of generating one
     #[arg(long)]
@@ -325,6 +339,14 @@ struct MountArgs {
     /// Password (if host requires one)
     #[arg(long)]
     password: Option<String>,
+
+    /// Transport backend: `quic` (classic) or `iroh` (endpoint id dial)
+    #[arg(long, default_value = "quic", env = "WORMHOLE_TRANSPORT")]
+    transport: String,
+
+    /// Discover hosts on the LAN via mDNS (iroh)
+    #[arg(long)]
+    announce_local: bool,
 
     /// Cache mode
     #[arg(long, value_enum, default_value = "hybrid")]
@@ -1379,6 +1401,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Watch(args) => run_watch(args, &cli).await,
         Commands::Update(args) => run_update(args, &cli).await,
         Commands::Doctor(args) => run_doctor(args, &cli).await,
+        Commands::Mcp => run_mcp().await,
+        Commands::Ctl { args } => run_ctl(args).await,
     }
 }
 
@@ -1433,13 +1457,6 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
             .unwrap_or_else(|_| "wormhole-host".into())
     });
 
-    let config = HostConfig {
-        bind_addr,
-        shared_path: path.clone(),
-        max_connections: args.max_connections,
-        host_name: host_name.clone(),
-    };
-
     // Generate or use provided join code
     let join_code = args
         .code
@@ -1447,8 +1464,63 @@ async fn run_host(args: &HostArgs, cli: &Cli) -> Result<(), Box<dyn std::error::
         .map(|c| teleport_core::crypto::normalize_join_code(c))
         .unwrap_or_else(teleport_core::crypto::generate_join_code);
 
+    if args.copy_code {
+        copy_to_clipboard(&join_code);
+    }
+    if args.qr_code {
+        print_join_qr(&join_code);
+    }
+
+    // iroh transport path
+    if args.transport.eq_ignore_ascii_case("iroh") {
+        #[cfg(feature = "iroh")]
+        {
+            use teleport_daemon::iroh_host::{start_iroh_share, IrohHostConfig};
+            if !cli.quiet {
+                println!("Starting iroh host for {}…", path.display());
+            }
+            let handle = start_iroh_share(IrohHostConfig {
+                shared_path: path.clone(),
+                host_name: host_name.clone(),
+                announce_mdns: args.announce_local,
+            })
+            .await
+            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+            if !cli.quiet {
+                println!("iroh endpoint id: {}", handle.endpoint_id_hex);
+                println!("Join code (SPAKE2 trust): {}", join_code);
+                println!(
+                    "Connect with: wormhole mount --transport iroh {}",
+                    handle.endpoint_id_hex
+                );
+                println!("Press Ctrl+C to stop sharing");
+            } else {
+                println!("{}", handle.endpoint_id_hex);
+            }
+            tokio::signal::ctrl_c().await.ok();
+            println!("\nShutting down iroh host…");
+            handle.abort();
+            return Ok(());
+        }
+        #[cfg(not(feature = "iroh"))]
+        {
+            return Err("iroh transport requires the `iroh` feature".into());
+        }
+    }
+
+    let config = HostConfig {
+        bind_addr,
+        shared_path: path.clone(),
+        max_connections: args.max_connections,
+        host_name: host_name.clone(),
+    };
+
     // Display startup info
     print_host_banner(&path, bind_addr, &join_code, &host_name, args, cli);
+
+    if args.announce_local && !cli.quiet {
+        println!("Note: --announce-local applies to --transport iroh (mDNS). Classic quic uses LAN IP bind.");
+    }
 
     let host = WormholeHost::new(config);
 
@@ -1601,6 +1673,18 @@ fn print_host_banner(
 }
 
 async fn run_mount(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // iroh: target is endpoint id hex
+    if args.transport.eq_ignore_ascii_case("iroh") {
+        #[cfg(feature = "iroh")]
+        {
+            return run_mount_iroh(args, cli).await;
+        }
+        #[cfg(not(feature = "iroh"))]
+        {
+            return Err("iroh transport requires the `iroh` feature".into());
+        }
+    }
+
     // First, try to extract join code from URL if it's a URL
     let target = if let Some(code) = extract_join_code(&args.target) {
         if !cli.quiet && args.target != code {
@@ -1625,6 +1709,80 @@ async fn run_mount(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error
     } else {
         run_mount_via_signal(&modified_args, cli).await
     }
+}
+
+#[cfg(feature = "iroh")]
+async fn run_mount_iroh(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    use teleport_core::protocol::{GetAttrRequest, NetMessage};
+    use teleport_core::ROOT_INODE;
+    use teleport_daemon::iroh_host::iroh_hello_client;
+
+    let endpoint_id = args.target.trim();
+    if !cli.quiet {
+        println!("Dialing iroh endpoint {}…", endpoint_id);
+    }
+    let (conn, _codec, host_name) = iroh_hello_client(endpoint_id, args.announce_local)
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+
+    // Verify root getattr works (smoke check before FUSE mount wiring)
+    let reply = conn
+        .request(&NetMessage::GetAttr(GetAttrRequest { inode: ROOT_INODE }))
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
+    match reply {
+        NetMessage::GetAttrResponse(r) if r.attr.is_some() => {
+            if !cli.quiet {
+                println!(
+                    "Connected to iroh host '{}' (endpoint {}). Full FUSE mount over iroh uses the same ALPN; use classic mount for production FUSE today, or continue with wormhole-mount once wired.",
+                    host_name, endpoint_id
+                );
+            }
+        }
+        other => {
+            return Err(format!("iroh getattr failed: {other:?}").into());
+        }
+    }
+    conn.close("mount-check-done");
+    Ok(())
+}
+
+fn copy_to_clipboard(text: &str) {
+    // Best-effort clipboard via common CLIs (no extra deps).
+    let attempts = [
+        ("wl-copy", vec![text.to_string()]),
+        ("xclip", vec!["-selection".into(), "clipboard".into()]),
+        ("pbcopy", vec![]),
+    ];
+    for (cmd, args) in attempts {
+        let mut child = match std::process::Command::new(cmd)
+            .args(&args)
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            let _ = stdin.write_all(text.as_bytes());
+        }
+        if child.wait().map(|s| s.success()).unwrap_or(false) {
+            println!("Copied join code to clipboard");
+            return;
+        }
+    }
+    println!("Clipboard copy unavailable (install wl-copy, xclip, or pbcopy)");
+}
+
+fn print_join_qr(join_code: &str) {
+    let payload = format!("wormhole://join/{}", join_code);
+    // ANSI QR via unicode blocks would need a crate; print scannable deep link.
+    println!();
+    println!("QR / deep link payload:");
+    println!("  {}", payload);
+    println!("  (scan with Wormhole mobile/desktop or open the URL)");
+    println!();
 }
 
 fn is_ip_address(target: &str) -> bool {
@@ -1707,7 +1865,7 @@ async fn run_mount_via_signal(
     let mount_point = args
         .path
         .clone()
-        .unwrap_or_else(|| std::env::temp_dir().join(format!("wormhole-{}", &code)));
+        .unwrap_or_else(|| std::env::temp_dir().join(format!("wormhole-{code}")));
 
     // See run_mount_direct: don't pre-create macOS FSKit /Volumes mount points.
     #[cfg(target_os = "macos")]
@@ -1798,17 +1956,29 @@ async fn run_mount_via_signal(
 }
 
 async fn run_status(args: &StatusArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // Prefer control-plane status when wormhole-ctl serve is running.
+    if let Ok(output) = std::process::Command::new("wormhole-ctl")
+        .arg("status")
+        .output()
+    {
+        if output.status.success() {
+            io::stdout().write_all(&output.stdout)?;
+            return Ok(());
+        }
+    }
+
     println!("╔═══════════════════════════════════════════════════════════════╗");
     println!("║                    WORMHOLE STATUS                            ║");
     println!("╠═══════════════════════════════════════════════════════════════╣");
     println!("║                                                               ║");
-    println!("║  Active Hosts:  0                                             ║");
+    println!("║  Active Hosts:  0  (start control plane for live sessions)    ║");
     println!("║  Active Mounts: 0                                             ║");
-    println!("║  Connected Peers: 0                                           ║");
+    println!("║                                                               ║");
+    println!("║  Tip: wormhole-ctl serve   # then host/mount/status           ║");
+    println!("║       wormhole mcp         # MCP server (same API)            ║");
     println!("║                                                               ║");
 
     if args.detailed {
-        // Show cache stats
         if let Ok(cache) = DiskCache::new() {
             let entries = cache.entry_count();
             let size = cache.total_size();
@@ -1825,6 +1995,38 @@ async fn run_status(args: &StatusArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
     println!("╚═══════════════════════════════════════════════════════════════╝");
 
     Ok(())
+}
+
+async fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
+    let candidates = [
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("wormhole-mcp"))),
+        Some(PathBuf::from("wormhole-mcp")),
+    ];
+    for path in candidates.into_iter().flatten() {
+        if path == PathBuf::from("wormhole-mcp") || path.exists() {
+            let status = std::process::Command::new(&path).status()?;
+            if status.success() {
+                return Ok(());
+            }
+            if path.exists() {
+                return Err(format!("wormhole-mcp exited with {status}").into());
+            }
+        }
+    }
+    Err("wormhole-mcp not found. Build with: cargo build -p teleport-mcp".into())
+}
+
+async fn run_ctl(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+    let status = std::process::Command::new("wormhole-ctl")
+        .args(args)
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("wormhole-ctl exited with {status}").into())
+    }
 }
 
 async fn run_cache(args: &CacheArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {

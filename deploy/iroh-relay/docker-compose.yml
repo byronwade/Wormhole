@@ -1,0 +1,23 @@
+# Self-hosted iroh relay for Wormhole (control/relay only — never sees plaintext file bytes).
+#
+# Usage:
+#   docker compose -f deploy/iroh-relay/docker-compose.yml up -d
+#
+# Point clients at the relay URL via iroh RelayMode::Custom / WORMHOLE_RELAY_URL.
+
+services:
+  iroh-relay:
+    image: n0computer/iroh-relay:latest
+    restart: unless-stopped
+    ports:
+      - "3340:3340/udp"
+      - "3340:3340/tcp"
+      - "9090:9090" # metrics (optional)
+    environment:
+      RUST_LOG: info
+    volumes:
+      - iroh-relay-data:/data
+    command: ["iroh-relay", "--addr", "0.0.0.0:3340"]
+
+volumes:
+  iroh-relay-data:

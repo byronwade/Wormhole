@@ -17,9 +17,14 @@ use teleport_core::{
 };
 
 use crate::bridge::{BridgeHandler, FuseError, FuseRequest};
-#[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
-use crate::net::{connect, create_client_endpoint, recv_message, send_message, QuicConnection};
+#[allow(deprecated)] // create_client_endpoint is deprecated but used for LAN/dev mode
+use crate::net::{
+    connect, create_client_endpoint, negotiate_session_codec, recv_message_with, send_message_with,
+    QuicConnection,
+};
 use crate::sync_engine::SyncEngine;
+#[allow(deprecated)] // create_client_endpoint is deprecated but used for dev/LAN mode
+use teleport_core::WireCodec;
 
 /// Wormhole client configuration
 pub struct ClientConfig {
@@ -43,7 +48,13 @@ pub struct WormholeClient {
     config: ClientConfig,
     connection: Option<QuicConnection>,
     session_id: Option<[u8; 16]>,
+    /// Negotiated session wire codec (postcard when both peers advertise it).
+    codec: WireCodec,
     root_inode: Inode,
+    /// Human device name from HelloAck (e.g. "Studio-Render-Box")
+    host_name: Option<String>,
+    /// Optional live throughput meter for Portal speed UI
+    throughput: Option<std::sync::Arc<crate::throughput::SessionMeter>>,
     /// Sync engine for tracking dirty chunks and locks (Phase 7)
     sync_engine: std::sync::Arc<SyncEngine>,
 }
@@ -54,9 +65,22 @@ impl WormholeClient {
             config,
             connection: None,
             session_id: None,
+            codec: WireCodec::Bincode,
             root_inode: ROOT_INODE,
+            host_name: None,
+            throughput: None,
             sync_engine: std::sync::Arc::new(SyncEngine::default()),
         }
+    }
+
+    /// Peer device name from the HelloAck handshake, if connected.
+    pub fn host_name(&self) -> Option<&str> {
+        self.host_name.as_deref()
+    }
+
+    /// Attach a session meter so FUSE/WinFSP reads update live Portal speed.
+    pub fn set_throughput(&mut self, meter: std::sync::Arc<crate::throughput::SessionMeter>) {
+        self.throughput = Some(meter);
     }
 
     /// Get the sync engine (for sharing with FUSE)
@@ -82,6 +106,7 @@ impl WormholeClient {
                 return;
             }
         };
+        let codec = self.codec;
 
         let runner = SyncRunner::new(sync_engine, std::time::Duration::from_secs(1));
 
@@ -106,11 +131,11 @@ impl WormholeClient {
                             lock_token,
                         });
 
-                        send_message(&mut send, &request)
+                        send_message_with(&mut send, &request, codec)
                             .await
                             .map_err(|e| format!("send error: {:?}", e))?;
 
-                        let response = recv_message(&mut recv)
+                        let response = recv_message_with(&mut recv, codec)
                             .await
                             .map_err(|e| format!("recv error: {:?}", e))?;
 
@@ -160,24 +185,31 @@ impl WormholeClient {
         let hello = NetMessage::Hello(HelloMessage {
             protocol_version: PROTOCOL_VERSION,
             client_id,
-            capabilities: vec!["read".into()],
+            capabilities: crate::net::client_capabilities(),
         });
 
         // Send Hello with timeout
-        tokio::time::timeout(self.config.request_timeout, send_message(&mut send, &hello))
-            .await
-            .map_err(|_| ClientError::Connection("timeout sending Hello".into()))?
-            .map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
+        tokio::time::timeout(
+            self.config.request_timeout,
+            send_message_with(&mut send, &hello, self.codec),
+        )
+        .await
+        .map_err(|_| ClientError::Connection("timeout sending Hello".into()))?
+        .map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
 
-        // Receive HelloAck with timeout
-        let response = tokio::time::timeout(self.config.request_timeout, recv_message(&mut recv))
-            .await
-            .map_err(|_| ClientError::Connection("timeout waiting for HelloAck".into()))?
-            .map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
+        // Receive HelloAck with timeout (handshake remains bincode)
+        let response = tokio::time::timeout(
+            self.config.request_timeout,
+            recv_message_with(&mut recv, self.codec),
+        )
+        .await
+        .map_err(|_| ClientError::Connection("timeout waiting for HelloAck".into()))?
+        .map_err(|e| ClientError::Connection(format!("{:?}", e)))?;
 
         match response {
             NetMessage::HelloAck(ack) => {
-                if ack.protocol_version != PROTOCOL_VERSION {
+                // Accept same major lineage (v1 legacy hosts and v2 postcard-capable).
+                if ack.protocol_version == 0 || ack.protocol_version > PROTOCOL_VERSION {
                     return Err(ClientError::VersionMismatch {
                         expected: PROTOCOL_VERSION,
                         actual: ack.protocol_version,
@@ -185,7 +217,14 @@ impl WormholeClient {
                 }
                 self.session_id = Some(ack.session_id);
                 self.root_inode = ack.root_inode;
-                info!("Connected to host: {}", ack.host_name);
+                self.host_name = Some(ack.host_name.clone());
+                self.codec =
+                    negotiate_session_codec(&crate::net::client_capabilities(), &ack.capabilities);
+                info!(
+                    host = %ack.host_name,
+                    codec = ?self.codec,
+                    "Connected to host"
+                );
             }
             NetMessage::Error(e) => {
                 return Err(ClientError::ServerError(e.message));
@@ -239,6 +278,9 @@ impl WormholeClient {
                         reply,
                     } => {
                         let result = self.read(inode, offset, size).await;
+                        if let (Ok(ref data), Some(meter)) = (&result, &self.throughput) {
+                            meter.record(data.len() as u64);
+                        }
                         let _ = reply.send(result);
                     }
                     // Phase 7: Write operations
@@ -248,7 +290,13 @@ impl WormholeClient {
                         data,
                         reply,
                     } => {
+                        let nbytes = data.len() as u64;
                         let result = self.write(inode, offset, data).await;
+                        if result.is_ok() {
+                            if let Some(meter) = &self.throughput {
+                                meter.record(nbytes);
+                            }
+                        }
                         let _ = reply.send(result);
                     }
                     FuseRequest::AcquireLock {
@@ -336,7 +384,7 @@ impl WormholeClient {
     }
 
     /// Look up a file by name
-    async fn lookup(&self, parent: Inode, name: &str) -> Result<FileAttr, FuseError> {
+    pub async fn lookup(&self, parent: Inode, name: &str) -> Result<FileAttr, FuseError> {
         let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
 
         let (mut send, mut recv) = conn
@@ -349,11 +397,11 @@ impl WormholeClient {
             name: name.to_string(),
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -366,7 +414,7 @@ impl WormholeClient {
     }
 
     /// Get file attributes
-    async fn getattr(&self, inode: Inode) -> Result<FileAttr, FuseError> {
+    pub async fn getattr(&self, inode: Inode) -> Result<FileAttr, FuseError> {
         let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
 
         let (mut send, mut recv) = conn
@@ -376,11 +424,11 @@ impl WormholeClient {
 
         let request = NetMessage::GetAttr(GetAttrRequest { inode });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -393,7 +441,7 @@ impl WormholeClient {
     }
 
     /// Read directory contents
-    async fn readdir(&self, inode: Inode, offset: u64) -> Result<Vec<DirEntry>, FuseError> {
+    pub async fn readdir(&self, inode: Inode, offset: u64) -> Result<Vec<DirEntry>, FuseError> {
         let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
 
         let (mut send, mut recv) = conn
@@ -407,11 +455,11 @@ impl WormholeClient {
             limit: 1000,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -423,7 +471,7 @@ impl WormholeClient {
     }
 
     /// Read file data
-    async fn read(&self, inode: Inode, offset: u64, size: u32) -> Result<Vec<u8>, FuseError> {
+    pub async fn read(&self, inode: Inode, offset: u64, size: u32) -> Result<Vec<u8>, FuseError> {
         let conn = self.connection.as_ref().ok_or(FuseError::Shutdown)?;
 
         let (mut send, mut recv) = conn
@@ -438,11 +486,11 @@ impl WormholeClient {
             priority: 0,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -525,11 +573,11 @@ impl WormholeClient {
                 lock_token: lock_token.clone(),
             });
 
-            send_message(&mut send, &request)
+            send_message_with(&mut send, &request, self.codec)
                 .await
                 .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv)
+            let response = recv_message_with(&mut recv, self.codec)
                 .await
                 .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -573,11 +621,11 @@ impl WormholeClient {
             timeout_ms: 30000, // 30 second lock TTL
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -630,11 +678,11 @@ impl WormholeClient {
 
         let request = NetMessage::ReleaseLock(ReleaseRequest { token: lock_token });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -686,11 +734,11 @@ impl WormholeClient {
                 lock_token: lock_token.clone(),
             });
 
-            send_message(&mut send, &request)
+            send_message_with(&mut send, &request, self.codec)
                 .await
                 .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-            let response = recv_message(&mut recv)
+            let response = recv_message_with(&mut recv, self.codec)
                 .await
                 .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -738,11 +786,11 @@ impl WormholeClient {
             lock_token,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -779,11 +827,11 @@ impl WormholeClient {
             lock_token,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -818,11 +866,11 @@ impl WormholeClient {
             mode,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -856,11 +904,11 @@ impl WormholeClient {
             name: name.to_string(),
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -900,11 +948,11 @@ impl WormholeClient {
             lock_token,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
@@ -946,11 +994,11 @@ impl WormholeClient {
             lock_token,
         });
 
-        send_message(&mut send, &request)
+        send_message_with(&mut send, &request, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 
-        let response = recv_message(&mut recv)
+        let response = recv_message_with(&mut recv, self.codec)
             .await
             .map_err(|e| FuseError::IoError(format!("{:?}", e)))?;
 

@@ -53,20 +53,27 @@ pub mod bulk_transfer;
 pub mod cache;
 pub mod client;
 pub mod connection_manager;
+pub mod content_store;
 pub mod dedup_index;
 pub mod disk_cache;
 pub mod gc;
 pub mod global;
 pub mod governor;
 pub mod host;
+#[cfg(feature = "iroh")]
+pub mod iroh_host;
 pub mod lock_manager;
+pub mod mount_token_gate;
 pub mod multi_host;
 pub mod net;
 pub mod rate_limiter;
 pub mod rendezvous;
 pub mod stream_pool;
 pub mod sync_engine;
+pub mod throughput;
 pub mod updater;
+
+pub use content_store::ContentStore;
 
 // Bridge re-export (platform-agnostic)
 pub use bridge::{BridgeHandler, FuseAsyncBridge, FuseError, FuseRequest};
@@ -109,6 +116,7 @@ pub use stream_pool::{
     MAX_STREAMS, MIN_STREAMS,
 };
 pub use sync_engine::{DirtyChunk, FileLock, SyncEngine, SyncRunner, SyncStatus};
+pub use throughput::SessionMeter;
 
 /// Default mount options
 pub const DEFAULT_MOUNT_OPTIONS: &[&str] =

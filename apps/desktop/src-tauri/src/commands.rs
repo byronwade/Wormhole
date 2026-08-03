@@ -18,6 +18,7 @@ use std::thread;
 #[cfg(unix)]
 use fuser::MountOption;
 use serde::{Deserialize, Serialize};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::{AppHandle, Emitter, State};
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
@@ -34,8 +35,11 @@ use teleport_daemon::global::{
     connect_global, start_host_global, GlobalEvent, GlobalHostConfig, GlobalMountConfig,
 };
 use teleport_daemon::host::{HostConfig, WormholeHost};
+use teleport_daemon::SessionMeter;
 #[cfg(windows)]
 use teleport_daemon::winfsp::WormholeWinFS;
+
+use crate::lan::{LanDiscovery, NearbyPeer};
 
 /// Events emitted to the frontend
 #[derive(Clone, Serialize, Deserialize)]
@@ -76,6 +80,10 @@ pub struct HostInfo {
     pub share_path: String,
     pub port: u16,
     pub join_code: String,
+    /// Human device name (e.g. "Alexs-MacBook")
+    pub host_name: String,
+    /// "mount" (long-lived) or "drop" (ephemeral)
+    pub share_mode: String,
 }
 
 /// Mount info structure
@@ -84,12 +92,15 @@ pub struct MountInfo {
     pub id: String,
     pub mount_point: String,
     pub join_code: String,
+    pub peer_name: Option<String>,
 }
 
 /// Handle for stopping the host
 struct HostHandle {
     /// Abort handle for the host task
     abort_handle: tokio::task::AbortHandle,
+    /// Abort handle for LAN announce (if any)
+    announce_abort: Option<tokio::task::AbortHandle>,
     /// Host information
     info: HostInfo,
 }
@@ -102,6 +113,10 @@ struct ClientHandle {
     mount_point: PathBuf,
     /// Join code used for this connection
     join_code: String,
+    /// Human peer device name from HelloAck (when known)
+    peer_name: Option<String>,
+    /// Live FUSE/WinFSP read/write throughput for Portal
+    throughput: Arc<SessionMeter>,
 }
 
 /// Application state for managing host and client connections
@@ -115,17 +130,274 @@ pub struct AppState {
     next_port: Mutex<u16>,
     /// Tokio runtime for async operations
     runtime: Runtime,
+    /// LAN nearby-peer discovery
+    lan: LanDiscovery,
 }
 
 impl Default for AppState {
     fn default() -> Self {
+        let lan = LanDiscovery::new();
+        lan.start_listener();
         Self {
             host_handles: Mutex::new(HashMap::new()),
             client_handles: Mutex::new(HashMap::new()),
             next_port: Mutex::new(4433),
             runtime: Runtime::new().expect("Failed to create tokio runtime"),
+            lan,
         }
     }
+}
+
+/// Format bytes/sec for tray tooltip (human, short).
+fn format_tray_speed(bps: f64) -> String {
+    if !bps.is_finite() || bps <= 0.0 {
+        return String::new();
+    }
+    if bps >= 1024.0 * 1024.0 {
+        format!("{:.1} MB/s", bps / (1024.0 * 1024.0))
+    } else if bps >= 1024.0 {
+        format!("{:.0} KB/s", bps / 1024.0)
+    } else {
+        format!("{:.0} B/s", bps)
+    }
+}
+
+/// Poll mount SessionMeters and emit transfer-progress for Portal live speed.
+/// Also refreshes the tray tooltip with session counts + aggregate speed.
+pub fn start_throughput_poller(app: AppHandle, state: Arc<AppState>) {
+    let state_for_task = Arc::clone(&state);
+    state.runtime.spawn(async move {
+        let mut idle_cleared = true;
+        let mut last_tooltip = String::new();
+        let mut last_session_fp = String::new();
+        loop {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+
+            let host_count = {
+                let handles = state_for_task.host_handles.lock().await;
+                handles.len()
+            };
+            let (mount_count, snapshot, total_bps, session_fp) = {
+                let handles = state_for_task.client_handles.lock().await;
+                let mut total = 0.0_f64;
+                let mut fp_parts = Vec::new();
+                let snap: Vec<(String, f64)> = handles
+                    .iter()
+                    .filter_map(|(id, h)| {
+                        fp_parts.push(id.clone());
+                        let bps = h.throughput.speed_bps();
+                        if bps > 0.0 {
+                            total += bps;
+                            Some((id.clone(), bps))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                let fp = format!("{host_count}:{}", fp_parts.join(","));
+                (handles.len(), snap, total, fp)
+            };
+
+            if session_fp != last_session_fp {
+                refresh_tray_menu(&app, &state_for_task).await;
+                last_session_fp = session_fp;
+            }
+
+            // Tray session summary (id must match TrayIconBuilder::with_id)
+            let tooltip = {
+                let mut parts = Vec::new();
+                if host_count > 0 {
+                    parts.push(format!(
+                        "{} sharing",
+                        host_count
+                    ));
+                }
+                if mount_count > 0 {
+                    parts.push(format!(
+                        "{} mounted",
+                        mount_count
+                    ));
+                }
+                let speed = format_tray_speed(total_bps);
+                if parts.is_empty() {
+                    "Wormhole — idle".to_string()
+                } else if speed.is_empty() {
+                    format!("Wormhole — {}", parts.join(" · "))
+                } else {
+                    format!("Wormhole — {} · {}", parts.join(" · "), speed)
+                }
+            };
+            if tooltip != last_tooltip {
+                if let Some(tray) = app.tray_by_id("main") {
+                    let _ = tray.set_tooltip(Some(&tooltip));
+                }
+                last_tooltip = tooltip;
+            }
+
+            if snapshot.is_empty() {
+                if !idle_cleared {
+                    let _ = app.emit("transfer-completed", serde_json::json!({ "reason": "idle" }));
+                    idle_cleared = true;
+                }
+                continue;
+            }
+
+            idle_cleared = false;
+            for (id, bps) in snapshot {
+                let _ = app.emit(
+                    "transfer-progress",
+                    TransferProgressEvent {
+                        transfer_id: id,
+                        file_name: "mount".to_string(),
+                        bytes_transferred: 0,
+                        total_bytes: 0,
+                        speed_bps: bps,
+                        eta_seconds: None,
+                    },
+                );
+            }
+        }
+    });
+}
+
+/// When a mount thread finishes (peer gone / unmount), drop the handle and notify UI.
+fn watch_mount_lifecycle(app: AppHandle, state: Arc<AppState>, id: String, join_code: String) {
+    let runtime = state.runtime.handle().clone();
+    runtime.spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            let finished = {
+                let handles = state.client_handles.lock().await;
+                match handles.get(&id) {
+                    Some(h) => h
+                        .mount_thread
+                        .as_ref()
+                        .map(|t| t.is_finished())
+                        .unwrap_or(true),
+                    None => return,
+                }
+            };
+            if finished {
+                {
+                    let mut handles = state.client_handles.lock().await;
+                    handles.remove(&id);
+                }
+                let _ = app.emit(
+                    "mount-dropped",
+                    serde_json::json!({
+                        "id": id,
+                        "join_code": join_code,
+                    }),
+                );
+                refresh_tray_menu(&app, &state).await;
+                return;
+            }
+        }
+    });
+}
+
+fn folder_leaf(path: &str) -> String {
+    PathBuf::from(path)
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.to_string())
+}
+
+/// Rebuild tray menu with live shares/mounts (Share / Copy / Stop / Open).
+pub async fn refresh_tray_menu(app: &AppHandle, state: &Arc<AppState>) {
+    let hosts: Vec<HostInfo> = {
+        let handles = state.host_handles.lock().await;
+        handles.values().map(|h| h.info.clone()).collect()
+    };
+    let mounts: Vec<MountInfo> = {
+        let handles = state.client_handles.lock().await;
+        handles
+            .iter()
+            .map(|(id, h)| MountInfo {
+                id: id.clone(),
+                mount_point: h.mount_point.to_string_lossy().to_string(),
+                join_code: h.join_code.clone(),
+                peer_name: h.peer_name.clone(),
+            })
+            .collect()
+    };
+
+    let Ok(menu) = Menu::new(app) else {
+        return;
+    };
+
+    let append_item = |id: String, title: &str, enabled: bool| -> Option<()> {
+        let item = MenuItem::with_id(app, id, title, enabled, None::<&str>).ok()?;
+        menu.append(&item).ok()?;
+        Some(())
+    };
+
+    let _ = append_item("share".into(), "Share a Folder…", true);
+    let _ = append_item("connect".into(), "Enter a Code…", true);
+    let _ = append_item("portal".into(), "Open Portal", true);
+
+    if let Ok(sep) = PredefinedMenuItem::separator(app) {
+        let _ = menu.append(&sep);
+    }
+
+    for h in &hosts {
+        let label = format!("Sharing · {}", folder_leaf(&h.share_path));
+        let _ = append_item(format!("share-label:{}", h.id), &label, false);
+        let _ = append_item(
+            format!("copy-code:{}", h.join_code),
+            "  Copy join code",
+            true,
+        );
+        let _ = append_item(format!("stop-share:{}", h.id), "  Stop sharing", true);
+    }
+
+    for m in &mounts {
+        let peer = m
+            .peer_name
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .unwrap_or("Mounted share");
+        let label = format!("Mounted · {peer}");
+        let _ = append_item(format!("mount-label:{}", m.id), &label, false);
+        let _ = append_item(
+            format!("open-mount:{}", m.mount_point),
+            "  Open in Finder",
+            true,
+        );
+        let _ = append_item(format!("stop-mount:{}", m.id), "  Disconnect", true);
+    }
+
+    if let Ok(sep) = PredefinedMenuItem::separator(app) {
+        let _ = menu.append(&sep);
+    }
+    let _ = append_item("quit".into(), "Quit Wormhole", true);
+
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_menu(Some(menu));
+    }
+}
+
+/// Best-effort open mount in Finder/Explorer (auto-reveal after mount).
+fn auto_open_mount_path(path: &str) {
+    let path_buf = PathBuf::from(path);
+    if !path_buf.exists() {
+        return;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(&path_buf).spawn();
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("explorer")
+            .arg(&path_buf)
+            .spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(&path_buf).spawn();
+    }
+    info!("Auto-opened mount path: {}", path);
 }
 
 /// Start hosting a folder with a specific ID (supports multiple shares)
@@ -179,13 +451,15 @@ pub async fn start_hosting_with_id(
         .parse()
         .map_err(|e| format!("Invalid port: {}", e))?;
 
+    let host_name = hostname::get()
+        .map(|h| h.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| "wormhole-host".into());
+
     let config = HostConfig {
         bind_addr,
         shared_path: share_path.clone(),
         max_connections: 10,
-        host_name: hostname::get()
-            .map(|h| h.to_string_lossy().into_owned())
-            .unwrap_or_else(|_| "wormhole-host".into()),
+        host_name: host_name.clone(),
     };
 
     // Spawn the host task in the runtime
@@ -219,11 +493,18 @@ pub async fn start_hosting_with_id(
         }
     });
 
+    // Announce on LAN so nearby Portal UIs can show this device
+    let announce_handle = state
+        .lan
+        .start_announce(join_code.clone(), port);
+
     let host_info = HostInfo {
         id: id.clone(),
         share_path: share_path.to_string_lossy().to_string(),
         port,
         join_code: join_code.clone(),
+        host_name,
+        share_mode: "mount".to_string(),
     };
 
     // Store the handle with host info
@@ -233,23 +514,41 @@ pub async fn start_hosting_with_id(
             id.clone(),
             HostHandle {
                 abort_handle: host_task.abort_handle(),
+                announce_abort: Some(announce_handle.abort_handle()),
                 info: host_info.clone(),
             },
         );
     }
 
+    refresh_tray_menu(&app, state.inner()).await;
     info!("Host {} started with join code: {}", id, join_code);
     Ok(host_info)
 }
 
 /// Stop hosting by ID
 #[tauri::command]
-pub async fn stop_hosting_by_id(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
+pub async fn stop_hosting_by_id(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), String> {
     info!("Stopping host: {}", id);
+
+    // Stop LAN announce early if present
+    {
+        let handles = state.host_handles.lock().await;
+        if let Some(h) = handles.get(&id) {
+            if let Some(a) = &h.announce_abort {
+                a.abort();
+            }
+        }
+    }
 
     let mut handles = state.host_handles.lock().await;
     if let Some(h) = handles.remove(&id) {
         h.abort_handle.abort();
+        drop(handles);
+        refresh_tray_menu(&app, state.inner()).await;
         info!("Host {} stopped", id);
         Ok(())
     } else {
@@ -269,7 +568,7 @@ pub async fn start_hosting(
     let id = "default".to_string();
 
     // Stop any existing default host first
-    let _ = stop_hosting_by_id(state.clone(), id.clone()).await;
+    let _ = stop_hosting_by_id(app.clone(), state.clone(), id.clone()).await;
 
     // Start with the new function
     start_hosting_with_id(app, state, id, path, Some(port)).await?;
@@ -278,9 +577,12 @@ pub async fn start_hosting(
 
 /// Legacy: Stop hosting (single share, backwards compatible)
 #[tauri::command]
-pub async fn stop_hosting(state: State<'_, Arc<AppState>>) -> Result<(), String> {
+pub async fn stop_hosting(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), String> {
     // Stop the default host
-    stop_hosting_by_id(state, "default".to_string()).await
+    stop_hosting_by_id(app, state, "default".to_string()).await
 }
 
 /// Connect to a peer and mount their shared folder (Unix only)
@@ -298,7 +600,7 @@ pub async fn connect_to_peer(
     );
 
     // For legacy single-connection, use "default" ID
-    let _ = disconnect_by_id(state.clone(), "default".to_string()).await;
+    let _ = disconnect_by_id(app.clone(), state.clone(), "default".to_string()).await;
 
     // Parse the host address
     let server_addr: SocketAddr = host_address
@@ -315,6 +617,8 @@ pub async fn connect_to_peer(
     let mount_point_clone = mount_point.clone();
     let mount_path_str = mount_path.clone();
     let app_clone = app.clone();
+    let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
 
     // Spawn the mount in a separate thread (FUSE is blocking)
     let mount_thread = thread::spawn(move || {
@@ -350,6 +654,7 @@ pub async fn connect_to_peer(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             // Connect to the host
             if let Err(e) = client.connect().await {
@@ -423,6 +728,8 @@ pub async fn connect_to_peer(
                 mount_thread: Some(mount_thread),
                 mount_point,
                 join_code: host_address.clone(), // Use host_address as identifier
+                peer_name: None,
+                throughput,
             },
         );
     }
@@ -445,7 +752,7 @@ pub async fn connect_to_peer(
     );
 
     // For legacy single-connection, use "default" ID
-    let _ = disconnect_by_id(state.clone(), "default".to_string()).await;
+    let _ = disconnect_by_id(app.clone(), state.clone(), "default".to_string()).await;
 
     // Parse the host address
     let server_addr: SocketAddr = host_address
@@ -458,7 +765,10 @@ pub async fn connect_to_peer(
     let app_clone = app.clone();
 
     // Spawn the mount in a separate thread (WinFSP is blocking)
-    let mount_thread = thread::spawn(move || {
+        let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
+
+let mount_thread = thread::spawn(move || {
         // Create the filesystem ↔ async bridge
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
@@ -490,6 +800,7 @@ pub async fn connect_to_peer(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             // Connect to the host
             if let Err(e) = client.connect().await {
@@ -578,6 +889,8 @@ pub async fn connect_to_peer(
                 mount_thread: Some(mount_thread),
                 mount_point: PathBuf::from(&mount_path),
                 join_code: host_address.clone(),
+                peer_name: None,
+                throughput,
             },
         );
     }
@@ -587,7 +900,11 @@ pub async fn connect_to_peer(
 
 /// Disconnect by connection ID
 #[tauri::command]
-pub async fn disconnect_by_id(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
+pub async fn disconnect_by_id(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<(), String> {
     info!("Disconnecting connection: {}", id);
 
     let mut handles = state.client_handles.lock().await;
@@ -625,6 +942,8 @@ pub async fn disconnect_by_id(state: State<'_, Arc<AppState>>, id: String) -> Re
             );
         }
 
+        drop(handles);
+        refresh_tray_menu(&app, state.inner()).await;
         info!("Disconnected {} and unmounted", id);
         Ok(())
     } else {
@@ -634,9 +953,12 @@ pub async fn disconnect_by_id(state: State<'_, Arc<AppState>>, id: String) -> Re
 
 /// Legacy: Disconnect from peer and unmount (backwards compatible)
 #[tauri::command]
-pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
+pub async fn disconnect(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), String> {
     // Try to disconnect the default connection first
-    if disconnect_by_id(state.clone(), "default".to_string())
+    if disconnect_by_id(app.clone(), state.clone(), "default".to_string())
         .await
         .is_ok()
     {
@@ -647,7 +969,7 @@ pub async fn disconnect(state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let handles = state.client_handles.lock().await;
     if let Some(id) = handles.keys().next().cloned() {
         drop(handles);
-        disconnect_by_id(state, id).await
+        disconnect_by_id(app, state, id).await
     } else {
         Err("Not currently connected".to_string())
     }
@@ -805,11 +1127,19 @@ pub async fn start_global_hosting_with_id(
         Err(_) => return Err("Failed to get join code".to_string()),
     };
 
+    let host_name = hostname::get()
+        .map(|h| h.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| "wormhole-host".into());
+
+    let announce_handle = state.lan.start_announce(final_code.clone(), port);
+
     let host_info = HostInfo {
         id: id.clone(),
         share_path: share_path.to_string_lossy().to_string(),
         port,
         join_code: final_code.clone(),
+        host_name,
+        share_mode: "mount".to_string(),
     };
 
     {
@@ -818,6 +1148,7 @@ pub async fn start_global_hosting_with_id(
             id.clone(),
             HostHandle {
                 abort_handle: host_task.abort_handle(),
+                announce_abort: Some(announce_handle.abort_handle()),
                 info: host_info.clone(),
             },
         );
@@ -835,7 +1166,7 @@ pub async fn start_global_hosting(
     join_code: Option<String>,
 ) -> Result<String, String> {
     let id = "default".to_string();
-    let _ = stop_hosting_by_id(state.clone(), id.clone()).await;
+    let _ = stop_hosting_by_id(app.clone(), state.clone(), id.clone()).await;
     let host_info = start_global_hosting_with_id(app, state, id, path, join_code).await?;
     Ok(host_info.join_code)
 }
@@ -958,6 +1289,12 @@ pub async fn connect_with_code_and_id(
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
 
+    let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
+
+    let (ready_tx, ready_rx) =
+        tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
+
     let mount_thread = thread::spawn(move || {
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
@@ -971,6 +1308,7 @@ pub async fn connect_with_code_and_id(
             Ok(rt) => rt,
             Err(e) => {
                 error!("Failed to create runtime: {}", e);
+                let _ = ready_tx.send(Err(format!("Failed to create runtime: {}", e)));
                 let _ = app_for_mount.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -986,9 +1324,11 @@ pub async fn connect_with_code_and_id(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             if let Err(e) = client.connect().await {
                 error!("Failed to connect: {:?}", e);
+                let _ = ready_tx.send(Err(format!("Failed to connect: {:?}", e)));
                 let _ = app_for_client.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -997,6 +1337,9 @@ pub async fn connect_with_code_and_id(
                 );
                 return;
             }
+
+            let peer = client.host_name().map(|s| s.to_string());
+            let _ = ready_tx.send(Ok(peer));
 
             info!("Connected to host via join code!");
 
@@ -1045,10 +1388,18 @@ pub async fn connect_with_code_and_id(
         info!("Filesystem unmounted");
     });
 
+    let peer_name = match tokio::time::timeout(Duration::from_secs(35), ready_rx).await {
+        Ok(Ok(Ok(name))) => name.filter(|s| !s.is_empty()),
+        Ok(Ok(Err(e))) => return Err(e),
+        Ok(Err(_)) => return Err("Connection handshake interrupted".to_string()),
+        Err(_) => return Err("Timed out waiting for peer handshake".to_string()),
+    };
+
     let mount_info = MountInfo {
         id: id.clone(),
         mount_point: mount_point.to_string_lossy().to_string(),
         join_code: join_code.clone(),
+        peer_name: peer_name.clone(),
     };
 
     // Store the handle
@@ -1059,10 +1410,23 @@ pub async fn connect_with_code_and_id(
             ClientHandle {
                 mount_thread: Some(mount_thread),
                 mount_point,
-                join_code,
+                join_code: join_code.clone(),
+                peer_name,
+                throughput,
             },
         );
     }
+
+    watch_mount_lifecycle(
+        app.clone(),
+        Arc::clone(state.inner()),
+        id.clone(),
+        join_code,
+    );
+    refresh_tray_menu(&app, state.inner()).await;
+
+    // Finder opens as soon as the mount is registered (OS may still be settling)
+    auto_open_mount_path(&mount_info.mount_point);
 
     Ok(mount_info)
 }
@@ -1077,7 +1441,7 @@ pub async fn connect_with_code(
     mount_path: String,
 ) -> Result<(), String> {
     let id = "default".to_string();
-    let _ = disconnect_by_id(state.clone(), id.clone()).await;
+    let _ = disconnect_by_id(app.clone(), state.clone(), id.clone()).await;
     connect_with_code_and_id(app, state, id, join_code, mount_path).await?;
     Ok(())
 }
@@ -1190,6 +1554,12 @@ pub async fn connect_with_code_and_id(
     let app_for_mount = app.clone();
     let mount_point_for_client = mount_point.clone();
 
+    let throughput = Arc::new(SessionMeter::new());
+    let meter_for_client = throughput.clone();
+
+    let (ready_tx, ready_rx) =
+        tokio::sync::oneshot::channel::<Result<Option<String>, String>>();
+
     let mount_thread = thread::spawn(move || {
         let (bridge, request_rx) = FuseAsyncBridge::new(Duration::from_secs(30));
 
@@ -1203,6 +1573,7 @@ pub async fn connect_with_code_and_id(
             Ok(rt) => rt,
             Err(e) => {
                 error!("Failed to create runtime: {}", e);
+                let _ = ready_tx.send(Err(format!("Failed to create runtime: {}", e)));
                 let _ = app_for_mount.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -1218,9 +1589,11 @@ pub async fn connect_with_code_and_id(
 
         rt.spawn(async move {
             let mut client = WormholeClient::new(config);
+            client.set_throughput(meter_for_client);
 
             if let Err(e) = client.connect().await {
                 error!("Failed to connect: {:?}", e);
+                let _ = ready_tx.send(Err(format!("Failed to connect: {:?}", e)));
                 let _ = app_for_client.emit(
                     "mount-event",
                     ServiceEvent::Error {
@@ -1229,6 +1602,9 @@ pub async fn connect_with_code_and_id(
                 );
                 return;
             }
+
+            let peer = client.host_name().map(|s| s.to_string());
+            let _ = ready_tx.send(Ok(peer));
 
             info!("Connected to host via join code!");
 
@@ -1292,10 +1668,18 @@ pub async fn connect_with_code_and_id(
         }
     });
 
+    let peer_name = match tokio::time::timeout(Duration::from_secs(35), ready_rx).await {
+        Ok(Ok(Ok(name))) => name.filter(|s| !s.is_empty()),
+        Ok(Ok(Err(e))) => return Err(e),
+        Ok(Err(_)) => return Err("Connection handshake interrupted".to_string()),
+        Err(_) => return Err("Timed out waiting for peer handshake".to_string()),
+    };
+
     let mount_info = MountInfo {
         id: id.clone(),
         mount_point: mount_point.to_string_lossy().to_string(),
         join_code: join_code.clone(),
+        peer_name: peer_name.clone(),
     };
 
     // Store the handle
@@ -1306,10 +1690,22 @@ pub async fn connect_with_code_and_id(
             ClientHandle {
                 mount_thread: Some(mount_thread),
                 mount_point,
-                join_code,
+                join_code: join_code.clone(),
+                peer_name,
+                throughput,
             },
         );
     }
+
+    watch_mount_lifecycle(
+        app.clone(),
+        Arc::clone(state.inner()),
+        id.clone(),
+        join_code,
+    );
+    refresh_tray_menu(&app, state.inner()).await;
+
+    auto_open_mount_path(&mount_info.mount_point);
 
     Ok(mount_info)
 }
@@ -1324,7 +1720,7 @@ pub async fn connect_with_code(
     mount_path: String,
 ) -> Result<(), String> {
     let id = "default".to_string();
-    let _ = disconnect_by_id(state.clone(), id.clone()).await;
+    let _ = disconnect_by_id(app.clone(), state.clone(), id.clone()).await;
     connect_with_code_and_id(app, state, id, join_code, mount_path).await?;
     Ok(())
 }
@@ -1464,6 +1860,7 @@ pub async fn get_active_mounts(state: State<'_, Arc<AppState>>) -> Result<Vec<Mo
             id: id.clone(),
             mount_point: h.mount_point.to_string_lossy().to_string(),
             join_code: h.join_code.clone(),
+            peer_name: h.peer_name.clone(),
         })
         .collect())
 }
@@ -1483,7 +1880,27 @@ pub async fn get_mount_info(state: State<'_, Arc<AppState>>) -> Result<Option<Mo
         id: id.clone(),
         mount_point: h.mount_point.to_string_lossy().to_string(),
         join_code: h.join_code.clone(),
+        peer_name: h.peer_name.clone(),
     }))
+}
+
+/// Device identity for human peer labels in the Portal.
+#[tauri::command]
+pub fn get_device_identity(state: State<'_, Arc<AppState>>) -> Result<NearbyPeer, String> {
+    Ok(NearbyPeer {
+        id: state.lan.self_id().to_string(),
+        name: state.lan.self_name().to_string(),
+        join_code: None,
+        port: None,
+        last_seen_ms: 0,
+        is_self: true,
+    })
+}
+
+/// Nearby Wormhole peers discovered on the LAN.
+#[tauri::command]
+pub fn list_nearby_peers(state: State<'_, Arc<AppState>>) -> Result<Vec<NearbyPeer>, String> {
+    Ok(state.lan.list_peers())
 }
 
 /// Delete a file or folder
@@ -1503,6 +1920,43 @@ pub fn delete_path(path: String) -> Result<(), String> {
 
     info!("Deleted: {}", path.display());
     Ok(())
+}
+
+/// Resolve (and create) a default mount directory under `~/Wormhole/<label>`.
+///
+/// Used by the one-field Connect flow so users never pick a mount folder.
+#[tauri::command]
+pub fn default_mount_path(label: String) -> Result<String, String> {
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+
+    let safe_label: String = label
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(64)
+        .collect();
+    let safe_label = if safe_label.is_empty() {
+        "mount".to_string()
+    } else {
+        safe_label
+    };
+
+    let wormhole_root = home.join("Wormhole");
+    let mount_dir = wormhole_root.join(&safe_label);
+
+    std::fs::create_dir_all(&mount_dir)
+        .map_err(|e| format!("Failed to create mount directory: {}", e))?;
+
+    info!("Default mount path: {}", mount_dir.display());
+    Ok(mount_dir.to_string_lossy().to_string())
 }
 
 /// Open a file with the default application
@@ -1838,7 +2292,9 @@ pub async fn check_for_updates(current_version: String) -> Result<Option<UpdateI
     }
 }
 
-/// Start hosting with expiration support
+/// Start hosting with expiration support.
+///
+/// `share_mode`: `"mount"` (long-lived) or `"drop"` (ephemeral — defaults to 24h if no expiry).
 #[tauri::command]
 pub async fn start_hosting_with_expiration(
     app: AppHandle,
@@ -1847,17 +2303,34 @@ pub async fn start_hosting_with_expiration(
     path: String,
     port: Option<u16>,
     expires_in_ms: Option<u64>,
+    share_mode: Option<String>,
 ) -> Result<HostInfo, String> {
+    let mode = share_mode.unwrap_or_else(|| "mount".to_string());
+    let mode = if mode == "drop" { "drop" } else { "mount" };
+
+    // Drop mode defaults to 24h when caller omits expiry
+    let expires_in_ms = match (mode, expires_in_ms) {
+        ("drop", None) => Some(24 * 60 * 60 * 1000),
+        (_, other) => other,
+    };
+
     info!(
-        "Starting host {} for path: {} with expiration: {:?}ms",
-        id, path, expires_in_ms
+        "Starting host {} for path: {} mode={} expiration: {:?}ms",
+        id, path, mode, expires_in_ms
     );
 
-    // Start the host normally first
-    let host_info =
+    let mut host_info =
         start_hosting_with_id(app.clone(), state.clone(), id.clone(), path.clone(), port).await?;
+    host_info.share_mode = mode.to_string();
 
-    // If expiration is set, spawn a task to auto-stop the share
+    // Persist mode on stored handle
+    {
+        let mut handles = state.host_handles.lock().await;
+        if let Some(h) = handles.get_mut(&id) {
+            h.info.share_mode = mode.to_string();
+        }
+    }
+
     if let Some(ms) = expires_in_ms {
         let state_clone = state.inner().clone();
         let app_clone = app.clone();
@@ -1868,12 +2341,13 @@ pub async fn start_hosting_with_expiration(
 
             info!("Share {} has expired, stopping...", id_clone);
 
-            // Stop the host
             let mut handles = state_clone.host_handles.lock().await;
             if let Some(h) = handles.remove(&id_clone) {
+                if let Some(a) = &h.announce_abort {
+                    a.abort();
+                }
                 h.abort_handle.abort();
 
-                // Emit expired event to frontend
                 let _ = app_clone.emit(
                     "share-expired",
                     serde_json::json!({

@@ -23,7 +23,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse3-dev pkg-config
+          sudo apt-get install -y libfuse3-dev pkg-config libssl-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -46,7 +46,17 @@ jobs:
 
       # Only lint core crates (exclude desktop app which needs GTK)
       - name: Run clippy on core crates
-        run: cargo clippy -p teleport-core -p teleport-daemon -p teleport-signal --all-targets -- -D warnings
+        run: cargo clippy -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud -p teleport-service -p teleport-mcp --all-targets -- -D warnings
+
+  deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --all-features
 
   # =============================================================================
   # Build and test on Linux
@@ -61,10 +71,16 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse3-dev pkg-config
+          sudo apt-get install -y libfuse3-dev pkg-config libssl-dev mold clang
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -77,15 +93,33 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-test-
 
-      # Build core crates only
       - name: Build core crates
-        run: cargo build -p teleport-core -p teleport-daemon -p teleport-signal
+        env:
+          RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
+        run: cargo build -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud -p teleport-service -p teleport-mcp
 
-      - name: Run tests
-        run: cargo test -p teleport-core -p teleport-daemon -p teleport-signal
+      - name: Run tests (nextest)
+        env:
+          RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
+        run: cargo nextest run -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud -p teleport-service -p teleport-mcp
+
+      - name: E2E CLI + MCP control plane
+        env:
+          RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
+        run: ./scripts/e2e-cli-mcp.sh
 
       - name: Build release
-        run: cargo build --release -p teleport-daemon -p teleport-signal
+        env:
+          RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
+        run: cargo build --release -p teleport-daemon -p teleport-signal -p teleport-cloud -p teleport-service -p teleport-mcp
 
   # =============================================================================
   # Build and test on macOS
