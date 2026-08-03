@@ -46,7 +46,7 @@ jobs:
 
       # Only lint core crates (exclude desktop app which needs GTK)
       - name: Run clippy on core crates
-        run: cargo clippy -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud --all-targets -- -D warnings
+        run: cargo clippy -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud -p teleport-service -p teleport-mcp --all-targets -- -D warnings
 
   deny:
     name: cargo-deny
@@ -98,21 +98,28 @@ jobs:
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
           RUSTC_WRAPPER: sccache
           SCCACHE_GHA_ENABLED: "true"
-        run: cargo build -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud
+        run: cargo build -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud -p teleport-service -p teleport-mcp
 
       - name: Run tests (nextest)
         env:
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
           RUSTC_WRAPPER: sccache
           SCCACHE_GHA_ENABLED: "true"
-        run: cargo nextest run -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud
+        run: cargo nextest run -p teleport-core -p teleport-daemon -p teleport-signal -p teleport-net -p teleport-blobs -p teleport-cloud -p teleport-service -p teleport-mcp
+
+      - name: E2E CLI + MCP control plane
+        env:
+          RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+          RUSTC_WRAPPER: sccache
+          SCCACHE_GHA_ENABLED: "true"
+        run: ./scripts/e2e-cli-mcp.sh
 
       - name: Build release
         env:
           RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
           RUSTC_WRAPPER: sccache
           SCCACHE_GHA_ENABLED: "true"
-        run: cargo build --release -p teleport-daemon -p teleport-signal -p teleport-cloud
+        run: cargo build --release -p teleport-daemon -p teleport-signal -p teleport-cloud -p teleport-service -p teleport-mcp
 
   # =============================================================================
   # Build and test on macOS

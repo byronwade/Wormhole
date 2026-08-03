@@ -7,6 +7,8 @@ members = [
     "crates/teleport-net",
     "crates/teleport-blobs",
     "crates/teleport-cloud",
+    "crates/teleport-service",
+    "crates/teleport-mcp",
     "apps/desktop/src-tauri",
 ]
 

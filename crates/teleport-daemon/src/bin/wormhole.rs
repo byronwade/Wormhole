@@ -103,7 +103,7 @@ struct Cli {
     config: Option<PathBuf>,
 
     /// Disable colored output
-    #[arg(long, global = true, env = "NO_COLOR")]
+    #[arg(long, global = true, env = "NO_COLOR", action = clap::ArgAction::SetTrue)]
     no_color: bool,
 }
 
@@ -182,6 +182,16 @@ enum Commands {
 
     /// Show doctor diagnostics and system health
     Doctor(DoctorArgs),
+
+    /// Run the Wormhole MCP server (stdio) — same features as wormhole-ctl / desktop
+    Mcp,
+
+    /// Delegate to wormhole-ctl (control-plane CLI with full session parity)
+    #[command(hide = true)]
+    Ctl {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
 }
 
 // ============================================================================
@@ -1391,6 +1401,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Watch(args) => run_watch(args, &cli).await,
         Commands::Update(args) => run_update(args, &cli).await,
         Commands::Doctor(args) => run_doctor(args, &cli).await,
+        Commands::Mcp => run_mcp().await,
+        Commands::Ctl { args } => run_ctl(args).await,
     }
 }
 
@@ -1701,24 +1713,21 @@ async fn run_mount(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error
 
 #[cfg(feature = "iroh")]
 async fn run_mount_iroh(args: &MountArgs, cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    use teleport_daemon::iroh_host::iroh_hello_client;
     use teleport_core::protocol::{GetAttrRequest, NetMessage};
     use teleport_core::ROOT_INODE;
+    use teleport_daemon::iroh_host::iroh_hello_client;
 
     let endpoint_id = args.target.trim();
     if !cli.quiet {
         println!("Dialing iroh endpoint {}…", endpoint_id);
     }
-    let (conn, _codec, host_name) =
-        iroh_hello_client(endpoint_id, args.announce_local)
-            .await
-            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+    let (conn, _codec, host_name) = iroh_hello_client(endpoint_id, args.announce_local)
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
 
     // Verify root getattr works (smoke check before FUSE mount wiring)
     let reply = conn
-        .request(&NetMessage::GetAttr(GetAttrRequest {
-            inode: ROOT_INODE,
-        }))
+        .request(&NetMessage::GetAttr(GetAttrRequest { inode: ROOT_INODE }))
         .await
         .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
     match reply {
@@ -1947,17 +1956,29 @@ async fn run_mount_via_signal(
 }
 
 async fn run_status(args: &StatusArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    // Prefer control-plane status when wormhole-ctl serve is running.
+    if let Ok(output) = std::process::Command::new("wormhole-ctl")
+        .arg("status")
+        .output()
+    {
+        if output.status.success() {
+            io::stdout().write_all(&output.stdout)?;
+            return Ok(());
+        }
+    }
+
     println!("╔═══════════════════════════════════════════════════════════════╗");
     println!("║                    WORMHOLE STATUS                            ║");
     println!("╠═══════════════════════════════════════════════════════════════╣");
     println!("║                                                               ║");
-    println!("║  Active Hosts:  0                                             ║");
+    println!("║  Active Hosts:  0  (start control plane for live sessions)    ║");
     println!("║  Active Mounts: 0                                             ║");
-    println!("║  Connected Peers: 0                                           ║");
+    println!("║                                                               ║");
+    println!("║  Tip: wormhole-ctl serve   # then host/mount/status           ║");
+    println!("║       wormhole mcp         # MCP server (same API)            ║");
     println!("║                                                               ║");
 
     if args.detailed {
-        // Show cache stats
         if let Ok(cache) = DiskCache::new() {
             let entries = cache.entry_count();
             let size = cache.total_size();
@@ -1974,6 +1995,38 @@ async fn run_status(args: &StatusArgs, _cli: &Cli) -> Result<(), Box<dyn std::er
     println!("╚═══════════════════════════════════════════════════════════════╝");
 
     Ok(())
+}
+
+async fn run_mcp() -> Result<(), Box<dyn std::error::Error>> {
+    let candidates = [
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("wormhole-mcp"))),
+        Some(PathBuf::from("wormhole-mcp")),
+    ];
+    for path in candidates.into_iter().flatten() {
+        if path == PathBuf::from("wormhole-mcp") || path.exists() {
+            let status = std::process::Command::new(&path).status()?;
+            if status.success() {
+                return Ok(());
+            }
+            if path.exists() {
+                return Err(format!("wormhole-mcp exited with {status}").into());
+            }
+        }
+    }
+    Err("wormhole-mcp not found. Build with: cargo build -p teleport-mcp".into())
+}
+
+async fn run_ctl(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+    let status = std::process::Command::new("wormhole-ctl")
+        .args(args)
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("wormhole-ctl exited with {status}").into())
+    }
 }
 
 async fn run_cache(args: &CacheArgs, _cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {

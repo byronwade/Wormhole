@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "wormhole": {
+      "command": "wormhole-mcp",
+      "args": [],
+      "env": {
+        "RUST_LOG": "warn",
+        "WORMHOLE_NO_FUSE": "1"
+      }
+    }
+  }
+}
