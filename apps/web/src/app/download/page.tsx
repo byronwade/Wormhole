@@ -17,15 +17,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function DownloadIndexPage() {
+export default async function DownloadIndexPage() {
   return (
     <SiteShell>
       <section className="site-section">
         <div className="site-section__intro" style={{ maxWidth: "40rem" }}>
           <h1 className="site-for-index__title">Download Wormhole</h1>
           <p>
-            Pick your platform. Same product: share a folder with a code, mount
-            it elsewhere, keep working.
+            Real installers from GitHub Releases—DMG, setup.exe, AppImage, and
+            CLI archives. Share a folder with a code, mount it elsewhere, keep
+            working.
           </p>
         </div>
 

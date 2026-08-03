@@ -549,8 +549,9 @@ jobs:
   finalize:
     name: Finalize Release
     runs-on: ubuntu-latest
-    needs: [create-release, build-linux, build-macos, build-windows]
-    # Don't require desktop build to succeed (it may not exist)
+    # Wait for CLI + desktop so checksums/publish include installers when they succeed.
+    needs: [create-release, build-linux, build-macos, build-windows, build-desktop]
+    # Don't require every matrix cell to succeed (desktop may fail on one OS).
     if: always() && needs.create-release.result == 'success'
     steps:
       - name: Download all release assets
