@@ -76,6 +76,14 @@ const faqJsonLd = {
     },
     {
       "@type": "Question",
+      name: "How is Wormhole different from LocalSend?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "LocalSend pushes files across the LAN. Wormhole mounts the whole folder as a live drive so you can scrub and edit without copying first—with the same zero-config Nearby discovery feel.",
+      },
+    },
+    {
+      "@type": "Question",
       name: "Can video editors scrub before media is fully local?",
       acceptedAnswer: {
         "@type": "Answer",

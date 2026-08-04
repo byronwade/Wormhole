@@ -13,7 +13,9 @@ import {
 } from "@/components/icons";
 import {
   filterFreshPeers,
+  peerDeviceLabel,
   peerFreshnessLabel,
+  sortNearbyPeers,
   type NearbyPeer,
   type PortalSession,
 } from "@/types/portal";
@@ -81,7 +83,10 @@ export function PortalHome({
   const live = sessions.filter((s) => s.status === "live" || s.status === "connecting");
   const others = sessions.filter((s) => s.status !== "live" && s.status !== "connecting");
   const liveMount = live.find((s) => s.kind === "mounted" && s.status === "live");
-  const remotePeers = filterFreshPeers(nearby, 45_000, now).filter((p) => !p.is_self && p.join_code);
+  // LocalSend-style presence: show all fresh devices; Mount only when sharing.
+  const remotePeers = sortNearbyPeers(
+    filterFreshPeers(nearby, 45_000, now).filter((p) => !p.is_self),
+  );
   const empty = sessions.length === 0;
   const showPrimaryCtas = !liveMount;
   const compact = live.length >= 3;
@@ -209,52 +214,90 @@ export function PortalHome({
                 <div className="portal-surface-quiet rounded-xl px-4 py-5">
                   <p className="text-sm text-zinc-400">No one nearby yet</p>
                   <p className="mt-1 text-xs text-zinc-600">
-                    Peers on this Wi‑Fi appear here for one-tap Mount.
+                    Devices on this Wi‑Fi appear automatically—no internet, no
+                    accounts. When they share a folder, Mount shows up.
                   </p>
                 </div>
               ) : (
                 <ul className="portal-surface divide-y divide-white/[0.05] overflow-hidden rounded-xl">
-                  {remotePeers.map((peer) => (
-                    <li
-                      key={peer.id}
-                      className="portal-row flex items-center gap-3 px-3.5 py-3 sm:px-4"
-                    >
-                      <span
-                        className="portal-avatar portal-avatar-live h-8 w-8 flex-shrink-0 text-[11px]"
-                        aria-hidden
+                  {remotePeers.map((peer) => {
+                    const canMount = Boolean(peer.join_code || peer.sharing);
+                    return (
+                      <li
+                        key={peer.id}
+                        className="portal-row flex items-center gap-3 px-3.5 py-3 sm:px-4"
                       >
-                        {initials(peer.name)}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-[#FAFAFA]">
-                          {peer.name}
-                        </p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
-                          <span className="font-mono-brand text-zinc-400">{peer.join_code}</span>
-                          <span className="text-zinc-700" aria-hidden>
-                            ·
-                          </span>
-                          <span>{peerFreshnessLabel(peer.last_seen_ms, now)}</span>
-                        </p>
-                      </div>
-                      {peer.join_code && (
-                        <Button
-                          size="sm"
-                          disabled={mountingId === peer.id}
-                          className="portal-press portal-cta-primary min-h-9 px-3 text-white disabled:opacity-70"
-                          onClick={() => handleQuickMount(peer.join_code!, peer.id, peer.name)}
-                          aria-busy={mountingId === peer.id}
-                        >
-                          {mountingId === peer.id ? (
-                            <IconSpinner className="mr-1.5 h-3.5 w-3.5" />
-                          ) : (
-                            <IconMount className="mr-1.5 h-3.5 w-3.5" />
+                        <span
+                          className={cn(
+                            "portal-avatar h-8 w-8 flex-shrink-0 text-[11px]",
+                            canMount ? "portal-avatar-live" : "opacity-80",
                           )}
-                          {mountingId === peer.id ? "Opening…" : "Mount"}
-                        </Button>
-                      )}
-                    </li>
-                  ))}
+                          aria-hidden
+                        >
+                          {initials(peer.name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-[#FAFAFA]">
+                            {peer.name}
+                          </p>
+                          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
+                            <span>{peerDeviceLabel(peer)}</span>
+                            {peer.ip ? (
+                              <>
+                                <span className="text-zinc-700" aria-hidden>
+                                  ·
+                                </span>
+                                <span className="font-mono-brand text-zinc-500">
+                                  {peer.ip}
+                                </span>
+                              </>
+                            ) : null}
+                            {peer.join_code ? (
+                              <>
+                                <span className="text-zinc-700" aria-hidden>
+                                  ·
+                                </span>
+                                <span className="font-mono-brand text-zinc-400">
+                                  {peer.join_code}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-zinc-700" aria-hidden>
+                                  ·
+                                </span>
+                                <span>online</span>
+                              </>
+                            )}
+                            <span className="text-zinc-700" aria-hidden>
+                              ·
+                            </span>
+                            <span>{peerFreshnessLabel(peer.last_seen_ms, now)}</span>
+                          </p>
+                        </div>
+                        {canMount && peer.join_code ? (
+                          <Button
+                            size="sm"
+                            disabled={mountingId === peer.id}
+                            className="portal-press portal-cta-primary min-h-9 px-3 text-white disabled:opacity-70"
+                            onClick={() =>
+                              handleQuickMount(peer.join_code!, peer.id, peer.name)
+                            }
+                            aria-busy={mountingId === peer.id}
+                          >
+                            {mountingId === peer.id ? (
+                              <IconSpinner className="mr-1.5 h-3.5 w-3.5" />
+                            ) : (
+                              <IconMount className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            {mountingId === peer.id ? "Opening…" : "Mount"}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-zinc-600">Idle</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>

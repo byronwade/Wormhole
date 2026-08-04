@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   filterFreshPeers,
   formatSpeedBps,
+  peerDeviceLabel,
   peerFreshnessLabel,
   sessionsFromHistory,
+  sortNearbyPeers,
   type NearbyPeer,
 } from "./portal";
 import type { ConnectionHistoryItem, ShareHistoryItem } from "./history";
@@ -32,6 +34,24 @@ describe("portal helpers", () => {
     ];
     const fresh = filterFreshPeers(peers, 45_000, now);
     expect(fresh.map((p) => p.id)).toEqual(["self", "a"]);
+  });
+
+  it("sortNearbyPeers prefers sharing peers", () => {
+    const peers: NearbyPeer[] = [
+      { id: "1", name: "Zed", last_seen_ms: 1, is_self: false, sharing: false },
+      { id: "2", name: "Amy", last_seen_ms: 1, is_self: false, sharing: true, join_code: "ABC" },
+      { id: "3", name: "Bob", last_seen_ms: 1, is_self: false, sharing: false },
+    ];
+    expect(sortNearbyPeers(peers).map((p) => p.id)).toEqual(["2", "3", "1"]);
+  });
+
+  it("peerDeviceLabel prettifies OS models", () => {
+    expect(peerDeviceLabel({ id: "1", name: "A", last_seen_ms: 0, is_self: false, device_model: "macos" })).toBe(
+      "macOS",
+    );
+    expect(
+      peerDeviceLabel({ id: "1", name: "A", last_seen_ms: 0, is_self: false, device_type: "mobile" }),
+    ).toBe("Mobile");
   });
 
   it("sessionsFromHistory merges shares and mounts with live first", () => {

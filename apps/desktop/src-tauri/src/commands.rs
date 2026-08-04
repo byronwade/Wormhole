@@ -138,6 +138,9 @@ impl Default for AppState {
     fn default() -> Self {
         let lan = LanDiscovery::new();
         lan.start_listener();
+        // LocalSend-style: advertise presence as soon as the app is alive,
+        // not only while hosting a share.
+        lan.start_presence();
         Self {
             host_handles: Mutex::new(HashMap::new()),
             client_handles: Mutex::new(HashMap::new()),
@@ -532,19 +535,21 @@ pub async fn stop_hosting_by_id(
 ) -> Result<(), String> {
     info!("Stopping host: {}", id);
 
-    // Stop LAN announce early if present
-    {
-        let handles = state.host_handles.lock().await;
-        if let Some(h) = handles.get(&id) {
-            if let Some(a) = &h.announce_abort {
-                a.abort();
-            }
-        }
-    }
-
     let mut handles = state.host_handles.lock().await;
     if let Some(h) = handles.remove(&id) {
+        if let Some(a) = &h.announce_abort {
+            a.abort();
+        }
         h.abort_handle.abort();
+        // Keep advertising if another share is still live.
+        if handles.is_empty() {
+            state.lan.stop_announce();
+        } else if let Some((_, remaining)) = handles.iter().next() {
+            let _ = state.lan.start_announce(
+                remaining.info.join_code.clone(),
+                remaining.info.port,
+            );
+        }
         drop(handles);
         refresh_tray_menu(&app, state.inner()).await;
         info!("Host {} stopped", id);
@@ -1896,6 +1901,12 @@ pub fn get_device_identity(state: State<'_, Arc<AppState>>) -> Result<NearbyPeer
         port: None,
         last_seen_ms: 0,
         is_self: true,
+        fingerprint: state.lan.fingerprint().to_string(),
+        device_type: crate::lan::DeviceType::Desktop,
+        device_model: Some(std::env::consts::OS.to_string()),
+        ip: None,
+        sharing: false,
+        protocol_version: Some("1.0".into()),
     })
 }
 
@@ -2348,6 +2359,7 @@ pub async fn start_hosting_with_expiration(
                 if let Some(a) = &h.announce_abort {
                     a.abort();
                 }
+                state_clone.lan.stop_announce();
                 h.abort_handle.abort();
 
                 let _ = app_clone.emit(

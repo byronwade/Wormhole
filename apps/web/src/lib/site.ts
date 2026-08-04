@@ -15,6 +15,8 @@ export const SEO_KEYWORDS = [
   "P2P file sharing",
   "peer to peer network drive",
   "Syncthing alternative",
+  "LocalSend alternative for folders",
+  "AirDrop for Windows Linux",
   "Dropbox alternative for video",
   "Frame.io alternative",
   "mount render folder",
