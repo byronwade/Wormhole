@@ -91,6 +91,10 @@ const faqs = [
     a: "Syncthing syncs copies. Wormhole mounts the remote path as a drive with join codes—seconds to connect, no device-ID ritual. You work against one live library, not mirrored folders fighting for truth.",
   },
   {
+    q: "How is this different from LocalSend?",
+    a: "LocalSend is excellent for pushing files across the room. Wormhole mounts the whole folder as a live drive—scrub timelines, open projects, grep logs—without copying first. Same zero-config LAN discovery vibe; different job.",
+  },
+  {
     q: "Can video editors scrub before media is fully local?",
     a: "Yes. Large seeks arm playhead-first prefetch—landing chunk first, then ahead and a little behind—so DaVinci, Premiere, and friends keep moving while bytes fill in.",
   },

@@ -33,12 +33,33 @@ wormhole mount 192.168.1.20:4433 ~/mnt`}</DocsCode>
       </section>
 
       <section>
+        <h2>Firewall ports</h2>
+        <p>
+          Same idea as LocalSend’s port table: discovery and data are separate. Allow these
+          on the local network (and WAN if you share beyond Wi‑Fi).
+        </p>
+        <DocsTable
+          headers={["Traffic", "Protocol", "Port", "Purpose"]}
+          rows={[
+            ["Incoming", "UDP", "4433", "QUIC data plane (mount / transfer)"],
+            ["Incoming", "UDP", "41234", "LAN Nearby discovery (multicast + broadcast)"],
+            ["Outgoing", "UDP/TCP", "Any", "Reach peers + optional signal WebSocket"],
+          ]}
+        />
+        <DocsNote>
+          Also disable <strong>AP isolation / client isolation</strong> on the router (common on
+          guest Wi‑Fi). Isolated clients cannot see each other even if the firewall is open.
+        </DocsNote>
+      </section>
+
+      <section>
         <h2>Common failures</h2>
         <DocsTable
           headers={["Symptom", "Try"]}
           rows={[
             ["Invalid / expired code", "Regenerate; check clock skew"],
             ["Lookup works, QUIC fails", "UDP firewall / CGNAT; try LAN"],
+            ["Nearby list empty", "Open UDP 41234; disable AP isolation; same subnet"],
             ["PAKE failed", "Retype code; ensure same signal"],
             ["Timeout behind corporate NAT", "Self-host signal; open UDP"],
           ]}

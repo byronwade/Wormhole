@@ -91,17 +91,18 @@ Annual savings:                 $960
 
 ### Feature Matrix
 
-| Feature | AirDrop | Magic Wormhole | Syncthing | Resilio | Dropbox | **Wormhole** |
-|---------|---------|----------------|-----------|---------|---------|--------------|
-| Cross-Platform | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Mount as Drive** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
-| No Setup/Config | ✅ | ✅ | ❌ | ❌ | ✅ | **✅** |
-| Join Codes | ❌ | ✅ | ❌ | ❌ | ❌ | **✅** |
-| E2E Encrypted | ✅ | ✅ | ✅ | ✅ | ❌ | **✅** |
-| GUI | ✅ | ❌ | ✅ | ✅ | ✅ | **✅** |
-| WAN Support | ❌ | ✅ | ✅ | ✅ | ✅ | **✅** |
-| Free | ✅ | ✅ | ✅ | ❌ ($95) | ❌ ($12/mo) | **✅** |
-| Continuous Sync | ❌ | ❌ | ✅ | ✅ | ✅ | **✅** |
+| Feature | AirDrop | LocalSend | Magic Wormhole | Syncthing | Resilio | Dropbox | **Wormhole** |
+|---------|---------|-----------|----------------|-----------|---------|---------|--------------|
+| Cross-Platform | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Mount as Drive** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| Zero-config LAN discovery | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| No Setup/Config | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | **✅** |
+| Join Codes | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | **✅** |
+| E2E Encrypted | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | **✅** |
+| GUI | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | **✅** |
+| WAN Support | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | **✅** |
+| Free | ✅ | ✅ | ✅ | ✅ | ❌ ($95) | ❌ ($12/mo) | **✅** |
+| Continuous Sync | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | **✅** |
 
 ### Key Differentiator
 
@@ -109,6 +110,7 @@ Annual savings:                 $960
 
 This means:
 - **vs. AirDrop:** Works on Windows/Linux, works over internet
+- **vs. LocalSend:** LocalSend pushes files; Wormhole mounts the folder live (scrub/edit without copying). We borrowed their LAN discovery UX.
 - **vs. Magic Wormhole:** Has GUI, mounts as drive (not just transfer)
 - **vs. Syncthing:** No 15-step config, join codes instead of peer IDs
 - **vs. Resilio:** Free (not $95), simpler

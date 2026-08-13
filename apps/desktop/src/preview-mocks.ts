@@ -143,12 +143,16 @@ if (!isTauri) {
         case "list_nearby_peers":
           return [
             {
-              id: "local-Alexs-MacBook",
+              id: "wh-self",
               name: "Alexs-MacBook (this device)",
               join_code: null,
               port: null,
               last_seen_ms: Date.now(),
               is_self: true,
+              fingerprint: "wh-self",
+              device_type: "desktop",
+              device_model: "macos",
+              sharing: false,
             },
             {
               id: "peer-render",
@@ -157,14 +161,24 @@ if (!isTauri) {
               port: 4433,
               last_seen_ms: Date.now(),
               is_self: false,
+              fingerprint: "peer-render",
+              device_type: "desktop",
+              device_model: "linux",
+              ip: "192.168.1.40",
+              sharing: true,
             },
             {
               id: "peer-edit",
               name: "Jordan’s MacBook Pro",
-              join_code: "EDIT42",
-              port: 4433,
+              join_code: null,
+              port: null,
               last_seen_ms: Date.now(),
               is_self: false,
+              fingerprint: "peer-edit",
+              device_type: "desktop",
+              device_model: "macos",
+              ip: "192.168.1.22",
+              sharing: false,
             },
           ];
         case "get_device_identity":

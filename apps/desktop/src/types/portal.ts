@@ -26,6 +26,14 @@ export interface PortalSession {
   errorMessage?: string;
 }
 
+/** LocalSend-inspired device kinds for Nearby icons. */
+export type NearbyDeviceType =
+  | "desktop"
+  | "mobile"
+  | "headless"
+  | "server"
+  | "unknown";
+
 export interface NearbyPeer {
   id: string;
   name: string;
@@ -33,6 +41,13 @@ export interface NearbyPeer {
   port?: number | null;
   last_seen_ms: number;
   is_self: boolean;
+  fingerprint?: string;
+  device_type?: NearbyDeviceType;
+  device_model?: string | null;
+  ip?: string | null;
+  /** Peer is hosting a mountable share right now. */
+  sharing?: boolean;
+  protocol_version?: string | null;
 }
 
 export function sessionsFromHistory(
@@ -118,4 +133,40 @@ export function peerFreshnessLabel(lastSeenMs: number, nowMs = Date.now()): stri
 /** Drop peers not seen within maxAgeMs (default 45s). */
 export function filterFreshPeers(peers: NearbyPeer[], maxAgeMs = 45_000, nowMs = Date.now()): NearbyPeer[] {
   return peers.filter((p) => p.is_self || nowMs - p.last_seen_ms <= maxAgeMs);
+}
+
+/** Prefer sharing peers, then alphabetical — matches LAN beacon sort. */
+export function sortNearbyPeers(peers: NearbyPeer[]): NearbyPeer[] {
+  return [...peers].sort((a, b) => {
+    const share = Number(Boolean(b.sharing || b.join_code)) - Number(Boolean(a.sharing || a.join_code));
+    if (share !== 0) return share;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
+export function peerDeviceLabel(peer: NearbyPeer): string {
+  const model = peer.device_model?.trim();
+  if (model) {
+    const pretty =
+      model === "macos"
+        ? "macOS"
+        : model === "windows"
+          ? "Windows"
+          : model === "linux"
+            ? "Linux"
+            : model;
+    return pretty;
+  }
+  switch (peer.device_type) {
+    case "mobile":
+      return "Mobile";
+    case "server":
+      return "Server";
+    case "headless":
+      return "Headless";
+    case "desktop":
+      return "Desktop";
+    default:
+      return "Device";
+  }
 }
