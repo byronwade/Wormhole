@@ -33,7 +33,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 # fuser 0.16 made `libfuse` a non-default feature; without it the crate falls
 # back to a pure-Rust mount impl that only builds on Linux. We mount via
 # macFUSE (macOS) and libfuse (Linux), so enable the feature explicitly.
-fuser = { version = "0.16", features = ["libfuse"] }
+fuser = { version = "0.18", features = ["libfuse"] }
 
 # WinFSP filesystem (Windows-only)
 # Note: winfsp provides Windows filesystem support similar to FUSE
