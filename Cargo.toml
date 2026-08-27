@@ -58,7 +58,7 @@ rand = { version = "0.8", features = ["getrandom"] }
 # Crypto
 blake3 = "1.5"
 spake2 = "0.4"
-getrandom = "0.3"
+getrandom = "0.4"
 
 # Error handling
 anyhow = "1.0"
