@@ -38,7 +38,7 @@ fuser = { version = "0.16", features = ["libfuse"] }
 # WinFSP filesystem (Windows-only)
 # Note: winfsp provides Windows filesystem support similar to FUSE
 # Licensed under GPL-3.0 with FLOSS exception (compatible with MIT/Apache-2.0)
-winfsp = "0.12"
+winfsp = "0.13"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
