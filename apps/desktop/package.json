@@ -58,7 +58,7 @@
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.0",
     "@vitejs/plugin-react": "^4.3.3",
-    "jsdom": "^27.3.0",
+    "jsdom": "^30.0.1",
     "playwright-core": "^1.62.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^4",
